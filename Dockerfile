@@ -19,7 +19,7 @@ RUN crontab /etc/cron.d/migraine_check
 RUN touch /var/log/cron.log
 
 # Create supervisor configuration
-RUN echo "[supervisord]\nnodaemon=true\n\n[program:django]\ncommand=python manage.py runserver 0.0.0.0:8000\ndirectory=/app\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n\n[program:cron]\ncommand=cron -f\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0" > /etc/supervisor/conf.d/supervisord.conf
+RUN echo "[supervisord]\nnodaemon=true\n\n[program:django]\ncommand=python manage.py runserver 0.0.0.0:8889\ndirectory=/app\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n\n[program:cron]\ncommand=cron -f\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0" > /etc/supervisor/conf.d/supervisord.conf
 
 # Run migrations
 RUN python manage.py migrate
