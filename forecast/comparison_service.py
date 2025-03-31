@@ -5,6 +5,7 @@ import numpy as np
 from django.utils import timezone
 
 from .models import Location, WeatherForecast, ActualWeather, WeatherComparisonReport
+from .tools import ensure_timezone_aware
 from .weather_api import OpenMeteoClient
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ class DataComparisonService:
             # Create ActualWeather record
             actual_weather = ActualWeather.objects.create(
                 location=location,
-                recorded_time=datetime.fromisoformat(current.get("time", timezone.now().isoformat())),
+                recorded_time=ensure_timezone_aware(datetime.fromisoformat(current.get("time", timezone.now().isoformat()))),
                 temperature=current.get("temperature_2m", 0),
                 humidity=current.get("relative_humidity_2m", 0),
                 pressure=current.get("surface_pressure", 0),

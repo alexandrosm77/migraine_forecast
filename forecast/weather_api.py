@@ -83,10 +83,15 @@ class OpenMeteoClient:
             # Skip if we're missing any required data
             if any(param not in hourly_data for param in self.WEATHER_PARAMS):
                 continue
-                
-            forecast_time = datetime.now()
+
+            # Use timezone-aware datetime objects
+            forecast_time = timezone.now()  # This is already timezone-aware
+
+            # Make target_time timezone-aware
             target_time = datetime.fromisoformat(timestamp)
-            
+            if timezone.is_naive(target_time):
+                target_time = timezone.make_aware(target_time)
+
             # Only process forecasts for the next 3-6 hours
             hours_ahead = (target_time - forecast_time).total_seconds() / 3600
             if not (3 <= hours_ahead <= 6):

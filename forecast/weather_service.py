@@ -24,13 +24,15 @@ class WeatherService:
         Returns:
             list: List of created WeatherForecast instances
         """
+        logger.info(f"Starting update_forecast_for_location for location: {location}")
+
         # Fetch forecast data from the API
         forecast_data = self.api_client.get_forecast(
             latitude=location.latitude,
             longitude=location.longitude,
             days=3
         )
-        
+
         if not forecast_data:
             logger.error(f"Failed to fetch forecast data for location: {location}")
             return []
