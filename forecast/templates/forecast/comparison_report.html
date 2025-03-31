@@ -1,0 +1,50 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}Comparison Reports - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Forecast vs. Actual Comparison</h1>
+    
+    {% if locations %}
+    <div class="row">
+        {% for location in locations %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ location.city }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ location.country }}</h6>
+                    <p class="card-text">
+                        View detailed comparison between forecasted and actual weather data for this location.
+                    </p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{% url 'forecast:comparison_detail' location.id %}" class="btn btn-primary">View Comparison</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <p>You haven't added any locations yet. Add a location to start collecting comparison data.</p>
+        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">Add Location</a>
+    </div>
+    {% endif %}
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">About Weather Data Comparison</h5>
+        </div>
+        <div class="card-body">
+            <p>This feature allows you to compare forecasted weather data with actual recorded weather conditions over time. This helps:</p>
+            <ul>
+                <li>Evaluate the accuracy of weather forecasts for your locations</li>
+                <li>Understand how forecast accuracy affects migraine predictions</li>
+                <li>Identify patterns between weather changes and migraine occurrences</li>
+            </ul>
+            <p>The system automatically collects actual weather data and compares it with previous forecasts to generate these reports.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

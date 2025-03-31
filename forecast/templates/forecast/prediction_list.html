@@ -1,0 +1,80 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}Predictions - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Migraine Predictions</h1>
+    
+    {% if predictions %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th>Prediction Time</th>
+                            <th>Target Window</th>
+                            <th>Probability</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in predictions %}
+                        <tr>
+                            <td>{{ prediction.location.city }}, {{ prediction.location.country }}</td>
+                            <td>{{ prediction.prediction_time|date:"M d, H:i" }}</td>
+                            <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
+                            <td>
+                                {% if prediction.probability == 'HIGH' %}
+                                <span class="badge bg-danger">High</span>
+                                {% elif prediction.probability == 'MEDIUM' %}
+                                <span class="badge bg-warning text-dark">Medium</span>
+                                {% else %}
+                                <span class="badge bg-success">Low</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-primary">Details</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <p>No prediction data available yet. Predictions will appear here once they are generated for your locations.</p>
+        {% if not locations %}
+        <p>You need to add locations first to receive migraine predictions.</p>
+        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">Add Location</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">About Migraine Predictions</h5>
+        </div>
+        <div class="card-body">
+            <p>Our prediction algorithm analyzes several weather parameters known to trigger migraines:</p>
+            <ul>
+                <li><strong>Barometric Pressure Changes:</strong> Sudden drops in pressure can trigger migraines</li>
+                <li><strong>Temperature Fluctuations:</strong> Rapid changes in temperature</li>
+                <li><strong>Humidity Levels:</strong> Both very high and very low humidity</li>
+                <li><strong>Precipitation:</strong> Incoming storms and rainfall</li>
+                <li><strong>Cloud Cover:</strong> Changes in light intensity due to cloud cover</li>
+            </ul>
+            <p>Predictions are classified as:</p>
+            <ul>
+                <li><span class="badge bg-danger">High</span> - Strong likelihood of migraine triggers present</li>
+                <li><span class="badge bg-warning text-dark">Medium</span> - Some migraine triggers present</li>
+                <li><span class="badge bg-success">Low</span> - Few or no migraine triggers detected</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

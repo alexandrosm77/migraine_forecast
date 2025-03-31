@@ -1,0 +1,159 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}Location Details - {{ location.city }} - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ location.city }}, {{ location.country }}</h1>
+        <div>
+            <a href="{% url 'forecast:location_list' %}" class="btn btn-outline-secondary">Back to Locations</a>
+            <a href="{% url 'forecast:location_delete' location.id %}" class="btn btn-outline-danger">Delete Location</a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Location Info -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Location Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>City:</strong> {{ location.city }}</p>
+                    <p><strong>Country:</strong> {{ location.country }}</p>
+                    <p><strong>Latitude:</strong> {{ location.latitude|floatformat:4 }}</p>
+                    <p><strong>Longitude:</strong> {{ location.longitude|floatformat:4 }}</p>
+                    <p><strong>Added:</strong> {{ location.created_at|date:"F j, Y" }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Current Forecast -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Current Weather Forecast</h5>
+                </div>
+                <div class="card-body">
+                    {% if forecasts %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Temp (°C)</th>
+                                    <th>Humidity (%)</th>
+                                    <th>Pressure (hPa)</th>
+                                    <th>Precipitation (mm)</th>
+                                    <th>Cloud Cover (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for forecast in forecasts|slice:":6" %}
+                                <tr>
+                                    <td>{{ forecast.target_time|date:"H:i" }}</td>
+                                    <td>{{ forecast.temperature|floatformat:1 }}</td>
+                                    <td>{{ forecast.humidity|floatformat:0 }}</td>
+                                    <td>{{ forecast.pressure|floatformat:1 }}</td>
+                                    <td>{{ forecast.precipitation|floatformat:1 }}</td>
+                                    <td>{{ forecast.cloud_cover|floatformat:0 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No forecast data available for this location.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Migraine Predictions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Recent Migraine Predictions</h5>
+        </div>
+        <div class="card-body">
+            {% if predictions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Prediction Time</th>
+                            <th>Target Window</th>
+                            <th>Probability</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in predictions %}
+                        <tr>
+                            <td>{{ prediction.prediction_time|date:"M d, H:i" }}</td>
+                            <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
+                            <td>
+                                {% if prediction.probability == 'HIGH' %}
+                                <span class="badge bg-danger">High</span>
+                                {% elif prediction.probability == 'MEDIUM' %}
+                                <span class="badge bg-warning text-dark">Medium</span>
+                                {% else %}
+                                <span class="badge bg-success">Low</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-secondary">Details</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No prediction data available for this location.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Comparison Reports -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Forecast vs. Actual Comparison</h5>
+        </div>
+        <div class="card-body">
+            {% if comparison_reports %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Temp Diff (°C)</th>
+                            <th>Humidity Diff (%)</th>
+                            <th>Pressure Diff (hPa)</th>
+                            <th>Precipitation Diff (mm)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in comparison_reports|slice:":5" %}
+                        <tr>
+                            <td>{{ report.actual.recorded_time|date:"M d, H:i" }}</td>
+                            <td>{{ report.temperature_diff|floatformat:1 }}</td>
+                            <td>{{ report.humidity_diff|floatformat:0 }}</td>
+                            <td>{{ report.pressure_diff|floatformat:1 }}</td>
+                            <td>{{ report.precipitation_diff|floatformat:1 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-end">
+                <a href="{% url 'forecast:comparison_detail' location.id %}" class="btn btn-link">View Detailed Comparison</a>
+            </div>
+            {% else %}
+            <p class="text-muted">No comparison data available for this location.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

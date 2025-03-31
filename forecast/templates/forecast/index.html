@@ -1,0 +1,35 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}Home - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="container">
+        <h1 class="display-4">Migraine Forecast</h1>
+        <p class="lead">Predict migraine probability based on weather conditions and get timely alerts.</p>
+        {% if user.is_authenticated %}
+            <a href="{% url 'forecast:dashboard' %}" class="btn btn-primary btn-lg">Go to Dashboard</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn btn-primary btn-lg">Log In</a>
+            <a href="{% url 'forecast:register' %}" class="btn btn-outline-primary btn-lg">Register</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <h2>Weather-Based Predictions</h2>
+            <p>Our app analyzes weather forecast data to predict migraine probability over the next 3-6 hours for your specified locations.</p>
+        </div>
+        <div class="col-md-4">
+            <h2>Email Alerts</h2>
+            <p>Receive timely email notifications when weather conditions indicate a high probability of migraines.</p>
+        </div>
+        <div class="col-md-4">
+            <h2>Data Comparison</h2>
+            <p>Compare forecasted weather data with actual conditions over time to improve prediction accuracy.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

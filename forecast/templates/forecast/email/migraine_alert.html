@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Migraine Alert</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .weather-data {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .weather-item {
+            margin-bottom: 8px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+        }
+        .alert-level {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .time-window {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Migraine Alert</h1>
+    </div>
+    <div class="content">
+        <p>Hello {{ user.first_name|default:user.username }},</p>
+        
+        <p>Our system has detected a <span class="alert-level">HIGH probability of migraine</span> in your area 
+        (<strong>{{ location.city }}, {{ location.country }}</strong>) during the time window: 
+        <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} to {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
+        
+        <p>This prediction is based on weather conditions known to trigger migraines:</p>
+        
+        <div class="weather-data">
+            <div class="weather-item"><strong>Temperature:</strong> {{ temperature }}°C</div>
+            <div class="weather-item"><strong>Humidity:</strong> {{ humidity }}%</div>
+            <div class="weather-item"><strong>Barometric Pressure:</strong> {{ pressure }} hPa</div>
+            <div class="weather-item"><strong>Precipitation:</strong> {{ precipitation }} mm</div>
+            <div class="weather-item"><strong>Cloud Cover:</strong> {{ cloud_cover }}%</div>
+        </div>
+        
+        <p>You may want to take preventive measures such as:</p>
+        <ul>
+            <li>Taking prescribed medication</li>
+            <li>Staying hydrated</li>
+            <li>Avoiding known triggers</li>
+            <li>Finding a quiet, dark environment if needed</li>
+        </ul>
+        
+        <p>Stay well,<br>
+        The Migraine Forecast Team</p>
+    </div>
+    <div class="footer">
+        <p>This is an automated message from the Migraine Forecast application. 
+        The predictions are based on weather data and statistical models, and should not be considered medical advice.</p>
+    </div>
+</body>
+</html>

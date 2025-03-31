@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DEBUG=True
+      # Add other environment variables as needed
+      # - EMAIL_HOST=smtp.example.com
+      # - EMAIL_HOST_USER=your-email@example.com
+      # - EMAIL_HOST_PASSWORD=your-password

@@ -1,0 +1,71 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}User Profile - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2>User Profile</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Username:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            {{ user.username }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Email:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            {{ user.email|default:"Not provided" }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Date Joined:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            {{ user.date_joined|date:"F j, Y" }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Locations:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            {{ locations.count }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Notifications:</strong>
+                        </div>
+                        <div class="col-md-8">
+                            {% if user.email %}
+                                Enabled (sent to {{ user.email }})
+                            {% else %}
+                                Disabled (no email provided)
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'forecast:dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger float-end">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}Comparison Details - {{ location.city }} - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Comparison Data: {{ location.city }}</h1>
+        <a href="{% url 'forecast:comparison_report' %}" class="btn btn-outline-secondary">Back to Comparison Reports</a>
+    </div>
+    
+    <!-- Accuracy Metrics -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Forecast Accuracy Metrics</h5>
+        </div>
+        <div class="card-body">
+            {% if metrics.count > 0 %}
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Data Points:</strong> {{ metrics.count }}</p>
+                    <p><strong>Average Temperature Difference:</strong> {{ metrics.avg_temperature_diff|floatformat:1 }}°C</p>
+                    <p><strong>Average Humidity Difference:</strong> {{ metrics.avg_humidity_diff|floatformat:1 }}%</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Average Pressure Difference:</strong> {{ metrics.avg_pressure_diff|floatformat:1 }} hPa</p>
+                    <p><strong>Average Precipitation Difference:</strong> {{ metrics.avg_precipitation_diff|floatformat:1 }} mm</p>
+                    <p><strong>Average Cloud Cover Difference:</strong> {{ metrics.avg_cloud_cover_diff|floatformat:1 }}%</p>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted">No comparison data available yet for this location.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Comparison Chart -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Forecast vs. Actual Visualization</h5>
+        </div>
+        <div class="card-body">
+            {% if reports %}
+            <canvas id="comparisonChart" height="300"></canvas>
+            {% else %}
+            <p class="text-muted">No comparison data available for visualization.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Detailed Comparison Data -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Detailed Comparison Data</h5>
+        </div>
+        <div class="card-body">
+            {% if reports %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Temp Diff (°C)</th>
+                            <th>Humidity Diff (%)</th>
+                            <th>Pressure Diff (hPa)</th>
+                            <th>Precipitation Diff (mm)</th>
+                            <th>Cloud Cover Diff (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td>{{ report.actual.recorded_time|date:"M d, H:i" }}</td>
+                            <td>{{ report.temperature_diff|floatformat:1 }}</td>
+                            <td>{{ report.humidity_diff|floatformat:0 }}</td>
+                            <td>{{ report.pressure_diff|floatformat:1 }}</td>
+                            <td>{{ report.precipitation_diff|floatformat:1 }}</td>
+                            <td>{{ report.cloud_cover_diff|floatformat:0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No comparison data available for this location.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if reports %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        const chartData = {{ chart_data|safe }};
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'Temperature Difference (°C)',
+                        data: chartData.temperature_diff,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Pressure Difference (hPa)',
+                        data: chartData.pressure_diff,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Humidity Difference (%)',
+                        data: chartData.humidity_diff,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Forecast vs. Actual Weather Differences'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Difference'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date/Time'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
