@@ -46,6 +46,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: alexandrosm77/migraine_forecast:latest
-          cache-from: type=registry,ref=alexandrosm77/migraine_forecast:buildcache
-          cache-to: type=registry,ref=alexandrosm77/migraine_forecast:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+#           cache-from: type=registry,ref=alexandrosm77/migraine_forecast:buildcache
+#           cache-to: type=registry,ref=alexandrosm77/migraine_forecast:buildcache,mode=max
 
