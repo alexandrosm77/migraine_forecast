@@ -168,7 +168,7 @@ class MigrainePredictionService:
         avg_cloud_cover = np.mean([f.cloud_cover for f in forecasts])
         scores['cloud_cover'] = min(avg_cloud_cover / self.THRESHOLDS['cloud_cover_high'], 1.0)
         
-        return scores
+        return {key: round(value, 2) for key, value in scores.items()}
     
     def get_recent_predictions(self, user, limit=10):
         """
