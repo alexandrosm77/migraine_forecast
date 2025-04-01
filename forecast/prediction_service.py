@@ -83,17 +83,21 @@ class MigrainePredictionService:
             probability_level = 'MEDIUM'
         else:
             probability_level = 'LOW'
+
+        prediction = MigrainePrediction(
+            user=user,
+            location=location,
+            forecast=forecasts.first(),
+            target_time_start=start_time,
+            target_time_end=end_time,
+            probability=probability_level,
+            weather_factors=scores
+        )
         
         # Create prediction record
-        if user and store_prediction:
-            prediction = MigrainePrediction.objects.create(
-                user=user,
-                location=location,
-                forecast=forecasts.first(),
-                target_time_start=start_time,
-                target_time_end=end_time,
-                probability=probability_level
-            )
+        if user:
+            if store_prediction:
+                prediction.save()
         else:
             prediction = None
             

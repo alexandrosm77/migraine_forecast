@@ -21,7 +21,7 @@
                     <p><strong>Prediction Made:</strong> {{ prediction.prediction_time|date:"F j, Y, g:i a" }}</p>
                     <p><strong>Target Time Window:</strong> {{ prediction.target_time_start|date:"F j, Y, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</p>
                     <p>
-                        <strong>Migraine Probability:</strong> 
+                        <strong>Migraine Probability:</strong>
                         {% if prediction.probability == 'HIGH' %}
                         <span class="badge bg-danger">High</span>
                         {% elif prediction.probability == 'MEDIUM' %}
@@ -31,6 +31,58 @@
                         {% endif %}
                     </p>
                     <p><strong>Notification Sent:</strong> {{ prediction.notification_sent|yesno:"Yes,No" }}</p>
+
+                    {% if prediction.weather_factors %}
+                    <hr>
+                    <h6 class="mb-3">Weather Factors</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                {% if prediction.weather_factors.cloud_cover is not None %}
+                                <tr>
+                                    <td><strong>Cloud Cover:</strong></td>
+                                    <td>{{ prediction.weather_factors.cloud_cover }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.humidity_extreme is not None %}
+                                <tr>
+                                    <td><strong>Humidity Extreme:</strong></td>
+                                    <td>{{ prediction.weather_factors.humidity_extreme }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.precipitation is not None %}
+                                <tr>
+                                    <td><strong>Precipitation:</strong></td>
+                                    <td>{{ prediction.weather_factors.precipitation }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.pressure_change is not None %}
+                                <tr>
+                                    <td><strong>Pressure Change:</strong></td>
+                                    <td>{{ prediction.weather_factors.pressure_change }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.pressure_low is not None %}
+                                <tr>
+                                    <td><strong>Pressure Low:</strong></td>
+                                    <td>{{ prediction.weather_factors.pressure_low }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.temperature_change is not None %}
+                                <tr>
+                                    <td><strong>Temperature Change:</strong></td>
+                                    <td>{{ prediction.weather_factors.temperature_change }}</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

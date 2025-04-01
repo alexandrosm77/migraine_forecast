@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models import JSONField
+
 
 class Location(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='locations')
@@ -56,6 +58,7 @@ class MigrainePrediction(models.Model):
     target_time_start = models.DateTimeField()  # Start of prediction window (3-6 hours)
     target_time_end = models.DateTimeField()    # End of prediction window
     probability = models.CharField(max_length=10, choices=PROBABILITY_CHOICES)
+    weather_factors = JSONField(default=dict, null=True, blank=True)
     notification_sent = models.BooleanField(default=False)
     
     def __str__(self):

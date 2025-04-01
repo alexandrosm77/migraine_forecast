@@ -49,15 +49,16 @@ class NotificationService:
             if not prediction:
                 continue
                 
-            # Check if notification should be sent (HIGH probability and not already sent)
-            if probability_level == 'HIGH' and not prediction.notification_sent:
-                self.send_migraine_alert(prediction)
-                
-                # Update notification status
-                prediction.notification_sent = True
-                prediction.save()
-                
-                notifications_sent += 1
+            # Check if notification should be sent (HIGH/MEDIUM probability and not already sent)
+            if probability_level == 'HIGH' or probability_level == 'MEDIUM':
+                if not prediction.notification_sent:
+                    self.send_migraine_alert(prediction)
+
+                    # Update notification status
+                    prediction.notification_sent = True
+                    prediction.save()
+
+                    notifications_sent += 1
         
         logger.info(f"Sent {notifications_sent} migraine alert notifications")
         return notifications_sent
@@ -75,6 +76,8 @@ class NotificationService:
         user = prediction.user
         location = prediction.location
         forecast = prediction.forecast
+        probability_level = prediction.probability
+        weather_factors = prediction.weather_factors
         
         # Skip if user has no email
         if not user.email:
@@ -94,6 +97,8 @@ class NotificationService:
             'pressure': forecast.pressure,
             'precipitation': forecast.precipitation,
             'cloud_cover': forecast.cloud_cover,
+            'probability_level': probability_level,
+            'weather_factors': weather_factors,
         }
         
         # Render email content

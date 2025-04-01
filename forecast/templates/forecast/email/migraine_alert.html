@@ -56,7 +56,7 @@
     <div class="content">
         <p>Hello {{ user.first_name|default:user.username }},</p>
         
-        <p>Our system has detected a <span class="alert-level">HIGH probability of migraine</span> in your area 
+        <p>Our system has detected a <span class="alert-level">{{ probability_level }} probability of migraine</span> in your area
         (<strong>{{ location.city }}, {{ location.country }}</strong>) during the time window: 
         <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} to {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
         
@@ -69,6 +69,54 @@
             <div class="weather-item"><strong>Precipitation:</strong> {{ precipitation }} mm</div>
             <div class="weather-item"><strong>Cloud Cover:</strong> {{ cloud_cover }}%</div>
         </div>
+
+        {% if weather_factors %}
+        <p>Additional weather factors contributing to this prediction:</p>
+        <div class="weather-factors">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #dee2e6;">Factor</th>
+                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #dee2e6;">Value</th>
+                </tr>
+                {% if weather_factors.cloud_cover is not None %}
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Cloud Cover Change</td>
+                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.cloud_cover }}</td>
+                </tr>
+                {% endif %}
+                {% if weather_factors.humidity_extreme is not None %}
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Humidity Extreme</td>
+                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.humidity_extreme }}</td>
+                </tr>
+                {% endif %}
+                {% if weather_factors.precipitation is not None %}
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Precipitation Change</td>
+                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.precipitation }}</td>
+                </tr>
+                {% endif %}
+                {% if weather_factors.pressure_change is not None %}
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Pressure Change</td>
+                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.pressure_change }}</td>
+                </tr>
+                {% endif %}
+                {% if weather_factors.pressure_low is not None %}
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Pressure Low</td>
+                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.pressure_low }}</td>
+                </tr>
+                {% endif %}
+                {% if weather_factors.temperature_change is not None %}
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Temperature Change</td>
+                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.temperature_change }}</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+        {% endif %}
         
         <p>You may want to take preventive measures such as:</p>
         <ul>

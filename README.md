@@ -113,3 +113,12 @@ python manage.py test forecast
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+
+
+notes:
+# Barometer
+
+- docker login
+
+- docker buildx build --platform linux/arm64/v8,linux/amd64 -t alexandrosm77/migraine_forecast --push .
