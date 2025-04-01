@@ -56,7 +56,7 @@ class NotificationService:
 
                     # Update notification status
                     prediction.notification_sent = True
-                    prediction.save()
+                    # prediction.save()
 
                     notifications_sent += 1
         
