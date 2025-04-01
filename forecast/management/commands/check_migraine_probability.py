@@ -37,6 +37,8 @@ class Command(BaseCommand):
         # Get all locations
         locations = Location.objects.all()
         self.stdout.write(f"Found {len(locations)} locations to check")
+
+        predictions = {}
         
         if not options['notify_only']:
             # Update forecasts for all locations
@@ -51,6 +53,10 @@ class Command(BaseCommand):
                     location=location,
                     user=location.user
                 )
+                predictions[location.id] = {
+                    'probability': probability,
+                    'prediction': prediction
+                }
                 if prediction:
                     self.stdout.write(f"Prediction: {probability} probability for {location}")
                 else:
@@ -63,7 +69,7 @@ class Command(BaseCommand):
         
         # Send notifications
         self.stdout.write("Checking and sending notifications...")
-        notifications_sent = notification_service.check_and_send_notifications()
+        notifications_sent = notification_service.check_and_send_notifications(predictions)
         self.stdout.write(f"Sent {notifications_sent} notifications")
         
         self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] Migraine probability check completed"))

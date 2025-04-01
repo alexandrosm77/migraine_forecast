@@ -50,9 +50,8 @@ class MigrainePredictionService:
             tuple: (probability_level, prediction_instance)
         """
         # Get recent forecasts for the next 3-6 hours
-        now = timezone.now()
-        start_time = now
-        end_time = now + timedelta(hours=6)
+        start_time = timezone.now()
+        end_time = start_time + timedelta(hours=6)
         
         forecasts = WeatherForecast.objects.filter(
             location=location,

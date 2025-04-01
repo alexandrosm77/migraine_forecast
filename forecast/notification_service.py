@@ -21,7 +21,7 @@ class NotificationService:
         self.prediction_service = MigrainePredictionService()
         self.weather_service = WeatherService()
     
-    def check_and_send_notifications(self):
+    def check_and_send_notifications(self, predictions: dict):
         """
         Check migraine probability for all users and locations and send notifications if needed.
         
@@ -37,28 +37,26 @@ class NotificationService:
             # Skip if no user associated
             if not location.user:
                 continue
-                
-            # Get or create migraine prediction
-            probability_level, prediction = self.prediction_service.predict_migraine_probability(
-                location=location,
-                user=location.user,
-                store_prediction=False
-            )
-            
-            # Skip if no prediction could be made
-            if not prediction:
+
+            location_prediction = predictions.get(location.id, None)
+
+            if location_prediction is None:
                 continue
-                
-            # Check if notification should be sent (HIGH/MEDIUM probability and not already sent)
-            if probability_level == 'HIGH' or probability_level == 'MEDIUM':
-                if not prediction.notification_sent:
-                    self.send_migraine_alert(prediction)
 
-                    # Update notification status
-                    prediction.notification_sent = True
-                    # prediction.save()
+            probability_level = location_prediction.get("probability", None)
+            prediction = location_prediction.get("prediction", None)
+            
+            if probability_level is not None and prediction is not None:
+                # Check if notification should be sent (HIGH/MEDIUM probability and not already sent)
+                if probability_level == 'HIGH' or probability_level == 'MEDIUM':
+                    if not prediction.notification_sent:
+                        self.send_migraine_alert(prediction)
 
-                    notifications_sent += 1
+                        # Update notification status
+                        prediction.notification_sent = True
+                        prediction.save()
+
+                        notifications_sent += 1
         
         logger.info(f"Sent {notifications_sent} migraine alert notifications")
         return notifications_sent
