@@ -52,7 +52,6 @@ class NotificationService:
                     if not prediction.notification_sent:
                         self.send_migraine_alert(prediction)
 
-                        # Update notification status
                         prediction.notification_sent = True
                         prediction.save()
 
