@@ -48,12 +48,12 @@ jobs:
 
       -
         name: Copy deployment script to host
-        uses: appleboy/scp-action@v0.1.4
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "deploy.sh"
+          source: "./deploy.sh"
           target: "/home/alexandros/migraine/"
 
       -
