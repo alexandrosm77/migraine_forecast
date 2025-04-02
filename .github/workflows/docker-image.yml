@@ -40,21 +40,23 @@ jobs:
         name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug workspace
+      -
+        name: Install SSH client if needed
         run: |
-          pwd
-          ls -la
-          echo "GitHub workspace: $GITHUB_WORKSPACE"
+          which scp || apt-get update && apt-get install -y openssh-client
 
       -
-        name: Copy deployment script to host
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "./deploy.sh"
-          target: "/home/alexandros/migraine/"
+        name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      -
+        name: Copy file via direct SCP
+        run: |
+          scp -i ~/.ssh/id_rsa deploy.sh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/home/alexandros/migraine/
 
       -
         name: SSH into host and run deployment script
