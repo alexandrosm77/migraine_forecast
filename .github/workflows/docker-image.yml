@@ -37,10 +37,25 @@ jobs:
     environment: latest
     steps:
       -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Copy deployment script to host
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "deploy.sh"
+          target: "/home/alexandros/migraine/"
+          chmod: "755"
+
+      -
         name: SSH into host and run deployment script
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: /home/alexandros/migraine/deploy-migraine.sh
+          script: /home/alexandros/migraine/deploy.sh --dockerhub_username ${{ vars.DOCKERHUB_USERNAME }} --dockerhub_token ${{ secrets.DOCKERHUB_TOKEN }}
