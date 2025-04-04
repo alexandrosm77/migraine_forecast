@@ -59,7 +59,7 @@ jobs:
           scp -i ~/.ssh/id_rsa deploy.sh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/home/alexandros/migraine/
 
       -
-        name: SSH into host and run deployment script
+        name: SSH into docker host and run deployment script
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
