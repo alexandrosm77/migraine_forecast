@@ -6,7 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     apt-get update && \
-    apt-get install -y cron supervisor && \
+    apt-get install -y libaudit1 cron supervisor && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy project files
