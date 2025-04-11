@@ -19,7 +19,7 @@ class LocationAdmin(admin.ModelAdmin):
 class WeatherForecastAdmin(admin.ModelAdmin):
     list_display = ('location', 'forecast_time', 'target_time', 'temperature', 'humidity', 'pressure')
     search_fields = ('location__city', 'location__country')
-    list_filter = ('forecast_time', 'target_time')
+    list_filter = ('forecast_time', 'target_time', 'location')
     date_hierarchy = 'forecast_time'
 
 
@@ -27,7 +27,7 @@ class WeatherForecastAdmin(admin.ModelAdmin):
 class ActualWeatherAdmin(admin.ModelAdmin):
     list_display = ('location', 'recorded_time', 'temperature', 'humidity', 'pressure')
     search_fields = ('location__city', 'location__country')
-    list_filter = ('recorded_time',)
+    list_filter = ('recorded_time', 'location')
     date_hierarchy = 'recorded_time'
 
 
@@ -43,5 +43,5 @@ class MigrainePredictionAdmin(admin.ModelAdmin):
 class WeatherComparisonReportAdmin(admin.ModelAdmin):
     list_display = ('location', 'forecast', 'actual', 'temperature_diff', 'pressure_diff', 'created_at')
     search_fields = ('location__city', 'location__country')
-    list_filter = ('created_at',)
+    list_filter = ('created_at', 'location')
     date_hierarchy = 'created_at'

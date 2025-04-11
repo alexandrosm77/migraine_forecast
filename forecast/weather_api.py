@@ -48,7 +48,7 @@ class OpenMeteoClient:
             "longitude": longitude,
             "hourly": ",".join(self.WEATHER_PARAMS),
             "forecast_days": days,
-            "timezone": "auto"
+            "timezone": "UTC"
         }
         
         try:

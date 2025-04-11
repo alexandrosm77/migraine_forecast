@@ -59,7 +59,8 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Time</th>
+                            <th>Recorded time</th>
+                            <th>Target time</th>
                             <th>Temp Diff (°C)</th>
                             <th>Humidity Diff (%)</th>
                             <th>Pressure Diff (hPa)</th>
@@ -71,6 +72,7 @@
                         {% for report in reports %}
                         <tr>
                             <td>{{ report.actual.recorded_time|date:"M d, H:i" }}</td>
+                            <td>{{ report.forecast.target_time|date:"M d, H:i" }}</td>
                             <td>{{ report.temperature_diff|floatformat:1 }}</td>
                             <td>{{ report.humidity_diff|floatformat:0 }}</td>
                             <td>{{ report.pressure_diff|floatformat:1 }}</td>

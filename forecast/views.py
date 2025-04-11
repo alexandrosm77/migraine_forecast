@@ -123,7 +123,8 @@ def location_detail(request, location_id):
     
     # Get comparison data if available
     comparison_reports = WeatherComparisonReport.objects.filter(
-        location=location
+        location=location,
+        forecast__in=forecasts
     ).order_by('-created_at')[:10]
     
     context = {
@@ -192,8 +193,23 @@ def comparison_detail(request, location_id):
     location = get_object_or_404(Location, id=location_id, user=request.user)
     
     # Get comparison reports
-    reports = WeatherComparisonReport.objects.filter(
+    # First, get the latest forecast_time for each target_time
+    latest_forecasts = WeatherForecast.objects.filter(
         location=location
+    ).values('target_time').annotate(
+        latest_forecast_time=Max('forecast_time')
+    )
+
+    # Then, join this back to get the complete objects
+    forecasts = WeatherForecast.objects.filter(
+        location=location,
+        forecast_time__in=[item['latest_forecast_time'] for item in latest_forecasts],
+        target_time__in=[item['target_time'] for item in latest_forecasts]
+    ).order_by('-forecast_time', 'target_time')[:24]
+
+    reports = WeatherComparisonReport.objects.filter(
+        location=location,
+        forecast__in=forecasts
     ).order_by('-created_at')[:30]
     
     # Get accuracy metrics
