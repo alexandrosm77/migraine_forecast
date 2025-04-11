@@ -4,11 +4,9 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends libaudit1
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends cron supervisor && \
+    apt-get install -y --no-install-recommends libaudit1 cron supervisor && \
     rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir -r requirements.txt
 
