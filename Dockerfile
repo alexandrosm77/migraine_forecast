@@ -4,11 +4,13 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends libaudit1 && \
-    apt-get install -y --no-install-recommends cron supervisor && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* \
+
+RUN apt-get install -y --no-install-recommends cron supervisor && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
