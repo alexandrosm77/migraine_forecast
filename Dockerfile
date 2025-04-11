@@ -6,7 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libaudit1 && \
-    rm -rf /var/lib/apt/lists/* \
+    rm -rf /var/lib/apt/lists/*
 
 RUN apt-get install -y --no-install-recommends cron supervisor && \
     rm -rf /var/lib/apt/lists/* && \
