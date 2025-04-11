@@ -1,3 +1,4 @@
+from django.db.models import Max
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
@@ -96,9 +97,24 @@ def location_detail(request, location_id):
     location = get_object_or_404(Location, id=location_id, user=request.user)
     
     # Get recent forecasts
-    forecasts = WeatherForecast.objects.filter(
+
+    # First, get the latest forecast_time for each target_time
+    latest_forecasts = WeatherForecast.objects.filter(
         location=location
+    ).values('target_time').annotate(
+        latest_forecast_time=Max('forecast_time')
+    )
+
+    # Then, join this back to get the complete objects
+    forecasts = WeatherForecast.objects.filter(
+        location=location,
+        forecast_time__in=[item['latest_forecast_time'] for item in latest_forecasts],
+        target_time__in=[item['target_time'] for item in latest_forecasts]
     ).order_by('-forecast_time', 'target_time')[:24]
+
+    # forecasts = WeatherForecast.objects.filter(
+    #     location=location
+    # ).order_by('-forecast_time', 'target_time')[:24]
     
     # Get recent predictions
     predictions = MigrainePrediction.objects.filter(
