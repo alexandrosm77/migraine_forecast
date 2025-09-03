@@ -14,7 +14,7 @@ RUN apt-get update && \
 COPY . .
 
 # Set up cron job for migraine probability check
-RUN echo "0 */1 * * * cd /app && /usr/local/bin/python manage.py check_migraine_probability >> /var/log/cron.log 2>&1" > /etc/cron.d/migraine_check
+RUN echo "0 */3 * * * cd /app && /usr/local/bin/python manage.py check_migraine_probability >> /var/log/cron.log 2>&1" > /etc/cron.d/migraine_check
 RUN chmod 0644 /etc/cron.d/migraine_check && \
     crontab /etc/cron.d/migraine_check && \
     touch /var/log/cron.log && \
