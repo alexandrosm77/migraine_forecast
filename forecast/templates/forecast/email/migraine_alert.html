@@ -57,11 +57,31 @@
         <p>Hello {{ user.first_name|default:user.username }},</p>
         
         <p>Our system has detected a <span class="alert-level">{{ probability_level }} probability of migraine</span> in your area
-        (<strong>{{ location.city }}, {{ location.country }}</strong>) during the time window: 
+        (<strong>{{ location.city }}, {{ location.country }}</strong>) during the time window:
         <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} to {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
-        
+
+        {% if detailed_factors.contributing_factors_count > 0 %}
+        <p><strong>{{ detailed_factors.contributing_factors_count }} weather factor{{ detailed_factors.contributing_factors_count|pluralize }} {{ detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to this alert:</strong></p>
+
+        {% for factor in detailed_factors.factors %}
+        <div class="weather-factor-detail" style="background-color: {% if factor.severity == 'high' %}#fff5f5{% else %}#fffbf0{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %}; padding: 15px; margin: 10px 0; border-radius: 5px;">
+            <h4 style="margin: 0 0 8px 0; color: {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %};">
+                {{ factor.name }}
+                <span style="font-size: 12px; font-weight: normal; color: #666;">
+                    (Impact: {{ factor.score|floatformat:1 }}/1.0)
+                </span>
+            </h4>
+            <p style="margin: 0; line-height: 1.4;">{{ factor.explanation }}</p>
+        </div>
+        {% endfor %}
+
+        <div style="background-color: #f0f8ff; padding: 15px; margin: 15px 0; border-radius: 5px; border: 1px solid #bee3f8;">
+            <p style="margin: 0; font-size: 14px;"><strong>Overall Risk Score:</strong> {{ detailed_factors.total_score }}/1.0
+            {% if probability_level == 'HIGH' %}(High risk - score ≥ 0.7){% elif probability_level == 'MEDIUM' %}(Medium risk - score 0.4-0.69){% else %}(Low risk - score < 0.4){% endif %}</p>
+        </div>
+        {% else %}
         <p>This prediction is based on weather conditions known to trigger migraines:</p>
-        
+
         <div class="weather-data">
             <div class="weather-item"><strong>Temperature:</strong> {{ temperature }}°C</div>
             <div class="weather-item"><strong>Humidity:</strong> {{ humidity }}%</div>
@@ -69,62 +89,44 @@
             <div class="weather-item"><strong>Precipitation:</strong> {{ precipitation }} mm</div>
             <div class="weather-item"><strong>Cloud Cover:</strong> {{ cloud_cover }}%</div>
         </div>
-
-        {% if weather_factors %}
-        <p>Additional weather factors contributing to this prediction:</p>
-        <div class="weather-factors">
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr style="background-color: #f8f9fa;">
-                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #dee2e6;">Factor</th>
-                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #dee2e6;">Value</th>
-                </tr>
-                {% if weather_factors.cloud_cover is not None %}
-                <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Cloud Cover Change</td>
-                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.cloud_cover }}</td>
-                </tr>
-                {% endif %}
-                {% if weather_factors.humidity_extreme is not None %}
-                <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Humidity Extreme</td>
-                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.humidity_extreme }}</td>
-                </tr>
-                {% endif %}
-                {% if weather_factors.precipitation is not None %}
-                <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Precipitation Change</td>
-                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.precipitation }}</td>
-                </tr>
-                {% endif %}
-                {% if weather_factors.pressure_change is not None %}
-                <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Pressure Change</td>
-                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.pressure_change }}</td>
-                </tr>
-                {% endif %}
-                {% if weather_factors.pressure_low is not None %}
-                <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Pressure Low</td>
-                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.pressure_low }}</td>
-                </tr>
-                {% endif %}
-                {% if weather_factors.temperature_change is not None %}
-                <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">Temperature Change</td>
-                    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #eee;">{{ weather_factors.temperature_change }}</td>
-                </tr>
-                {% endif %}
-            </table>
-        </div>
         {% endif %}
-        
-        <p>You may want to take preventive measures such as:</p>
-        <ul>
-            <li>Taking prescribed medication</li>
-            <li>Staying hydrated</li>
-            <li>Avoiding known triggers</li>
-            <li>Finding a quiet, dark environment if needed</li>
-        </ul>
+
+
+
+        <div style="background-color: #f0f8ff; padding: 20px; margin: 20px 0; border-radius: 5px; border: 1px solid #bee3f8;">
+            <h3 style="margin: 0 0 15px 0; color: #2b6cb0;">💡 Recommended Actions</h3>
+            <p style="margin: 0 0 10px 0;"><strong>General preventive measures:</strong></p>
+            <ul style="margin: 0 0 15px 0;">
+                <li>Take prescribed preventive medication if you have any</li>
+                <li>Stay well hydrated throughout the day</li>
+                <li>Maintain regular sleep and meal schedules</li>
+                <li>Avoid known personal triggers (certain foods, stress, etc.)</li>
+            </ul>
+
+            {% if detailed_factors.factors %}
+            <p style="margin: 0 0 10px 0;"><strong>Specific to today's weather conditions:</strong></p>
+            <ul style="margin: 0;">
+                {% for factor in detailed_factors.factors %}
+                    {% if factor.name == 'Temperature Change' %}
+                        <li>Dress in layers to adapt to temperature changes</li>
+                    {% elif factor.name == 'High Humidity' or factor.name == 'Low Humidity' %}
+                        <li>Use a humidifier or dehumidifier to maintain comfortable indoor humidity</li>
+                    {% elif factor.name == 'Barometric Pressure Change' or factor.name == 'Low Barometric Pressure' %}
+                        <li>Consider staying indoors during the worst pressure changes</li>
+                        <li>Some people find relief with pressure-equalizing techniques</li>
+                    {% elif factor.name == 'Heavy Precipitation' %}
+                        <li>Limit outdoor activities during heavy rain or storms</li>
+                    {% elif factor.name == 'Heavy Cloud Cover' %}
+                        <li>Use bright indoor lighting to compensate for reduced natural light</li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
+                <strong>Remember:</strong> Have your rescue medication readily available and know your early warning signs.
+            </p>
+        </div>
         
         <p>Stay well,<br>
         The Migraine Forecast Team</p>
