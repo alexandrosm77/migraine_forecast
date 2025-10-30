@@ -2,8 +2,10 @@ import logging
 from datetime import datetime, timedelta
 import numpy as np
 from django.utils import timezone
+from django.conf import settings
 
 from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile
+from .llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +135,29 @@ class MigrainePredictionService:
         if applied_profile is not None:
             factors_payload['applied_profile'] = applied_profile
             factors_payload['weights'] = adjusted_weights
+
+        # Optional: Enhance with LLM decision
+        llm_used = False
+        llm_detail = None
+        if getattr(settings, 'LLM_ENABLED', True):
+            try:
+                base_url = getattr(settings, 'LLM_BASE_URL', 'http://localhost:11434')
+                api_key = getattr(settings, 'LLM_API_KEY', 'EMPTY')
+                model = getattr(settings, 'LLM_MODEL', 'ibm/granite4:tiny-h')
+                timeout = getattr(settings, 'LLM_TIMEOUT', 8.0)
+                client = LLMClient(base_url=base_url, api_key=api_key, model=model, timeout=timeout)
+                loc_label = f"{location.city}, {location.country}"
+                llm_level, llm_detail = client.predict_probability(scores=factors_payload, location_label=loc_label, user_profile=applied_profile)
+                if llm_level in {'LOW', 'MEDIUM', 'HIGH'}:
+                    llm_used = True
+                    probability_level = llm_level
+            except Exception:
+                logger.exception('LLM enhancement failed; falling back to heuristic')
+        if llm_detail is not None:
+            factors_payload['llm'] = {
+                'used': llm_used,
+                'detail': llm_detail,
+            }
 
         prediction = MigrainePrediction(
             user=user,
