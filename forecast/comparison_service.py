@@ -1,3 +1,8 @@
+# Deprecated module: forecast-vs-actual comparison feature was removed.
+# This module is intentionally disabled. Do not import or use.
+# Kept only to avoid breaking imports in out-of-date environments; it will raise on import.
+raise ImportError("forecast.comparison_service has been removed: the forecast-vs-actual comparison feature was deleted. Remove any imports/usages.")
+
 import logging
 import requests
 from datetime import datetime, timedelta

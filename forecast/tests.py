@@ -8,7 +8,6 @@ from .models import Location, WeatherForecast, ActualWeather, MigrainePrediction
 from .weather_api import OpenMeteoClient
 from .weather_service import WeatherService
 from .prediction_service import MigrainePredictionService
-from .comparison_service import DataComparisonService
 
 class LocationModelTest(TestCase):
     def setUp(self):
@@ -187,46 +186,3 @@ class MigrainePredictionServiceTest(TestCase):
         self.assertEqual(prediction.location, self.location)
         self.assertEqual(prediction.probability, 'HIGH')
 
-class DataComparisonServiceTest(TestCase):
-    @patch('forecast.comparison_service.requests.get')
-    def test_collect_actual_weather(self, mock_get):
-        # Setup
-        user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
-        location = Location.objects.create(
-            user=user,
-            city='New York',
-            country='USA',
-            latitude=40.7128,
-            longitude=-74.0060
-        )
-        
-        # Mock API response
-        mock_response = MagicMock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            'current': {
-                'time': '2025-03-31T12:00:00Z',
-                'temperature_2m': 25.5,
-                'relative_humidity_2m': 65.0,
-                'surface_pressure': 1013.2,
-                'precipitation': 0.0,
-                'cloud_cover': 30.0,
-                'wind_speed_10m': 10.5
-            }
-        }
-        mock_get.return_value = mock_response
-        
-        # Test
-        service = DataComparisonService()
-        actual_weather = service.collect_actual_weather(location)
-        
-        # Verify
-        self.assertIsNotNone(actual_weather)
-        self.assertEqual(actual_weather.location, location)
-        self.assertEqual(actual_weather.temperature, 25.5)
-        self.assertEqual(actual_weather.humidity, 65.0)
-        self.assertEqual(actual_weather.pressure, 1013.2)
