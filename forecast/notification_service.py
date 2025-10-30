@@ -38,6 +38,34 @@ class NotificationService:
             if not location.user:
                 continue
 
+            # Enforce per-location daily notification limit
+            try:
+                limit = int(getattr(location, 'daily_notification_limit', 1))
+            except (TypeError, ValueError):
+                limit = 1
+            if limit is None:
+                limit = 1
+            if limit <= 0:
+                # Notifications disabled for this location
+                continue
+
+            from django.utils import timezone
+            now = timezone.now()
+            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_of_day = start_of_day + timedelta(days=1)
+
+            sent_today = MigrainePrediction.objects.filter(
+                user=location.user,
+                location=location,
+                notification_sent=True,
+                prediction_time__gte=start_of_day,
+                prediction_time__lt=end_of_day,
+            ).count()
+
+            if sent_today >= limit:
+                # Already reached today's limit for this location
+                continue
+
             location_prediction = predictions.get(location.id, None)
 
             if location_prediction is None:
@@ -49,7 +77,7 @@ class NotificationService:
             if probability_level is not None and prediction is not None:
                 # Check if notification should be sent (HIGH/MEDIUM probability and not already sent)
                 if probability_level == 'HIGH' or probability_level == 'MEDIUM':
-                    if not prediction.notification_sent:
+                    if not prediction.notification_sent and sent_today < limit:
                         self.send_migraine_alert(prediction)
 
                         prediction.notification_sent = True

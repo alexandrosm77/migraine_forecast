@@ -68,15 +68,25 @@ def location_add(request):
         country = request.POST.get('country')
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
+        daily_limit = request.POST.get('daily_notification_limit')
         
         if city and country and latitude and longitude:
             try:
+                # Validate and clamp daily limit
+                try:
+                    daily_limit_val = int(daily_limit) if daily_limit is not None and daily_limit != '' else 1
+                except ValueError:
+                    daily_limit_val = 1
+                if daily_limit_val < 0:
+                    daily_limit_val = 0
+                
                 location = Location.objects.create(
                     user=request.user,
                     city=city,
                     country=country,
                     latitude=float(latitude),
-                    longitude=float(longitude)
+                    longitude=float(longitude),
+                    daily_notification_limit=daily_limit_val,
                 )
                 
                 # Fetch initial forecast for the new location
@@ -95,6 +105,23 @@ def location_add(request):
 def location_detail(request, location_id):
     """View for location details."""
     location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    # Handle updates to notification settings
+    if request.method == 'POST':
+        daily_limit = request.POST.get('daily_notification_limit')
+        try:
+            daily_limit_val = int(daily_limit) if daily_limit is not None and daily_limit != '' else location.daily_notification_limit
+        except ValueError:
+            daily_limit_val = location.daily_notification_limit
+        if daily_limit_val < 0:
+            daily_limit_val = 0
+        if daily_limit_val != location.daily_notification_limit:
+            location.daily_notification_limit = daily_limit_val
+            location.save(update_fields=['daily_notification_limit'])
+            messages.success(request, 'Notification settings updated.')
+        else:
+            messages.info(request, 'No changes to notification settings.')
+        return redirect('forecast:location_detail', location_id=location.id)
     
     # Get recent forecasts
 
@@ -120,6 +147,20 @@ def location_detail(request, location_id):
     predictions = MigrainePrediction.objects.filter(
         location=location
     ).order_by('-prediction_time')[:5]
+
+    # Compute today's notification usage for this location
+    from django.utils import timezone as dj_timezone
+    now = dj_timezone.now()
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+    sent_today = MigrainePrediction.objects.filter(
+        user=request.user,
+        location=location,
+        notification_sent=True,
+        prediction_time__gte=start_of_day,
+        prediction_time__lt=end_of_day,
+    ).count()
+    remaining_today = max(location.daily_notification_limit - sent_today, 0)
     
     # Get comparison data if available
     comparison_reports = WeatherComparisonReport.objects.filter(
@@ -132,6 +173,8 @@ def location_detail(request, location_id):
         'forecasts': forecasts,
         'predictions': predictions,
         'comparison_reports': comparison_reports,
+        'sent_today': sent_today,
+        'remaining_today': remaining_today,
     }
     
     return render(request, 'forecast/location_detail.html', context)

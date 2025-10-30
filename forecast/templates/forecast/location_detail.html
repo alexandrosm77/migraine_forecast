@@ -15,7 +15,7 @@
     <div class="row">
         <!-- Location Info -->
         <div class="col-md-4 mb-4">
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">Location Information</h5>
                 </div>
@@ -25,6 +25,29 @@
                     <p><strong>Latitude:</strong> {{ location.latitude|floatformat:4 }}</p>
                     <p><strong>Longitude:</strong> {{ location.longitude|floatformat:4 }}</p>
                     <p><strong>Added:</strong> {{ location.created_at|date:"F j, Y" }}</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Notification Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="daily_notification_limit" class="form-label">Daily Notification Limit</label>
+                            <input type="number" class="form-control" id="daily_notification_limit" name="daily_notification_limit" min="0" step="1" value="{{ location.daily_notification_limit }}">
+                            <div class="form-text">0 disables emails for this location.</div>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-secondary">Sent today: {{ sent_today|default:0 }}</span>
+                            <span class="badge bg-info text-dark">Remaining today: {{ remaining_today|default:0 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">Save Settings</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

@@ -28,6 +28,11 @@
                     <input type="number" class="form-control" id="longitude" name="longitude" step="0.0001" required>
                     <div class="form-text">Enter a decimal value (e.g., -74.0060 for New York)</div>
                 </div>
+                <div class="mb-3">
+                    <label for="daily_notification_limit" class="form-label">Daily Notification Limit</label>
+                    <input type="number" class="form-control" id="daily_notification_limit" name="daily_notification_limit" min="0" step="1" value="1">
+                    <div class="form-text">Maximum migraine alert emails per day for this location. Set to 0 to disable emails.</div>
+                </div>
                 <div class="d-flex justify-content-between">
                     <a href="{% url 'forecast:location_list' %}" class="btn btn-outline-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary">Add Location</button>
