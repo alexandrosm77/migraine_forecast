@@ -4,18 +4,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.utils import timezone
-from datetime import datetime, timedelta
-import json
+from datetime import timedelta
 
-from .models import Location, WeatherForecast, ActualWeather, MigrainePrediction, WeatherComparisonReport
+from .models import Location, WeatherForecast, MigrainePrediction
 from .weather_service import WeatherService
 from .prediction_service import MigrainePredictionService
-from .comparison_service import DataComparisonService
 
 # Initialize services
 weather_service = WeatherService()
 prediction_service = MigrainePredictionService()
-comparison_service = DataComparisonService()
 
 def index(request):
     """Home page view."""
@@ -162,17 +159,10 @@ def location_detail(request, location_id):
     ).count()
     remaining_today = max(location.daily_notification_limit - sent_today, 0)
     
-    # Get comparison data if available
-    comparison_reports = WeatherComparisonReport.objects.filter(
-        location=location,
-        forecast__in=forecasts
-    ).order_by('-created_at')[:10]
-    
     context = {
         'location': location,
         'forecasts': forecasts,
         'predictions': predictions,
-        'comparison_reports': comparison_reports,
         'sent_today': sent_today,
         'remaining_today': remaining_today,
     }
@@ -219,71 +209,6 @@ def prediction_detail(request, prediction_id):
     
     return render(request, 'forecast/prediction_detail.html', context)
 
-@login_required
-def comparison_report(request):
-    """View for comparison reports."""
-    locations = Location.objects.filter(user=request.user)
-    
-    context = {
-        'locations': locations,
-    }
-    
-    return render(request, 'forecast/comparison_report.html', context)
-
-@login_required
-def comparison_detail(request, location_id):
-    """View for detailed comparison data for a location."""
-    location = get_object_or_404(Location, id=location_id, user=request.user)
-    
-    # Get comparison reports
-    # First, get the latest forecast_time for each target_time
-    latest_forecasts = WeatherForecast.objects.filter(
-        location=location
-    ).values('target_time').annotate(
-        latest_forecast_time=Max('forecast_time')
-    )
-
-    # Then, join this back to get the complete objects
-    forecasts = WeatherForecast.objects.filter(
-        location=location,
-        forecast_time__in=[item['latest_forecast_time'] for item in latest_forecasts],
-        target_time__in=[item['target_time'] for item in latest_forecasts]
-    ).order_by('-forecast_time', 'target_time')[:24]
-
-    reports = WeatherComparisonReport.objects.filter(
-        location=location,
-        forecast__in=forecasts
-    ).order_by('-created_at')[:30]
-    
-    # Get accuracy metrics
-    metrics = comparison_service.get_forecast_accuracy_metrics(location)
-    
-    # Prepare data for charts
-    chart_data = {
-        'labels': [],
-        'temperature_diff': [],
-        'humidity_diff': [],
-        'pressure_diff': [],
-        'precipitation_diff': [],
-        'cloud_cover_diff': []
-    }
-    
-    for report in reports:
-        chart_data['labels'].append(report.actual.recorded_time.strftime('%Y-%m-%d %H:%M'))
-        chart_data['temperature_diff'].append(report.temperature_diff)
-        chart_data['humidity_diff'].append(report.humidity_diff)
-        chart_data['pressure_diff'].append(report.pressure_diff)
-        chart_data['precipitation_diff'].append(report.precipitation_diff)
-        chart_data['cloud_cover_diff'].append(report.cloud_cover_diff)
-    
-    context = {
-        'location': location,
-        'reports': reports,
-        'metrics': metrics,
-        'chart_data': json.dumps(chart_data),
-    }
-    
-    return render(request, 'forecast/comparison_detail.html', context)
 
 def register(request):
     """User registration view."""

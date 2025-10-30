@@ -5,7 +5,6 @@ from forecast.models import Location
 from forecast.weather_service import WeatherService
 from forecast.prediction_service import MigrainePredictionService
 from forecast.notification_service import NotificationService
-from forecast.comparison_service import DataComparisonService
 
 class Command(BaseCommand):
     help = 'Check migraine probability and send notifications'
@@ -24,7 +23,6 @@ class Command(BaseCommand):
         1. Update weather forecasts for all locations
         2. Generate migraine predictions
         3. Send email notifications for high-risk predictions
-        4. Collect actual weather data and generate comparison reports
         """
         self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] Starting migraine probability check..."))
         
@@ -32,7 +30,6 @@ class Command(BaseCommand):
         weather_service = WeatherService()
         prediction_service = MigrainePredictionService()
         notification_service = NotificationService()
-        comparison_service = DataComparisonService()
         
         # Get all locations
         locations = Location.objects.all()
@@ -61,11 +58,6 @@ class Command(BaseCommand):
                     self.stdout.write(f"Prediction: {probability} probability for {location}")
                 else:
                     self.stdout.write(self.style.WARNING(f"No prediction could be made for {location}"))
-                
-                # Generate comparison data
-                self.stdout.write(f"Generating comparison data for {location}...")
-                reports = comparison_service.generate_comparison_for_location(location)
-                self.stdout.write(f"Created {len(reports)} comparison reports")
         
         # Send notifications
         self.stdout.write("Checking and sending notifications...")

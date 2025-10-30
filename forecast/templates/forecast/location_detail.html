@@ -139,46 +139,5 @@
         </div>
     </div>
     
-    <!-- Comparison Reports -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Forecast vs. Actual Comparison</h5>
-        </div>
-        <div class="card-body">
-            {% if comparison_reports %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Recorded time</th>
-                            <th>Target time</th>
-                            <th>Temp Diff (°C)</th>
-                            <th>Humidity Diff (%)</th>
-                            <th>Pressure Diff (hPa)</th>
-                            <th>Precipitation Diff (mm)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for report in comparison_reports|slice:":5" %}
-                        <tr>
-                            <td>{{ report.actual.recorded_time|date:"M d, H:i" }}</td>
-                            <td>{{ report.forecast.target_time|date:"M d, H:i" }}</td>
-                            <td>{{ report.temperature_diff|floatformat:1 }}</td>
-                            <td>{{ report.humidity_diff|floatformat:0 }}</td>
-                            <td>{{ report.pressure_diff|floatformat:1 }}</td>
-                            <td>{{ report.precipitation_diff|floatformat:1 }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="text-end">
-                <a href="{% url 'forecast:comparison_detail' location.id %}" class="btn btn-link">View Detailed Comparison</a>
-            </div>
-            {% else %}
-            <p class="text-muted">No comparison data available for this location.</p>
-            {% endif %}
-        </div>
-    </div>
 </div>
 {% endblock %}

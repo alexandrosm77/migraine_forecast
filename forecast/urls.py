@@ -12,8 +12,6 @@ urlpatterns = [
     path('locations/<int:location_id>/delete/', views.location_delete, name='location_delete'),
     path('predictions/', views.prediction_list, name='prediction_list'),
     path('predictions/<int:prediction_id>/', views.prediction_detail, name='prediction_detail'),
-    path('comparison/', views.comparison_report, name='comparison_report'),
-    path('comparison/<int:location_id>/', views.comparison_detail, name='comparison_detail'),
     path('accounts/register/', views.register, name='register'),
     path('accounts/profile/', views.profile, name='profile'),
 ]
