@@ -142,7 +142,7 @@ class MigrainePredictionService:
         if getattr(settings, 'LLM_ENABLED', True):
             try:
                 base_url = getattr(settings, 'LLM_BASE_URL', 'http://localhost:11434')
-                api_key = getattr(settings, 'LLM_API_KEY', 'EMPTY')
+                api_key = getattr(settings, 'LLM_API_KEY', '')
                 model = getattr(settings, 'LLM_MODEL', 'ibm/granite4:tiny-h')
                 timeout = getattr(settings, 'LLM_TIMEOUT', 8.0)
                 client = LLMClient(base_url=base_url, api_key=api_key, model=model, timeout=timeout)
