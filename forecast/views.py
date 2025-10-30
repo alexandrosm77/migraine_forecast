@@ -6,9 +6,10 @@ from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import Location, WeatherForecast, MigrainePrediction
+from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile
 from .weather_service import WeatherService
 from .prediction_service import MigrainePredictionService
+from .forms import UserHealthProfileForm
 
 # Initialize services
 weather_service = WeatherService()
@@ -226,5 +227,36 @@ def register(request):
 
 @login_required
 def profile(request):
-    """User profile view."""
-    return render(request, 'forecast/profile.html')
+    """User profile view with health profile editing."""
+    # Get or create the user's health profile
+    try:
+        profile = request.user.health_profile
+    except Exception:
+        from .models import UserHealthProfile
+        profile = None
+        try:
+            profile = UserHealthProfile.objects.get(user=request.user)
+        except UserHealthProfile.DoesNotExist:
+            profile = UserHealthProfile(user=request.user)
+    
+    if request.method == 'POST':
+        form = UserHealthProfileForm(request.POST, instance=profile)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.user = request.user
+            obj.save()
+            messages.success(request, 'Health profile updated successfully.')
+            return redirect('forecast:profile')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = UserHealthProfileForm(instance=profile)
+    
+    # Provide locations info for template stats
+    locations = Location.objects.filter(user=request.user)
+    
+    context = {
+        'form': form,
+        'locations': locations,
+    }
+    return render(request, 'forecast/profile.html', context)

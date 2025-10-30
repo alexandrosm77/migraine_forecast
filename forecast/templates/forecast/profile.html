@@ -5,64 +5,92 @@
 {% block content %}
 <div class="container">
     <div class="row">
-        <div class="col-md-8 offset-md-2">
+        <div class="col-md-10 offset-md-1">
             <div class="card mt-4">
-                <div class="card-header">
-                    <h2>User Profile</h2>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">User Profile</h2>
+                    <a href="{% url 'forecast:dashboard' %}" class="btn btn-sm btn-outline-secondary">Back to Dashboard</a>
                 </div>
                 <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <strong>Username:</strong>
+                    <div class="row">
+                        <div class="col-md-5 border-end">
+                            <h5 class="mb-3">Account Info</h5>
+                            <div class="row mb-3">
+                                <div class="col-5"><strong>Username:</strong></div>
+                                <div class="col-7">{{ user.username }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-5"><strong>Email:</strong></div>
+                                <div class="col-7">{{ user.email|default:"Not provided" }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-5"><strong>Date Joined:</strong></div>
+                                <div class="col-7">{{ user.date_joined|date:"F j, Y" }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-5"><strong>Locations:</strong></div>
+                                <div class="col-7">{{ locations.count }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-5"><strong>Notifications:</strong></div>
+                                <div class="col-7">
+                                    {% if user.email %}
+                                        Enabled (sent to {{ user.email }})
+                                    {% else %}
+                                        Disabled (no email provided)
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-8">
-                            {{ user.username }}
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <strong>Email:</strong>
-                        </div>
-                        <div class="col-md-8">
-                            {{ user.email|default:"Not provided" }}
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <strong>Date Joined:</strong>
-                        </div>
-                        <div class="col-md-8">
-                            {{ user.date_joined|date:"F j, Y" }}
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <strong>Locations:</strong>
-                        </div>
-                        <div class="col-md-8">
-                            {{ locations.count }}
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <strong>Notifications:</strong>
-                        </div>
-                        <div class="col-md-8">
-                            {% if user.email %}
-                                Enabled (sent to {{ user.email }})
-                            {% else %}
-                                Disabled (no email provided)
-                            {% endif %}
+                        <div class="col-md-7">
+                            <h5 class="mb-3">Health & Sensitivity</h5>
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label for="id_age" class="form-label">Age</label>
+                                        {{ form.age }}
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label for="id_prior_conditions" class="form-label">Prior Health Issues</label>
+                                        {{ form.prior_conditions }}
+                                        <div class="form-text">Optional: anything that influences your migraines.</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="id_sensitivity_overall" class="form-label">Overall Sensitivity</label>
+                                        {{ form.sensitivity_overall }}
+                                        <div class="form-text">0.5 = less sensitive, 1 = average, 2 = very sensitive</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Temperature Sensitivity</label>
+                                        {{ form.sensitivity_temperature }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Humidity Sensitivity</label>
+                                        {{ form.sensitivity_humidity }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Pressure Sensitivity</label>
+                                        {{ form.sensitivity_pressure }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Cloud Cover Sensitivity</label>
+                                        {{ form.sensitivity_cloud_cover }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Precipitation Sensitivity</label>
+                                        {{ form.sensitivity_precipitation }}
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary">Save Health Profile</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <a href="{% url 'forecast:dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
-                    <a href="{% url 'logout' %}" class="btn btn-outline-danger float-end">Logout</a>
+                <div class="card-footer text-end">
+                    <a href="{% url 'logout' %}" class="btn btn-outline-danger">Logout</a>
                 </div>
             </div>
         </div>

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from django.utils import timezone
 
-from .models import Location, WeatherForecast, MigrainePrediction
+from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile
 
 logger = logging.getLogger(__name__)
 
@@ -72,16 +72,67 @@ class MigrainePredictionService:
         # Calculate scores for different weather factors
         scores = self._calculate_weather_scores(forecasts, previous_forecasts)
         
-        # Calculate overall probability score (0-1)
-        total_score = sum(scores[factor] * self.WEIGHTS[factor] for factor in scores)
+        # Optionally adjust scores/weights based on user health profile
+        adjusted_weights = dict(self.WEIGHTS)
+        applied_profile = None
+        if user is not None:
+            try:
+                profile = user.health_profile
+                applied_profile = {
+                    'sensitivity_overall': profile.sensitivity_overall,
+                    'sensitivity_temperature': profile.sensitivity_temperature,
+                    'sensitivity_humidity': profile.sensitivity_humidity,
+                    'sensitivity_pressure': profile.sensitivity_pressure,
+                    'sensitivity_cloud_cover': profile.sensitivity_cloud_cover,
+                    'sensitivity_precipitation': profile.sensitivity_precipitation,
+                }
+                # Map weight keys to profile keys and adjust weights
+                factor_to_profile = {
+                    'temperature_change': 'sensitivity_temperature',
+                    'humidity_extreme': 'sensitivity_humidity',
+                    'pressure_change': 'sensitivity_pressure',
+                    'pressure_low': 'sensitivity_pressure',
+                    'precipitation': 'sensitivity_precipitation',
+                    'cloud_cover': 'sensitivity_cloud_cover',
+                }
+                for k, w in adjusted_weights.items():
+                    pk = factor_to_profile.get(k)
+                    if pk:
+                        adjusted_weights[k] = max(0.0, w * profile.sensitivity_overall * getattr(profile, pk, 1.0))
+                # Re-normalize weights to sum to 1.0 to keep score scale comparable
+                total_w = sum(adjusted_weights.values())
+                if total_w > 0:
+                    for k in adjusted_weights:
+                        adjusted_weights[k] = adjusted_weights[k] / total_w
+            except UserHealthProfile.DoesNotExist:
+                pass
+            except Exception:
+                logger.exception("Failed to apply user health profile, proceeding with default weights")
         
-        # Determine probability level
-        if total_score >= 0.7:
+        # Calculate overall probability score (0-1)
+        total_score = sum(scores[factor] * adjusted_weights.get(factor, 0.0) for factor in scores)
+        
+        # Determine probability level (shift thresholds slightly by overall sensitivity)
+        high_thr = 0.7
+        med_thr = 0.4
+        if user is not None and applied_profile is not None:
+            overall = applied_profile.get('sensitivity_overall', 1.0)
+            # More sensitive → lower thresholds; less sensitive → higher thresholds (clamped)
+            shift = (overall - 1.0) * 0.15  # max +/- 15% threshold shift per overall unit
+            high_thr = min(max(high_thr - shift, 0.5), 0.9)
+            med_thr = min(max(med_thr - shift, 0.25), 0.7)
+        
+        if total_score >= high_thr:
             probability_level = 'HIGH'
-        elif total_score >= 0.4:
+        elif total_score >= med_thr:
             probability_level = 'MEDIUM'
         else:
             probability_level = 'LOW'
+
+        factors_payload = dict(scores)
+        if applied_profile is not None:
+            factors_payload['applied_profile'] = applied_profile
+            factors_payload['weights'] = adjusted_weights
 
         prediction = MigrainePrediction(
             user=user,
@@ -90,7 +141,7 @@ class MigrainePredictionService:
             target_time_start=start_time,
             target_time_end=end_time,
             probability=probability_level,
-            weather_factors=scores
+            weather_factors=factors_payload
         )
         
         # Create prediction record

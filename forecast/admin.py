@@ -3,6 +3,7 @@ from forecast.models import (
     Location,
     WeatherForecast,
     MigrainePrediction,
+    UserHealthProfile,
 )
 
 
@@ -27,3 +28,19 @@ class MigrainePredictionAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'location__city')
     list_filter = ('probability', 'notification_sent', 'prediction_time')
     date_hierarchy = 'prediction_time'
+
+
+@admin.register(UserHealthProfile)
+class UserHealthProfileAdmin(admin.ModelAdmin):
+    list_display = (
+        'user',
+        'age',
+        'sensitivity_overall',
+        'sensitivity_temperature',
+        'sensitivity_humidity',
+        'sensitivity_pressure',
+        'sensitivity_cloud_cover',
+        'sensitivity_precipitation',
+        'updated_at',
+    )
+    search_fields = ('user__username',)
