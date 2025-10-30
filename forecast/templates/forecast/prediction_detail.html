@@ -104,6 +104,47 @@
             </div>
         </div>
     </div>
+
+    {% if llm_analysis_text %}
+    <div class="alert alert-success" role="alert">
+        <h5 class="alert-heading">Model Analysis</h5>
+        <p class="mb-0">{{ llm_analysis_text }}</p>
+    </div>
+    {% endif %}
+
+    {% if detailed_factors and detailed_factors.contributing_factors_count > 0 %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Prediction Details</h5>
+        </div>
+        <div class="card-body">
+            <p>
+                <strong>Overall Risk Score:</strong>
+                {{ detailed_factors.total_score }}/1.0
+                {% if prediction.probability == 'HIGH' %}
+                    (High risk - score ≥ 0.7)
+                {% elif prediction.probability == 'MEDIUM' %}
+                    (Medium risk - score 0.4-0.69)
+                {% else %}
+                    (Low risk - score < 0.4)
+                {% endif %}
+            </p>
+            <p><strong>{{ detailed_factors.contributing_factors_count }} weather factor{{ detailed_factors.contributing_factors_count|pluralize }} {{ detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing:</strong></p>
+
+            {% for factor in detailed_factors.factors %}
+            <div class="mb-3 p-3 rounded" style="background-color: {% if factor.severity == 'high' %}#fff5f5{% else %}#fffbf0{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#dc3545{% else %}#fd7e14{% endif %};">
+                <h6 class="mb-1">
+                    {{ factor.name }}
+                    <span class="text-muted" style="font-size: 12px;">
+                        (Impact: {{ factor.score|floatformat:1 }}/1.0)
+                    </span>
+                </h6>
+                <p class="mb-0">{{ factor.explanation }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
     
     <!-- Migraine Prevention Tips -->
     {% if prediction.probability == 'HIGH' or prediction.probability == 'MEDIUM' %}
@@ -112,6 +153,17 @@
             <h5 class="mb-0">Migraine Prevention Tips</h5>
         </div>
         <div class="card-body">
+            {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
+            <div class="mb-3">
+                <h6>Personalized tips based on current factors</h6>
+                <ul class="mb-0">
+                    {% for tip in llm_prevention_tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <hr>
+            {% endif %}
             <div class="row">
                 <div class="col-md-6">
                     <h6>Immediate Actions</h6>

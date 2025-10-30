@@ -9,6 +9,7 @@ from datetime import timedelta
 from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile
 from .weather_service import WeatherService
 from .prediction_service import MigrainePredictionService
+from .notification_service import NotificationService
 from .forms import UserHealthProfileForm
 
 # Initialize services
@@ -203,9 +204,20 @@ def prediction_list(request):
 def prediction_detail(request, prediction_id):
     """View for prediction details."""
     prediction = get_object_or_404(MigrainePrediction, id=prediction_id, user=request.user)
+
+    # Build detailed factors similar to email, and expose LLM analysis/tips
+    notif = NotificationService()
+    try:
+        detailed_factors = notif._get_detailed_weather_factors(prediction)
+    except Exception:
+        detailed_factors = {'factors': [], 'total_score': 0, 'contributing_factors_count': 0}
+    wf = prediction.weather_factors or {}
     
     context = {
         'prediction': prediction,
+        'detailed_factors': detailed_factors,
+        'llm_analysis_text': wf.get('llm_analysis_text'),
+        'llm_prevention_tips': wf.get('llm_prevention_tips') or [],
     }
     
     return render(request, 'forecast/prediction_detail.html', context)
