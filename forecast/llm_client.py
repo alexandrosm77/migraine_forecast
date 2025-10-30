@@ -78,8 +78,26 @@ class LLMClient:
         """
         sys_prompt = (
             "You are a migraine risk assessor. You receive weather-derived risk factors (0-1, higher is riskier). "
-            "Return a JSON object with keys: probability_level (LOW|MEDIUM|HIGH), confidence (0..1), and rationale (string). "
-            "Do not include any text before or after the JSON."
+            "Follow the output JSON schema exactly and output only a single JSON object, no extra text.\n"
+            "<schema>{\n"
+            "  \"type\": \"object\",\n"
+            "  \"additionalProperties\": false,\n"
+            "  \"properties\": {\n"
+            "    \"probability_level\": {\n"
+            "      \"type\": \"string\",\n"
+            "      \"enum\": [\"LOW\", \"MEDIUM\", \"HIGH\"]\n"
+            "    },\n"
+            "    \"confidence\": {\n"
+            "      \"type\": \"number\",\n"
+            "      \"minimum\": 0,\n"
+            "      \"maximum\": 1\n"
+            "    },\n"
+            "    \"rationale\": { \"type\": \"string\" },\n"
+            "    \"analysis_text\": { \"type\": \"string\", \"description\": \"Concise analysis to show users why this prediction was made\" },\n"
+            "    \"prevention_tips\": { \"type\": \"array\", \"items\": { \"type\": \"string\" }, \"minItems\": 2, \"maxItems\": 8 }\n"
+            "  },\n"
+            "  \"required\": [\"probability_level\", \"confidence\", \"rationale\", \"analysis_text\", \"prevention_tips\"]\n"
+            "}</schema>"
         )
         user_prompt = {
             "location": location_label,

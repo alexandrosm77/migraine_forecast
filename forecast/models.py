@@ -98,3 +98,25 @@ class WeatherComparisonReport(models.Model):
     
     def __str__(self):
         return f"Comparison report for {self.location} at {self.actual.recorded_time}"
+
+
+class LLMResponse(models.Model):
+    """
+    Stores raw and parsed responses from the LLM model used during migraine prediction.
+    """
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='llm_responses')
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='llm_responses')
+    prediction = models.ForeignKey('MigrainePrediction', on_delete=models.SET_NULL, null=True, blank=True, related_name='llm_responses')
+    request_payload = JSONField(default=dict, null=True, blank=True)
+    response_api_raw = JSONField(default=dict, null=True, blank=True)
+    response_parsed = JSONField(default=dict, null=True, blank=True)
+    probability_level = models.CharField(max_length=10, blank=True)
+    confidence = models.FloatField(null=True, blank=True)
+    rationale = models.TextField(blank=True)
+    analysis_text = models.TextField(blank=True)
+    prevention_tips = JSONField(default=list, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        loc = getattr(self.location, 'city', 'Unknown')
+        return f"LLMResponse for {loc} at {self.created_at:%Y-%m-%d %H:%M}"

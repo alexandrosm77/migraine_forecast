@@ -60,6 +60,13 @@
         (<strong>{{ location.city }}, {{ location.country }}</strong>) during the time window:
         <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} to {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
 
+        {% if llm_analysis_text %}
+        <div style="background-color: #eefcf4; padding: 15px; border: 1px solid #c6f6d5; border-radius: 6px; margin: 15px 0;">
+            <h3 style="margin-top: 0; color: #276749;">🧠 Model Analysis</h3>
+            <p style="margin: 0;">{{ llm_analysis_text }}</p>
+        </div>
+        {% endif %}
+
         {% if detailed_factors.contributing_factors_count > 0 %}
         <p><strong>{{ detailed_factors.contributing_factors_count }} weather factor{{ detailed_factors.contributing_factors_count|pluralize }} {{ detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to this alert:</strong></p>
 
@@ -102,6 +109,15 @@
                 <li>Maintain regular sleep and meal schedules</li>
                 <li>Avoid known personal triggers (certain foods, stress, etc.)</li>
             </ul>
+
+            {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
+            <p style="margin: 0 0 10px 0;"><strong>Personalized tips based on current factors:</strong></p>
+            <ul style="margin: 0 0 15px 0;">
+                {% for tip in llm_prevention_tips %}
+                <li>{{ tip }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
 
             {% if detailed_factors.factors %}
             <p style="margin: 0 0 10px 0;"><strong>Specific to today's weather conditions:</strong></p>

@@ -4,6 +4,7 @@ from forecast.models import (
     WeatherForecast,
     MigrainePrediction,
     UserHealthProfile,
+    LLMResponse,
 )
 
 
@@ -44,3 +45,13 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         'updated_at',
     )
     search_fields = ('user__username',)
+
+
+@admin.register(LLMResponse)
+class LLMResponseAdmin(admin.ModelAdmin):
+    list_display = (
+        'created_at', 'user', 'location', 'prediction', 'probability_level', 'confidence'
+    )
+    list_filter = ('probability_level', 'created_at', 'location')
+    search_fields = ('location__city', 'location__country', 'user__username')
+    readonly_fields = ('created_at',)

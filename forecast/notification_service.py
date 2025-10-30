@@ -128,6 +128,8 @@ class NotificationService:
             'probability_level': probability_level,
             'weather_factors': weather_factors,
             'detailed_factors': detailed_factors,
+            'llm_analysis_text': (weather_factors or {}).get('llm_analysis_text'),
+            'llm_prevention_tips': (weather_factors or {}).get('llm_prevention_tips') or [],
         }
         
         # Render email content

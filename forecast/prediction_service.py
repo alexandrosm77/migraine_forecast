@@ -4,7 +4,7 @@ import numpy as np
 from django.utils import timezone
 from django.conf import settings
 
-from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile
+from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile, LLMResponse
 from .llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -158,6 +158,12 @@ class MigrainePredictionService:
                 'used': llm_used,
                 'detail': llm_detail,
             }
+            try:
+                parsed = (llm_detail or {}).get('raw') or {}
+                factors_payload['llm_analysis_text'] = parsed.get('analysis_text')
+                factors_payload['llm_prevention_tips'] = parsed.get('prevention_tips')
+            except Exception:
+                logger.exception('Failed to extract LLM analysis/tips')
 
         prediction = MigrainePrediction(
             user=user,
@@ -173,6 +179,28 @@ class MigrainePredictionService:
         if user:
             if store_prediction:
                 prediction.save()
+                # Persist LLM response if available
+                try:
+                    if llm_detail is not None:
+                        LLMResponse.objects.create(
+                            user=user,
+                            location=location,
+                            prediction=prediction,
+                            request_payload={
+                                'location': f"{location.city}, {location.country}",
+                                'scores': factors_payload,
+                                'user_profile': applied_profile or {},
+                            },
+                            response_api_raw=(llm_detail or {}).get('api_raw'),
+                            response_parsed=(llm_detail or {}).get('raw'),
+                            probability_level=(llm_detail or {}).get('raw', {}).get('probability_level') or probability_level,
+                            confidence=(llm_detail or {}).get('raw', {}).get('confidence'),
+                            rationale=(llm_detail or {}).get('raw', {}).get('rationale') or '',
+                            analysis_text=(llm_detail or {}).get('raw', {}).get('analysis_text') or '',
+                            prevention_tips=(llm_detail or {}).get('raw', {}).get('prevention_tips') or [],
+                        )
+                except Exception:
+                    logger.exception('Failed to store LLMResponse')
         else:
             prediction = None
             
