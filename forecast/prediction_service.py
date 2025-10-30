@@ -147,7 +147,70 @@ class MigrainePredictionService:
                 timeout = getattr(settings, 'LLM_TIMEOUT', 8.0)
                 client = LLMClient(base_url=base_url, api_key=api_key, model=model, timeout=timeout)
                 loc_label = f"{location.city}, {location.country}"
-                llm_level, llm_detail = client.predict_probability(scores=factors_payload, location_label=loc_label, user_profile=applied_profile)
+                # Build rich context with weather changes, aggregates, thresholds, and location/time details
+                try:
+                    fc_list = list(forecasts)
+                    prev_list = list(previous_forecasts)
+                    context_payload = {
+                        'time_window': {
+                            'now': start_time.isoformat(),
+                            'end': end_time.isoformat(),
+                            'window_hours': 6,
+                        },
+                        'location': {
+                            'city': location.city,
+                            'country': location.country,
+                            'latitude': location.latitude,
+                            'longitude': location.longitude,
+                        },
+                        'thresholds': self.THRESHOLDS,
+                        'weights': adjusted_weights,
+                        'aggregates': {
+                            'avg_forecast_temperature': float(np.mean([f.temperature for f in fc_list])) if fc_list else None,
+                            'avg_prev_temperature': float(np.mean([f.temperature for f in prev_list])) if prev_list else None,
+                            'avg_forecast_humidity': float(np.mean([f.humidity for f in fc_list])) if fc_list else None,
+                            'avg_forecast_pressure': float(np.mean([f.pressure for f in fc_list])) if fc_list else None,
+                            'avg_prev_pressure': float(np.mean([f.pressure for f in prev_list])) if prev_list else None,
+                            'avg_cloud_cover': float(np.mean([f.cloud_cover for f in fc_list])) if fc_list else None,
+                            'max_precipitation': float(max([f.precipitation for f in fc_list], default=0)),
+                        },
+                        'changes': {
+                            'temperature_change': float(abs((np.mean([f.temperature for f in fc_list]) if fc_list else 0) - (np.mean([f.temperature for f in prev_list]) if prev_list else 0))),
+                            'pressure_change': float(abs((np.mean([f.pressure for f in fc_list]) if fc_list else 0) - (np.mean([f.pressure for f in prev_list]) if prev_list else 0))),
+                        },
+                        'samples': {
+                            'forecast_next_hours': [
+                                {
+                                    'time': f.target_time.isoformat(),
+                                    'temperature': f.temperature,
+                                    'humidity': f.humidity,
+                                    'pressure': f.pressure,
+                                    'precipitation': f.precipitation,
+                                    'cloud_cover': f.cloud_cover,
+                                } for f in fc_list
+                            ],
+                            'previous_hours': [
+                                {
+                                    'time': f.target_time.isoformat(),
+                                    'temperature': f.temperature,
+                                    'humidity': f.humidity,
+                                    'pressure': f.pressure,
+                                    'precipitation': f.precipitation,
+                                    'cloud_cover': f.cloud_cover,
+                                } for f in prev_list
+                            ],
+                        },
+                    }
+                except Exception:
+                    logger.exception('Failed building LLM context payload')
+                    context_payload = {}
+
+                llm_level, llm_detail = client.predict_probability(
+                    scores=factors_payload,
+                    location_label=loc_label,
+                    user_profile=applied_profile,
+                    context=context_payload,
+                )
                 if llm_level in {'LOW', 'MEDIUM', 'HIGH'}:
                     llm_used = True
                     probability_level = llm_level
@@ -190,6 +253,7 @@ class MigrainePredictionService:
                                 'location': f"{location.city}, {location.country}",
                                 'scores': factors_payload,
                                 'user_profile': applied_profile or {},
+                                'context': context_payload if 'context_payload' in locals() else {},
                             },
                             response_api_raw=(llm_detail or {}).get('api_raw'),
                             response_parsed=(llm_detail or {}).get('raw'),

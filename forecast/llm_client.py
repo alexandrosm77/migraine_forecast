@@ -68,6 +68,7 @@ class LLMClient:
         scores: Dict[str, float],
         location_label: str,
         user_profile: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
         Ask the LLM to output a JSON with keys:
@@ -103,6 +104,7 @@ class LLMClient:
             "location": location_label,
             "scores": scores,
             "user_profile": user_profile or {},
+            "context": context or {},
         }
         try:
             result = self.chat_complete(
