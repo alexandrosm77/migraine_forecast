@@ -222,12 +222,7 @@ class MigrainePredictionService:
                             user=user,
                             location=location,
                             prediction=prediction,
-                            request_payload={
-                                'location': f"{location.city}, {location.country}",
-                                'scores': factors_payload,
-                                'user_profile': applied_profile or {},
-                                'context': context_payload if 'context_payload' in locals() else {},
-                            },
+                            request_payload=(llm_detail or {}).get('request_payload', {}),
                             response_api_raw=(llm_detail or {}).get('api_raw'),
                             response_parsed=(llm_detail or {}).get('raw'),
                             probability_level=(llm_detail or {}).get('raw', {}).get('probability_level') or probability_level,

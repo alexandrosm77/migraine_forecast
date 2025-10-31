@@ -112,17 +112,25 @@ class LLMClient:
 
         user_prompt_str = "\n".join(user_prompt_parts)
 
+        # Build the actual request payload that will be sent to the LLM
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt_str},
+        ]
+        request_payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.2,
+        }
+
         try:
             result = self.chat_complete(
-                messages=[
-                    {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": user_prompt_str},
-                ],
+                messages=messages,
                 temperature=0.2,
             )
         except Exception as e:
             logger.warning("LLM chat request failed: %s", e)
-            return None, {"error": str(e)}
+            return None, {"error": str(e), "request_payload": request_payload}
 
         try:
             choices = result.get("choices", [])
@@ -130,14 +138,14 @@ class LLMClient:
             parsed = self._extract_json(content) if content else None
             if not parsed:
                 logger.warning("LLM response not JSON parsable: %s", content[:200])
-                return None, {"raw": result}
+                return None, {"raw": result, "request_payload": request_payload}
             level = parsed.get("probability_level")
             if isinstance(level, str):
                 level_up = level.strip().upper()
                 if level_up in {"LOW", "MEDIUM", "HIGH"}:
-                    return level_up, {"raw": parsed, "api_raw": result}
+                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
             logger.warning("LLM response missing/invalid probability_level: %s", parsed)
-            return None, {"raw": parsed, "api_raw": result}
+            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
         except Exception:
             logger.exception("Failed to process LLM response")
-            return None, {"raw": result}
+            return None, {"raw": result, "request_payload": request_payload}
