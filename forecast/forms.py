@@ -9,6 +9,8 @@ class UserHealthProfileForm(forms.ModelForm):
             'age',
             'prior_conditions',
             'email_notifications_enabled',
+            'migraine_predictions_enabled',
+            'sinusitis_predictions_enabled',
             'sensitivity_overall',
             'sensitivity_temperature',
             'sensitivity_humidity',
@@ -22,6 +24,12 @@ class UserHealthProfileForm(forms.ModelForm):
                 'placeholder': 'e.g., aura, sinus issues, hypertension, etc.'
             }),
             'email_notifications_enabled': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
+            'migraine_predictions_enabled': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
+            'sinusitis_predictions_enabled': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',
             }),
         }

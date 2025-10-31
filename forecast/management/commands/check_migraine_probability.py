@@ -66,35 +66,55 @@ class Command(BaseCommand):
                 forecasts = weather_service.update_forecast_for_location(location)
                 self.stdout.write(f"Created {len(forecasts)} forecast entries")
 
-                # Generate migraine prediction
-                self.stdout.write(f"Generating migraine prediction for {location}...")
-                probability, prediction = migraine_prediction_service.predict_migraine_probability(
-                    location=location,
-                    user=location.user
-                )
-                migraine_predictions[location.id] = {
-                    'probability': probability,
-                    'prediction': prediction
-                }
-                if prediction:
-                    self.stdout.write(f"Migraine Prediction: {probability} probability for {location}")
-                else:
-                    self.stdout.write(self.style.WARNING(f"No migraine prediction could be made for {location}"))
+                # Check user preferences for which predictions to generate
+                user = location.user
+                user_profile = None
+                migraine_enabled = True  # Default to enabled
+                sinusitis_enabled = True  # Default to enabled
 
-                # Generate sinusitis prediction
-                self.stdout.write(f"Generating sinusitis prediction for {location}...")
-                sin_probability, sin_prediction = sinusitis_prediction_service.predict_sinusitis_probability(
-                    location=location,
-                    user=location.user
-                )
-                sinusitis_predictions[location.id] = {
-                    'probability': sin_probability,
-                    'prediction': sin_prediction
-                }
-                if sin_prediction:
-                    self.stdout.write(f"Sinusitis Prediction: {sin_probability} probability for {location}")
+                try:
+                    user_profile = user.health_profile
+                    migraine_enabled = user_profile.migraine_predictions_enabled
+                    sinusitis_enabled = user_profile.sinusitis_predictions_enabled
+                except Exception:
+                    # If no health profile exists, default to both enabled
+                    pass
+
+                # Generate migraine prediction if enabled
+                if migraine_enabled:
+                    self.stdout.write(f"Generating migraine prediction for {location}...")
+                    probability, prediction = migraine_prediction_service.predict_migraine_probability(
+                        location=location,
+                        user=user
+                    )
+                    migraine_predictions[location.id] = {
+                        'probability': probability,
+                        'prediction': prediction
+                    }
+                    if prediction:
+                        self.stdout.write(f"Migraine Prediction: {probability} probability for {location}")
+                    else:
+                        self.stdout.write(self.style.WARNING(f"No migraine prediction could be made for {location}"))
                 else:
-                    self.stdout.write(self.style.WARNING(f"No sinusitis prediction could be made for {location}"))
+                    self.stdout.write(self.style.WARNING(f"Migraine predictions disabled for user {user.username}"))
+
+                # Generate sinusitis prediction if enabled
+                if sinusitis_enabled:
+                    self.stdout.write(f"Generating sinusitis prediction for {location}...")
+                    sin_probability, sin_prediction = sinusitis_prediction_service.predict_sinusitis_probability(
+                        location=location,
+                        user=user
+                    )
+                    sinusitis_predictions[location.id] = {
+                        'probability': sin_probability,
+                        'prediction': sin_prediction
+                    }
+                    if sin_prediction:
+                        self.stdout.write(f"Sinusitis Prediction: {sin_probability} probability for {location}")
+                    else:
+                        self.stdout.write(self.style.WARNING(f"No sinusitis prediction could be made for {location}"))
+                else:
+                    self.stdout.write(self.style.WARNING(f"Sinusitis predictions disabled for user {user.username}"))
 
         # Send notifications
         self.stdout.write("Checking and sending migraine notifications...")

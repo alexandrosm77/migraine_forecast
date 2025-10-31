@@ -26,19 +26,30 @@ class NotificationService:
     def check_and_send_notifications(self, predictions: dict):
         """
         Check migraine probability for all users and locations and send notifications if needed.
-        
+
         Returns:
             int: Number of notifications sent
         """
         # Get all locations with associated users
         locations = Location.objects.select_related('user').all()
-        
+
         notifications_sent = 0
-        
+
         for location in locations:
             # Skip if no user associated
             if not location.user:
                 continue
+
+            # Check if user has migraine predictions enabled
+            user = location.user
+            try:
+                user_profile = user.health_profile
+                if not user_profile.migraine_predictions_enabled:
+                    logger.debug(f"Migraine predictions disabled for user {user.username}, skipping notification")
+                    continue
+            except Exception:
+                # If no health profile exists, default to enabled
+                pass
 
             # Enforce per-location daily notification limit
             try:
@@ -75,7 +86,7 @@ class NotificationService:
 
             probability_level = location_prediction.get("probability", None)
             prediction = location_prediction.get("prediction", None)
-            
+
             if probability_level is not None and prediction is not None:
                 # Check if notification should be sent (HIGH/MEDIUM probability and not already sent)
                 if probability_level == 'HIGH' or probability_level == 'MEDIUM':
@@ -86,7 +97,7 @@ class NotificationService:
                         prediction.save()
 
                         notifications_sent += 1
-        
+
         logger.info(f"Sent {notifications_sent} migraine alert notifications")
         return notifications_sent
     
@@ -353,6 +364,17 @@ class NotificationService:
             # Skip if no user associated
             if not location.user:
                 continue
+
+            # Check if user has sinusitis predictions enabled
+            user = location.user
+            try:
+                user_profile = user.health_profile
+                if not user_profile.sinusitis_predictions_enabled:
+                    logger.debug(f"Sinusitis predictions disabled for user {user.username}, skipping notification")
+                    continue
+            except Exception:
+                # If no health profile exists, default to enabled
+                pass
 
             # Enforce per-location daily notification limit
             try:

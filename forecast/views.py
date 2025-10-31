@@ -29,32 +29,50 @@ def dashboard(request):
     # Get user's locations
     locations = Location.objects.filter(user=request.user)
 
-    # Get recent migraine predictions
-    recent_predictions = MigrainePrediction.objects.filter(
-        user=request.user
-    ).order_by('-prediction_time')[:5]
+    # Get user preferences
+    migraine_enabled = True
+    sinusitis_enabled = True
+    try:
+        user_profile = request.user.health_profile
+        migraine_enabled = user_profile.migraine_predictions_enabled
+        sinusitis_enabled = user_profile.sinusitis_predictions_enabled
+    except Exception:
+        # If no health profile exists, default to both enabled
+        pass
 
-    # Get recent sinusitis predictions
-    recent_sinusitis_predictions = SinusitisPrediction.objects.filter(
-        user=request.user
-    ).order_by('-prediction_time')[:5]
+    # Get recent migraine predictions (only if enabled)
+    recent_predictions = []
+    upcoming_high_risk = []
+    if migraine_enabled:
+        recent_predictions = MigrainePrediction.objects.filter(
+            user=request.user
+        ).order_by('-prediction_time')[:5]
 
-    # Check for high probability predictions in the next 24 hours
-    now = timezone.now()
-    upcoming_high_risk = MigrainePrediction.objects.filter(
-        user=request.user,
-        probability='HIGH',
-        target_time_start__gte=now,
-        target_time_start__lte=now + timedelta(hours=24)
-    ).order_by('target_time_start')
+        # Check for high probability predictions in the next 24 hours
+        now = timezone.now()
+        upcoming_high_risk = MigrainePrediction.objects.filter(
+            user=request.user,
+            probability='HIGH',
+            target_time_start__gte=now,
+            target_time_start__lte=now + timedelta(hours=24)
+        ).order_by('target_time_start')
 
-    # Check for high probability sinusitis predictions in the next 24 hours
-    upcoming_sinusitis_high_risk = SinusitisPrediction.objects.filter(
-        user=request.user,
-        probability='HIGH',
-        target_time_start__gte=now,
-        target_time_start__lte=now + timedelta(hours=24)
-    ).order_by('target_time_start')
+    # Get recent sinusitis predictions (only if enabled)
+    recent_sinusitis_predictions = []
+    upcoming_sinusitis_high_risk = []
+    if sinusitis_enabled:
+        recent_sinusitis_predictions = SinusitisPrediction.objects.filter(
+            user=request.user
+        ).order_by('-prediction_time')[:5]
+
+        # Check for high probability sinusitis predictions in the next 24 hours
+        now = timezone.now()
+        upcoming_sinusitis_high_risk = SinusitisPrediction.objects.filter(
+            user=request.user,
+            probability='HIGH',
+            target_time_start__gte=now,
+            target_time_start__lte=now + timedelta(hours=24)
+        ).order_by('target_time_start')
 
     context = {
         'locations': locations,
@@ -62,6 +80,8 @@ def dashboard(request):
         'recent_sinusitis_predictions': recent_sinusitis_predictions,
         'upcoming_high_risk': upcoming_high_risk,
         'upcoming_sinusitis_high_risk': upcoming_sinusitis_high_risk,
+        'migraine_enabled': migraine_enabled,
+        'sinusitis_enabled': sinusitis_enabled,
     }
 
     return render(request, 'forecast/dashboard.html', context)

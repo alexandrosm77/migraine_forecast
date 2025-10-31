@@ -70,6 +70,26 @@
                                         </div>
                                     </div>
                                     <div class="col-12">
+                                        <hr class="my-3">
+                                        <h6 class="mb-3">Prediction Services</h6>
+                                        <div class="form-check form-switch mb-2">
+                                            {{ form.migraine_predictions_enabled }}
+                                            <label class="form-check-label" for="id_migraine_predictions_enabled">
+                                                Enable Migraine Predictions
+                                            </label>
+                                            <div class="form-text">Generate and receive migraine predictions</div>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            {{ form.sinusitis_predictions_enabled }}
+                                            <label class="form-check-label" for="id_sinusitis_predictions_enabled">
+                                                Enable Sinusitis Predictions
+                                            </label>
+                                            <div class="form-text">Generate and receive sinusitis predictions</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <hr class="my-3">
+                                        <h6 class="mb-3">Sensitivity Settings</h6>
                                         <label for="id_sensitivity_overall" class="form-label">Overall Sensitivity</label>
                                         {{ form.sensitivity_overall }}
                                         <div class="form-text">0.5 = less sensitive, 1 = average, 2 = very sensitive</div>
