@@ -12,6 +12,8 @@ urlpatterns = [
     path('locations/<int:location_id>/delete/', views.location_delete, name='location_delete'),
     path('predictions/', views.prediction_list, name='prediction_list'),
     path('predictions/<int:prediction_id>/', views.prediction_detail, name='prediction_detail'),
+    path('sinusitis-predictions/', views.sinusitis_prediction_list, name='sinusitis_prediction_list'),
+    path('sinusitis-predictions/<int:prediction_id>/', views.sinusitis_prediction_detail, name='sinusitis_prediction_detail'),
     path('accounts/register/', views.register, name='register'),
     path('accounts/profile/', views.profile, name='profile'),
 ]

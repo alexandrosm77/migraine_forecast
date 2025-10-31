@@ -7,15 +7,17 @@ from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
 
-from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile
+from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction, UserHealthProfile
 from .weather_service import WeatherService
 from .prediction_service import MigrainePredictionService
+from .prediction_service_sinusitis import SinusitisPredictionService
 from .notification_service import NotificationService
 from .forms import UserHealthProfileForm
 
 # Initialize services
 weather_service = WeatherService()
 prediction_service = MigrainePredictionService()
+sinusitis_prediction_service = SinusitisPredictionService()
 
 def index(request):
     """Home page view."""
@@ -26,12 +28,17 @@ def dashboard(request):
     """User dashboard view."""
     # Get user's locations
     locations = Location.objects.filter(user=request.user)
-    
-    # Get recent predictions
+
+    # Get recent migraine predictions
     recent_predictions = MigrainePrediction.objects.filter(
         user=request.user
     ).order_by('-prediction_time')[:5]
-    
+
+    # Get recent sinusitis predictions
+    recent_sinusitis_predictions = SinusitisPrediction.objects.filter(
+        user=request.user
+    ).order_by('-prediction_time')[:5]
+
     # Check for high probability predictions in the next 24 hours
     now = timezone.now()
     upcoming_high_risk = MigrainePrediction.objects.filter(
@@ -40,13 +47,23 @@ def dashboard(request):
         target_time_start__gte=now,
         target_time_start__lte=now + timedelta(hours=24)
     ).order_by('target_time_start')
-    
+
+    # Check for high probability sinusitis predictions in the next 24 hours
+    upcoming_sinusitis_high_risk = SinusitisPrediction.objects.filter(
+        user=request.user,
+        probability='HIGH',
+        target_time_start__gte=now,
+        target_time_start__lte=now + timedelta(hours=24)
+    ).order_by('target_time_start')
+
     context = {
         'locations': locations,
         'recent_predictions': recent_predictions,
+        'recent_sinusitis_predictions': recent_sinusitis_predictions,
         'upcoming_high_risk': upcoming_high_risk,
+        'upcoming_sinusitis_high_risk': upcoming_sinusitis_high_risk,
     }
-    
+
     return render(request, 'forecast/dashboard.html', context)
 
 @login_required
@@ -235,6 +252,52 @@ def prediction_detail(request, prediction_id):
     }
     
     return render(request, 'forecast/prediction_detail.html', context)
+
+@login_required
+def sinusitis_prediction_list(request):
+    """View for listing sinusitis predictions."""
+    predictions_queryset = SinusitisPrediction.objects.filter(
+        user=request.user
+    ).order_by('-prediction_time')
+
+    # Pagination - show 20 predictions per page
+    paginator = Paginator(predictions_queryset, 20)
+    page = request.GET.get('page', 1)
+
+    try:
+        predictions = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page
+        predictions = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range, deliver last page of results
+        predictions = paginator.page(paginator.num_pages)
+
+    context = {
+        'predictions': predictions,
+    }
+
+    return render(request, 'forecast/sinusitis_prediction_list.html', context)
+
+@login_required
+def sinusitis_prediction_detail(request, prediction_id):
+    """View for sinusitis prediction details."""
+    prediction = get_object_or_404(SinusitisPrediction, id=prediction_id, user=request.user)
+
+    # Build detailed factors similar to email
+    notif = NotificationService()
+    try:
+        detailed_factors = notif._get_detailed_sinusitis_factors(prediction)
+    except Exception:
+        detailed_factors = {'factors': [], 'total_score': 0, 'contributing_factors_count': 0}
+    wf = prediction.weather_factors or {}
+
+    context = {
+        'prediction': prediction,
+        'detailed_factors': detailed_factors,
+    }
+
+    return render(request, 'forecast/sinusitis_prediction_detail.html', context)
 
 
 def register(request):

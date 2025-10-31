@@ -70,7 +70,7 @@ class MigrainePrediction(models.Model):
         ('MEDIUM', 'Medium'),
         ('HIGH', 'High'),
     ]
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='predictions')
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='predictions')
     forecast = models.ForeignKey(WeatherForecast, on_delete=models.CASCADE, related_name='predictions')
@@ -80,9 +80,29 @@ class MigrainePrediction(models.Model):
     probability = models.CharField(max_length=10, choices=PROBABILITY_CHOICES)
     weather_factors = JSONField(default=dict, null=True, blank=True)
     notification_sent = models.BooleanField(default=False)
-    
+
     def __str__(self):
         return f"Migraine prediction for {self.user.username} at {self.location} ({self.probability})"
+
+class SinusitisPrediction(models.Model):
+    PROBABILITY_CHOICES = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sinusitis_predictions')
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='sinusitis_predictions')
+    forecast = models.ForeignKey(WeatherForecast, on_delete=models.CASCADE, related_name='sinusitis_predictions')
+    prediction_time = models.DateTimeField(auto_now_add=True)  # When prediction was made
+    target_time_start = models.DateTimeField()  # Start of prediction window (3-6 hours)
+    target_time_end = models.DateTimeField()    # End of prediction window
+    probability = models.CharField(max_length=10, choices=PROBABILITY_CHOICES)
+    weather_factors = JSONField(default=dict, null=True, blank=True)
+    notification_sent = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Sinusitis prediction for {self.user.username} at {self.location} ({self.probability})"
 
 class WeatherComparisonReport(models.Model):
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='comparison_reports')

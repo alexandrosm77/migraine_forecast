@@ -5,6 +5,7 @@ from forecast.models import (
     Location,
     WeatherForecast,
     MigrainePrediction,
+    SinusitisPrediction,
     UserHealthProfile,
     LLMResponse,
 )
@@ -47,6 +48,24 @@ class WeatherForecastAdmin(admin.ModelAdmin):
 
 @admin.register(MigrainePrediction)
 class MigrainePredictionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'location', 'probability', 'prediction_time', 'notification_sent')
+    search_fields = ('user__username', 'location__city')
+    list_filter = ('probability', 'notification_sent', 'prediction_time')
+    date_hierarchy = 'prediction_time'
+    formfield_overrides = {
+        JSONField: {'widget': JSONEditorWidget(options={'mode': 'text', 'modes': ['text', 'tree', 'view']})},
+    }
+
+    def get_queryset(self, request):
+        """Filter predictions to show only the user's own predictions unless they're a superuser."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(user=request.user)
+
+
+@admin.register(SinusitisPrediction)
+class SinusitisPredictionAdmin(admin.ModelAdmin):
     list_display = ('user', 'location', 'probability', 'prediction_time', 'notification_sent')
     search_fields = ('user__username', 'location__city')
     list_filter = ('probability', 'notification_sent', 'prediction_time')
