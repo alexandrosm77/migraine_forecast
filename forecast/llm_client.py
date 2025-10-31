@@ -99,53 +99,53 @@ class LLMClient:
         ]
 
         # Add temporal context if available (compact format)
-        if context and 'forecast_time' in context:
-            forecast_info = context['forecast_time']
+        if context and "forecast_time" in context:
+            forecast_info = context["forecast_time"]
             user_prompt_parts.append(
                 f"Time: {forecast_info.get('day_period', '')} {forecast_info.get('hours_ahead', '')}h ahead"
             )
 
         # Add user sensitivity if available
         if user_profile:
-            sensitivity = user_profile.get('sensitivity_overall', 1.0)
+            sensitivity = user_profile.get("sensitivity_overall", 1.0)
             if sensitivity != 1.0:
                 user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
 
         # Add key weather changes from context if available
-        if context and 'aggregates' in context:
-            agg = context['aggregates']
-            changes = context.get('changes', {})
+        if context and "aggregates" in context:
+            agg = context["aggregates"]
+            changes = context.get("changes", {})
             weather_summary = []
-            if changes.get('temperature_change'):
+            if changes.get("temperature_change"):
                 weather_summary.append(f"temp Δ{changes['temperature_change']:.1f}°C")
-            if changes.get('pressure_change'):
+            if changes.get("pressure_change"):
                 weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
-            if agg.get('avg_forecast_humidity'):
+            if agg.get("avg_forecast_humidity"):
                 weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
             if weather_summary:
                 user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
 
         # Add summarized previous predictions history if available
-        if context and 'previous_predictions' in context:
-            prev_summary = context['previous_predictions']
-            if prev_summary.get('count', 0) > 0:
+        if context and "previous_predictions" in context:
+            prev_summary = context["previous_predictions"]
+            if prev_summary.get("count", 0) > 0:
                 # Compact summary: just counts by level in last 24h
                 summary_parts = []
-                if prev_summary.get('high_count', 0) > 0:
+                if prev_summary.get("high_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['high_count']}H")
-                if prev_summary.get('medium_count', 0) > 0:
+                if prev_summary.get("medium_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['medium_count']}M")
-                if prev_summary.get('low_count', 0) > 0:
+                if prev_summary.get("low_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['low_count']}L")
                 if summary_parts:
                     user_prompt_parts.append(f"Last 24h predictions: {'/'.join(summary_parts)}")
 
         # Add weather trend information if available
-        if context and 'weather_trend' in context:
-            trend = context['weather_trend']
+        if context and "weather_trend" in context:
+            trend = context["weather_trend"]
             trend_parts = []
-            temp_trend = trend.get('temp_trend', 0)
-            pressure_trend = trend.get('pressure_trend', 0)
+            temp_trend = trend.get("temp_trend", 0)
+            pressure_trend = trend.get("pressure_trend", 0)
 
             if temp_trend != 0:
                 direction = "rising" if temp_trend > 0 else "falling"
@@ -235,53 +235,53 @@ class LLMClient:
         ]
 
         # Add temporal context if available (compact format)
-        if context and 'forecast_time' in context:
-            forecast_info = context['forecast_time']
+        if context and "forecast_time" in context:
+            forecast_info = context["forecast_time"]
             user_prompt_parts.append(
                 f"Time: {forecast_info.get('day_period', '')} {forecast_info.get('hours_ahead', '')}h ahead"
             )
 
         # Add user sensitivity if available
         if user_profile:
-            sensitivity = user_profile.get('sensitivity_overall', 1.0)
+            sensitivity = user_profile.get("sensitivity_overall", 1.0)
             if sensitivity != 1.0:
                 user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
 
         # Add key weather changes from context if available
-        if context and 'aggregates' in context:
-            agg = context['aggregates']
-            changes = context.get('changes', {})
+        if context and "aggregates" in context:
+            agg = context["aggregates"]
+            changes = context.get("changes", {})
             weather_summary = []
-            if changes.get('temperature_change'):
+            if changes.get("temperature_change"):
                 weather_summary.append(f"temp Δ{changes['temperature_change']:.1f}°C")
-            if changes.get('pressure_change'):
+            if changes.get("pressure_change"):
                 weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
-            if agg.get('avg_forecast_humidity'):
+            if agg.get("avg_forecast_humidity"):
                 weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
             if weather_summary:
                 user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
 
         # Add summarized previous predictions history if available
-        if context and 'previous_predictions' in context:
-            prev_summary = context['previous_predictions']
-            if prev_summary.get('count', 0) > 0:
+        if context and "previous_predictions" in context:
+            prev_summary = context["previous_predictions"]
+            if prev_summary.get("count", 0) > 0:
                 # Compact summary: just counts by level in last 24h
                 summary_parts = []
-                if prev_summary.get('high_count', 0) > 0:
+                if prev_summary.get("high_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['high_count']}H")
-                if prev_summary.get('medium_count', 0) > 0:
+                if prev_summary.get("medium_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['medium_count']}M")
-                if prev_summary.get('low_count', 0) > 0:
+                if prev_summary.get("low_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['low_count']}L")
                 if summary_parts:
                     user_prompt_parts.append(f"Last 24h predictions: {'/'.join(summary_parts)}")
 
         # Add weather trend information if available
-        if context and 'weather_trend' in context:
-            trend = context['weather_trend']
+        if context and "weather_trend" in context:
+            trend = context["weather_trend"]
             trend_parts = []
-            temp_trend = trend.get('temp_trend', 0)
-            pressure_trend = trend.get('pressure_trend', 0)
+            temp_trend = trend.get("temp_trend", 0)
+            pressure_trend = trend.get("pressure_trend", 0)
 
             if temp_trend != 0:
                 direction = "rising" if temp_trend > 0 else "falling"

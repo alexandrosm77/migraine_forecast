@@ -83,8 +83,6 @@ jobs:
         name: Run linting checks
         run: |
           docker run --rm \
-            -v $(pwd):/app \
-            -w /app \
             alexandrosm77/migraine_forecast:latest \
             sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
 
@@ -92,8 +90,6 @@ jobs:
         name: Run unit tests in Docker container
         run: |
           docker run --rm \
-            -v $(pwd):/app \
-            -w /app \
             alexandrosm77/migraine_forecast:latest \
             python manage.py test forecast.tests --verbosity=2
 
@@ -101,7 +97,5 @@ jobs:
         name: Run integration tests in Docker container
         run: |
           docker run --rm \
-            -v $(pwd):/app \
-            -w /app \
             alexandrosm77/migraine_forecast:latest \
             python manage.py test forecast.integration_tests --verbosity=2

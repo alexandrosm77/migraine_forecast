@@ -8,27 +8,28 @@ from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
 from forecast.notification_service import NotificationService
 
+
 class Command(BaseCommand):
-    help = 'Check migraine and sinusitis probability and send notifications'
+    help = "Check migraine and sinusitis probability and send notifications"
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--notify-only',
-            action='store_true',
-            help='Only send notifications without updating forecasts',
+            "--notify-only",
+            action="store_true",
+            help="Only send notifications without updating forecasts",
         )
         parser.add_argument(
-            '--test-notification',
+            "--test-notification",
             type=str,
-            choices=['high', 'medium', 'low', 'none'],
-            help='Send a test notification with fake prediction (high/medium/low/none)',
+            choices=["high", "medium", "low", "none"],
+            help="Send a test notification with fake prediction (high/medium/low/none)",
         )
         parser.add_argument(
-            '--test-type',
+            "--test-type",
             type=str,
-            choices=['migraine', 'sinusitis', 'both'],
-            default='both',
-            help='Type of test notification to send (migraine/sinusitis/both)',
+            choices=["migraine", "sinusitis", "both"],
+            default="both",
+            help="Type of test notification to send (migraine/sinusitis/both)",
         )
 
     def handle(self, *args, **options):
@@ -40,11 +41,13 @@ class Command(BaseCommand):
         3. Send email notifications for high-risk predictions
         """
         # Handle test notification mode
-        if options.get('test_notification'):
+        if options.get("test_notification"):
             self._handle_test_notification(options)
             return
 
-        self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] Starting migraine and sinusitis probability check..."))
+        self.stdout.write(
+            self.style.SUCCESS(f"[{timezone.now()}] Starting migraine and sinusitis probability check...")
+        )
 
         # Initialize services
         weather_service = WeatherService()
@@ -59,7 +62,7 @@ class Command(BaseCommand):
         migraine_predictions = {}
         sinusitis_predictions = {}
 
-        if not options['notify_only']:
+        if not options["notify_only"]:
             # Update forecasts for all locations
             for location in locations:
                 self.stdout.write(f"Updating forecast for {location}...")
@@ -84,13 +87,9 @@ class Command(BaseCommand):
                 if migraine_enabled:
                     self.stdout.write(f"Generating migraine prediction for {location}...")
                     probability, prediction = migraine_prediction_service.predict_migraine_probability(
-                        location=location,
-                        user=user
+                        location=location, user=user
                     )
-                    migraine_predictions[location.id] = {
-                        'probability': probability,
-                        'prediction': prediction
-                    }
+                    migraine_predictions[location.id] = {"probability": probability, "prediction": prediction}
                     if prediction:
                         self.stdout.write(f"Migraine Prediction: {probability} probability for {location}")
                     else:
@@ -102,13 +101,9 @@ class Command(BaseCommand):
                 if sinusitis_enabled:
                     self.stdout.write(f"Generating sinusitis prediction for {location}...")
                     sin_probability, sin_prediction = sinusitis_prediction_service.predict_sinusitis_probability(
-                        location=location,
-                        user=user
+                        location=location, user=user
                     )
-                    sinusitis_predictions[location.id] = {
-                        'probability': sin_probability,
-                        'prediction': sin_prediction
-                    }
+                    sinusitis_predictions[location.id] = {"probability": sin_probability, "prediction": sin_prediction}
                     if sin_prediction:
                         self.stdout.write(f"Sinusitis Prediction: {sin_probability} probability for {location}")
                     else:
@@ -119,10 +114,11 @@ class Command(BaseCommand):
         # Send combined notifications (single email for users with both predictions)
         self.stdout.write("Checking and sending combined notifications...")
         notifications_sent = notification_service.check_and_send_combined_notifications(
-            migraine_predictions,
-            sinusitis_predictions
+            migraine_predictions, sinusitis_predictions
         )
-        self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] Check completed. Total notifications sent: {notifications_sent}"))
+        self.stdout.write(
+            self.style.SUCCESS(f"[{timezone.now()}] Check completed. Total notifications sent: {notifications_sent}")
+        )
 
     def _handle_test_notification(self, options):
         """
@@ -131,10 +127,12 @@ class Command(BaseCommand):
         Args:
             options: Command options containing test_notification and test_type
         """
-        test_level = options['test_notification'].upper()
-        test_type = options.get('test_type', 'both')
+        test_level = options["test_notification"].upper()
+        test_type = options.get("test_type", "both")
 
-        self.stdout.write(self.style.WARNING(f"[{timezone.now()}] TEST MODE: Creating fake {test_level} risk notification(s)"))
+        self.stdout.write(
+            self.style.WARNING(f"[{timezone.now()}] TEST MODE: Creating fake {test_level} risk notification(s)")
+        )
 
         # Get all locations
         locations = Location.objects.all()
@@ -155,33 +153,33 @@ class Command(BaseCommand):
                 location=location,
                 target_time=now + timedelta(hours=3),
                 defaults={
-                    'forecast_time': now,
-                    'temperature': 20.0,
-                    'humidity': 65.0,
-                    'pressure': 1013.0,
-                    'wind_speed': 10.0,
-                    'precipitation': 0.0,
-                    'cloud_cover': 50.0,
-                }
+                    "forecast_time": now,
+                    "temperature": 20.0,
+                    "humidity": 65.0,
+                    "pressure": 1013.0,
+                    "wind_speed": 10.0,
+                    "precipitation": 0.0,
+                    "cloud_cover": 50.0,
+                },
             )
 
             # Create fake weather factors based on test level
             weather_factors = {
-                'test_mode': True,
-                'test_level': test_level,
-                'temperature_change': 0.5 if test_level == 'LOW' else (0.7 if test_level == 'MEDIUM' else 0.9),
-                'humidity_extreme': 0.3 if test_level == 'LOW' else (0.6 if test_level == 'MEDIUM' else 0.8),
-                'pressure_change': 0.4 if test_level == 'LOW' else (0.7 if test_level == 'MEDIUM' else 0.95),
-                'llm_analysis_text': f'This is a TEST {test_level} risk notification. Weather conditions are simulated for testing purposes.',
-                'llm_prevention_tips': [
-                    'This is a test notification',
-                    'No real weather analysis was performed',
-                    f'Test level: {test_level}'
-                ]
+                "test_mode": True,
+                "test_level": test_level,
+                "temperature_change": 0.5 if test_level == "LOW" else (0.7 if test_level == "MEDIUM" else 0.9),
+                "humidity_extreme": 0.3 if test_level == "LOW" else (0.6 if test_level == "MEDIUM" else 0.8),
+                "pressure_change": 0.4 if test_level == "LOW" else (0.7 if test_level == "MEDIUM" else 0.95),
+                "llm_analysis_text": f"This is a TEST {test_level} risk notification. Weather conditions are simulated for testing purposes.",
+                "llm_prevention_tips": [
+                    "This is a test notification",
+                    "No real weather analysis was performed",
+                    f"Test level: {test_level}",
+                ],
             }
 
             # Create migraine test prediction if requested
-            if test_type in ['migraine', 'both'] and test_level != 'NONE':
+            if test_type in ["migraine", "both"] and test_level != "NONE":
                 migraine_prediction = MigrainePrediction.objects.create(
                     user=user,
                     location=location,
@@ -190,20 +188,24 @@ class Command(BaseCommand):
                     target_time_end=now + timedelta(hours=6),
                     probability=test_level,
                     weather_factors=weather_factors,
-                    notification_sent=False
+                    notification_sent=False,
                 )
 
                 # Send the test notification
                 if notification_service.send_migraine_alert(migraine_prediction):
-                    self.stdout.write(self.style.SUCCESS(f"✓ Sent test MIGRAINE {test_level} notification to {user.email}"))
+                    self.stdout.write(
+                        self.style.SUCCESS(f"✓ Sent test MIGRAINE {test_level} notification to {user.email}")
+                    )
                     migraine_prediction.notification_sent = True
                     migraine_prediction.save()
                     total_sent += 1
                 else:
-                    self.stdout.write(self.style.WARNING(f"✗ Failed to send test MIGRAINE notification to {user.email}"))
+                    self.stdout.write(
+                        self.style.WARNING(f"✗ Failed to send test MIGRAINE notification to {user.email}")
+                    )
 
             # Create sinusitis test prediction if requested
-            if test_type in ['sinusitis', 'both'] and test_level != 'NONE':
+            if test_type in ["sinusitis", "both"] and test_level != "NONE":
                 sinusitis_prediction = SinusitisPrediction.objects.create(
                     user=user,
                     location=location,
@@ -212,19 +214,29 @@ class Command(BaseCommand):
                     target_time_end=now + timedelta(hours=6),
                     probability=test_level,
                     weather_factors=weather_factors,
-                    notification_sent=False
+                    notification_sent=False,
                 )
 
                 # Send the test notification
                 if notification_service.send_sinusitis_alert(sinusitis_prediction):
-                    self.stdout.write(self.style.SUCCESS(f"✓ Sent test SINUSITIS {test_level} notification to {user.email}"))
+                    self.stdout.write(
+                        self.style.SUCCESS(f"✓ Sent test SINUSITIS {test_level} notification to {user.email}")
+                    )
                     sinusitis_prediction.notification_sent = True
                     sinusitis_prediction.save()
                     total_sent += 1
                 else:
-                    self.stdout.write(self.style.WARNING(f"✗ Failed to send test SINUSITIS notification to {user.email}"))
+                    self.stdout.write(
+                        self.style.WARNING(f"✗ Failed to send test SINUSITIS notification to {user.email}")
+                    )
 
-        if test_level == 'NONE':
-            self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] TEST MODE: No notifications sent (test level = NONE)"))
+        if test_level == "NONE":
+            self.stdout.write(
+                self.style.SUCCESS(f"[{timezone.now()}] TEST MODE: No notifications sent (test level = NONE)")
+            )
         else:
-            self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] TEST MODE completed. Total test notifications sent: {total_sent}"))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"[{timezone.now()}] TEST MODE completed. Total test notifications sent: {total_sent}"
+                )
+            )

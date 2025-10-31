@@ -12,6 +12,7 @@ from .weather_service import WeatherService
 
 logger = logging.getLogger(__name__)
 
+
 class NotificationService:
     """
     Service for sending email notifications about migraine and sinusitis predictions.
@@ -22,7 +23,7 @@ class NotificationService:
         self.prediction_service = MigrainePredictionService()
         self.sinusitis_prediction_service = SinusitisPredictionService()
         self.weather_service = WeatherService()
-    
+
     def check_and_send_notifications(self, predictions: dict):
         """
         Check migraine probability for all users and locations and send notifications if needed.
@@ -31,7 +32,7 @@ class NotificationService:
             int: Number of notifications sent
         """
         # Get all locations with associated users
-        locations = Location.objects.select_related('user').all()
+        locations = Location.objects.select_related("user").all()
 
         notifications_sent = 0
 
@@ -53,7 +54,7 @@ class NotificationService:
 
             # Enforce per-location daily notification limit
             try:
-                limit = int(getattr(location, 'daily_notification_limit', 1))
+                limit = int(getattr(location, "daily_notification_limit", 1))
             except (TypeError, ValueError):
                 limit = 1
             if limit is None:
@@ -63,6 +64,7 @@ class NotificationService:
                 continue
 
             from django.utils import timezone
+
             now = timezone.now()
             start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = start_of_day + timedelta(days=1)
@@ -89,7 +91,7 @@ class NotificationService:
 
             if probability_level is not None and prediction is not None:
                 # Check if notification should be sent (HIGH/MEDIUM probability and not already sent)
-                if probability_level == 'HIGH' or probability_level == 'MEDIUM':
+                if probability_level == "HIGH" or probability_level == "MEDIUM":
                     if not prediction.notification_sent and sent_today < limit:
                         self.send_migraine_alert(prediction)
 
@@ -100,7 +102,7 @@ class NotificationService:
 
         logger.info(f"Sent {notifications_sent} migraine alert notifications")
         return notifications_sent
-    
+
     def send_migraine_alert(self, prediction):
         """
         Send migraine alert email for a specific prediction.
@@ -124,7 +126,7 @@ class NotificationService:
 
         # Check if user has email notifications enabled
         try:
-            if hasattr(user, 'health_profile') and not user.health_profile.email_notifications_enabled:
+            if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
                 logger.info(f"Skipping migraine alert for user {user.username}: Email notifications disabled")
                 return False
         except Exception as e:
@@ -136,33 +138,33 @@ class NotificationService:
 
         # Prepare email context
         context = {
-            'user': user,
-            'location': location,
-            'prediction': prediction,
-            'forecast': forecast,
-            'start_time': prediction.target_time_start,
-            'end_time': prediction.target_time_end,
-            'temperature': forecast.temperature,
-            'humidity': forecast.humidity,
-            'pressure': forecast.pressure,
-            'precipitation': forecast.precipitation,
-            'cloud_cover': forecast.cloud_cover,
-            'probability_level': probability_level,
-            'weather_factors': weather_factors,
-            'detailed_factors': detailed_factors,
-            'llm_analysis_text': (weather_factors or {}).get('llm_analysis_text'),
-            'llm_prevention_tips': (weather_factors or {}).get('llm_prevention_tips') or [],
+            "user": user,
+            "location": location,
+            "prediction": prediction,
+            "forecast": forecast,
+            "start_time": prediction.target_time_start,
+            "end_time": prediction.target_time_end,
+            "temperature": forecast.temperature,
+            "humidity": forecast.humidity,
+            "pressure": forecast.pressure,
+            "precipitation": forecast.precipitation,
+            "cloud_cover": forecast.cloud_cover,
+            "probability_level": probability_level,
+            "weather_factors": weather_factors,
+            "detailed_factors": detailed_factors,
+            "llm_analysis_text": (weather_factors or {}).get("llm_analysis_text"),
+            "llm_prevention_tips": (weather_factors or {}).get("llm_prevention_tips") or [],
         }
-        
+
         # Render email content
-        factor_count = detailed_factors.get('contributing_factors_count', 0)
+        factor_count = detailed_factors.get("contributing_factors_count", 0)
         if factor_count > 0:
             subject = f"{probability_level} Migraine Alert for {location.city} - {factor_count} Weather Factor{'s' if factor_count != 1 else ''}"
         else:
             subject = f"{probability_level} Migraine Alert for {location.city}"
-        html_message = render_to_string('forecast/email/migraine_alert.html', context)
+        html_message = render_to_string("forecast/email/migraine_alert.html", context)
         plain_message = strip_tags(html_message)
-        
+
         try:
             # Send email
             send_mail(
@@ -178,7 +180,7 @@ class NotificationService:
         except Exception as e:
             logger.error(f"Failed to send migraine alert email: {e}")
             return False
-    
+
     def send_combined_alert(self, migraine_prediction=None, sinusitis_prediction=None):
         """
         Send a combined alert email for both migraine and sinusitis predictions.
@@ -208,7 +210,7 @@ class NotificationService:
 
         # Check if user has email notifications enabled
         try:
-            if hasattr(user, 'health_profile') and not user.health_profile.email_notifications_enabled:
+            if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
                 logger.info(f"Skipping combined alert for user {user.username}: Email notifications disabled")
                 return False
         except Exception as e:
@@ -217,11 +219,11 @@ class NotificationService:
 
         # Prepare context for email
         context = {
-            'user': user,
-            'location': location,
-            'forecast': forecast,
-            'start_time': prediction.target_time_start,
-            'end_time': prediction.target_time_end,
+            "user": user,
+            "location": location,
+            "forecast": forecast,
+            "start_time": prediction.target_time_start,
+            "end_time": prediction.target_time_end,
         }
 
         # Add migraine-specific data if available
@@ -229,26 +231,30 @@ class NotificationService:
             migraine_detailed_factors = self._get_detailed_weather_factors(migraine_prediction)
             migraine_weather_factors = migraine_prediction.weather_factors or {}
 
-            context.update({
-                'migraine_prediction': migraine_prediction,
-                'migraine_probability_level': migraine_prediction.probability,
-                'migraine_detailed_factors': migraine_detailed_factors,
-                'migraine_llm_analysis_text': migraine_weather_factors.get('llm_analysis_text'),
-                'migraine_llm_prevention_tips': migraine_weather_factors.get('llm_prevention_tips') or [],
-            })
+            context.update(
+                {
+                    "migraine_prediction": migraine_prediction,
+                    "migraine_probability_level": migraine_prediction.probability,
+                    "migraine_detailed_factors": migraine_detailed_factors,
+                    "migraine_llm_analysis_text": migraine_weather_factors.get("llm_analysis_text"),
+                    "migraine_llm_prevention_tips": migraine_weather_factors.get("llm_prevention_tips") or [],
+                }
+            )
 
         # Add sinusitis-specific data if available
         if sinusitis_prediction:
             sinusitis_detailed_factors = self._get_detailed_sinusitis_factors(sinusitis_prediction)
             sinusitis_weather_factors = sinusitis_prediction.weather_factors or {}
 
-            context.update({
-                'sinusitis_prediction': sinusitis_prediction,
-                'sinusitis_probability_level': sinusitis_prediction.probability,
-                'sinusitis_detailed_factors': sinusitis_detailed_factors,
-                'sinusitis_llm_analysis_text': sinusitis_weather_factors.get('llm_analysis_text'),
-                'sinusitis_llm_prevention_tips': sinusitis_weather_factors.get('llm_prevention_tips') or [],
-            })
+            context.update(
+                {
+                    "sinusitis_prediction": sinusitis_prediction,
+                    "sinusitis_probability_level": sinusitis_prediction.probability,
+                    "sinusitis_detailed_factors": sinusitis_detailed_factors,
+                    "sinusitis_llm_analysis_text": sinusitis_weather_factors.get("llm_analysis_text"),
+                    "sinusitis_llm_prevention_tips": sinusitis_weather_factors.get("llm_prevention_tips") or [],
+                }
+            )
 
         # Build subject line
         subject_parts = []
@@ -260,7 +266,7 @@ class NotificationService:
         subject = f"Health Alert: {' & '.join(subject_parts)} for {location.city}"
 
         # Render email content
-        html_message = render_to_string('forecast/email/combined_alert.html', context)
+        html_message = render_to_string("forecast/email/combined_alert.html", context)
         plain_message = strip_tags(html_message)
 
         try:
@@ -273,7 +279,9 @@ class NotificationService:
                 html_message=html_message,
                 fail_silently=False,
             )
-            logger.info(f"Sent combined alert email to {user.email} (migraine: {bool(migraine_prediction)}, sinusitis: {bool(sinusitis_prediction)})")
+            logger.info(
+                f"Sent combined alert email to {user.email} (migraine: {bool(migraine_prediction)}, sinusitis: {bool(sinusitis_prediction)})"
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to send combined alert email: {e}")
@@ -335,114 +343,127 @@ class NotificationService:
         forecasts = WeatherForecast.objects.filter(
             location=prediction.location,
             target_time__gte=prediction.target_time_start,
-            target_time__lte=prediction.target_time_end
-        ).order_by('target_time')
+            target_time__lte=prediction.target_time_end,
+        ).order_by("target_time")
 
         # Get previous forecasts for comparison
         previous_forecasts = WeatherForecast.objects.filter(
-            location=prediction.location,
-            target_time__lt=prediction.target_time_start
-        ).order_by('-target_time')[:6]
+            location=prediction.location, target_time__lt=prediction.target_time_start
+        ).order_by("-target_time")[:6]
 
         if not forecasts:
-            return {'factors': detailed_factors, 'total_score': 0}
+            return {"factors": detailed_factors, "total_score": 0}
 
         # Temperature change analysis
-        if weather_factors.get('temperature_change', 0) > 0 and previous_forecasts:
+        if weather_factors.get("temperature_change", 0) > 0 and previous_forecasts:
             avg_prev_temp = np.mean([f.temperature for f in previous_forecasts])
             avg_forecast_temp = np.mean([f.temperature for f in forecasts])
             temp_change = abs(avg_forecast_temp - avg_prev_temp)
 
-            if temp_change >= thresholds['temperature_change']:
+            if temp_change >= thresholds["temperature_change"]:
                 direction = "increase" if avg_forecast_temp > avg_prev_temp else "decrease"
-                detailed_factors.append({
-                    'name': 'Temperature Change',
-                    'score': weather_factors['temperature_change'],
-                    'weight': weights['temperature_change'],
-                    'explanation': f"Temperature will {direction} by {temp_change:.1f}°C (from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). Changes of {thresholds['temperature_change']}°C or more can trigger migraines.",
-                    'severity': 'high' if temp_change >= thresholds['temperature_change'] * 2 else 'medium'
-                })
+                detailed_factors.append(
+                    {
+                        "name": "Temperature Change",
+                        "score": weather_factors["temperature_change"],
+                        "weight": weights["temperature_change"],
+                        "explanation": f"Temperature will {direction} by {temp_change:.1f}°C (from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). Changes of {thresholds['temperature_change']}°C or more can trigger migraines.",
+                        "severity": "high" if temp_change >= thresholds["temperature_change"] * 2 else "medium",
+                    }
+                )
 
         # Humidity analysis
-        if weather_factors.get('humidity_extreme', 0) > 0:
+        if weather_factors.get("humidity_extreme", 0) > 0:
             avg_humidity = np.mean([f.humidity for f in forecasts])
 
-            if avg_humidity >= thresholds['humidity_high']:
-                detailed_factors.append({
-                    'name': 'High Humidity',
-                    'score': weather_factors['humidity_extreme'],
-                    'weight': weights['humidity_extreme'],
-                    'explanation': f"Humidity will be {avg_humidity:.1f}%, which is above the {thresholds['humidity_high']}% threshold. High humidity can increase migraine risk.",
-                    'severity': 'high' if avg_humidity >= 85 else 'medium'
-                })
-            elif avg_humidity <= thresholds['humidity_low']:
-                detailed_factors.append({
-                    'name': 'Low Humidity',
-                    'score': weather_factors['humidity_extreme'],
-                    'weight': weights['humidity_extreme'],
-                    'explanation': f"Humidity will be {avg_humidity:.1f}%, which is below the {thresholds['humidity_low']}% threshold. Very dry air can trigger migraines.",
-                    'severity': 'high' if avg_humidity <= 20 else 'medium'
-                })
+            if avg_humidity >= thresholds["humidity_high"]:
+                detailed_factors.append(
+                    {
+                        "name": "High Humidity",
+                        "score": weather_factors["humidity_extreme"],
+                        "weight": weights["humidity_extreme"],
+                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is above the {thresholds['humidity_high']}% threshold. High humidity can increase migraine risk.",
+                        "severity": "high" if avg_humidity >= 85 else "medium",
+                    }
+                )
+            elif avg_humidity <= thresholds["humidity_low"]:
+                detailed_factors.append(
+                    {
+                        "name": "Low Humidity",
+                        "score": weather_factors["humidity_extreme"],
+                        "weight": weights["humidity_extreme"],
+                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is below the {thresholds['humidity_low']}% threshold. Very dry air can trigger migraines.",
+                        "severity": "high" if avg_humidity <= 20 else "medium",
+                    }
+                )
 
         # Pressure change analysis
-        if weather_factors.get('pressure_change', 0) > 0 and previous_forecasts:
+        if weather_factors.get("pressure_change", 0) > 0 and previous_forecasts:
             avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
             avg_forecast_pressure = np.mean([f.pressure for f in forecasts])
             pressure_change = abs(avg_forecast_pressure - avg_prev_pressure)
 
-            if pressure_change >= thresholds['pressure_change']:
+            if pressure_change >= thresholds["pressure_change"]:
                 direction = "increase" if avg_forecast_pressure > avg_prev_pressure else "drop"
-                detailed_factors.append({
-                    'name': 'Barometric Pressure Change',
-                    'score': weather_factors['pressure_change'],
-                    'weight': weights['pressure_change'],
-                    'explanation': f"Barometric pressure will {direction} by {pressure_change:.1f} hPa (from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). Pressure changes of {thresholds['pressure_change']} hPa or more are strong migraine triggers.",
-                    'severity': 'high' if pressure_change >= thresholds['pressure_change'] * 2 else 'medium'
-                })
+                detailed_factors.append(
+                    {
+                        "name": "Barometric Pressure Change",
+                        "score": weather_factors["pressure_change"],
+                        "weight": weights["pressure_change"],
+                        "explanation": f"Barometric pressure will {direction} by {pressure_change:.1f} hPa (from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). Pressure changes of {thresholds['pressure_change']} hPa or more are strong migraine triggers.",
+                        "severity": "high" if pressure_change >= thresholds["pressure_change"] * 2 else "medium",
+                    }
+                )
 
         # Low pressure analysis
-        if weather_factors.get('pressure_low', 0) > 0:
+        if weather_factors.get("pressure_low", 0) > 0:
             avg_pressure = np.mean([f.pressure for f in forecasts])
-            detailed_factors.append({
-                'name': 'Low Barometric Pressure',
-                'score': weather_factors['pressure_low'],
-                'weight': weights['pressure_low'],
-                'explanation': f"Barometric pressure will be {avg_pressure:.1f} hPa, which is below the {thresholds['pressure_low']} hPa threshold. Low pressure systems are associated with increased migraine frequency.",
-                'severity': 'high' if avg_pressure <= 995 else 'medium'
-            })
+            detailed_factors.append(
+                {
+                    "name": "Low Barometric Pressure",
+                    "score": weather_factors["pressure_low"],
+                    "weight": weights["pressure_low"],
+                    "explanation": f"Barometric pressure will be {avg_pressure:.1f} hPa, which is below the {thresholds['pressure_low']} hPa threshold. Low pressure systems are associated with increased migraine frequency.",
+                    "severity": "high" if avg_pressure <= 995 else "medium",
+                }
+            )
 
         # Precipitation analysis
-        if weather_factors.get('precipitation', 0) > 0:
+        if weather_factors.get("precipitation", 0) > 0:
             max_precipitation = max([f.precipitation for f in forecasts], default=0)
-            detailed_factors.append({
-                'name': 'Heavy Precipitation',
-                'score': weather_factors['precipitation'],
-                'weight': weights['precipitation'],
-                'explanation': f"Expected precipitation of {max_precipitation:.1f} mm, which exceeds the {thresholds['precipitation_high']} mm threshold. Heavy rain or storms can trigger migraines.",
-                'severity': 'high' if max_precipitation >= 10 else 'medium'
-            })
+            detailed_factors.append(
+                {
+                    "name": "Heavy Precipitation",
+                    "score": weather_factors["precipitation"],
+                    "weight": weights["precipitation"],
+                    "explanation": f"Expected precipitation of {max_precipitation:.1f} mm, which exceeds the {thresholds['precipitation_high']} mm threshold. Heavy rain or storms can trigger migraines.",
+                    "severity": "high" if max_precipitation >= 10 else "medium",
+                }
+            )
 
         # Cloud cover analysis
-        if weather_factors.get('cloud_cover', 0) > 0:
+        if weather_factors.get("cloud_cover", 0) > 0:
             avg_cloud_cover = np.mean([f.cloud_cover for f in forecasts])
-            detailed_factors.append({
-                'name': 'Heavy Cloud Cover',
-                'score': weather_factors['cloud_cover'],
-                'weight': weights['cloud_cover'],
-                'explanation': f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the {thresholds['cloud_cover_high']}% threshold. Overcast conditions can affect some migraine sufferers.",
-                'severity': 'medium'
-            })
+            detailed_factors.append(
+                {
+                    "name": "Heavy Cloud Cover",
+                    "score": weather_factors["cloud_cover"],
+                    "weight": weights["cloud_cover"],
+                    "explanation": f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the {thresholds['cloud_cover_high']}% threshold. Overcast conditions can affect some migraine sufferers.",
+                    "severity": "medium",
+                }
+            )
 
         # Calculate total weighted score
-        total_score = sum(factor['score'] * factor['weight'] for factor in detailed_factors)
+        total_score = sum(factor["score"] * factor["weight"] for factor in detailed_factors)
 
         # Sort factors by their weighted contribution (score * weight)
-        detailed_factors.sort(key=lambda x: x['score'] * x['weight'], reverse=True)
+        detailed_factors.sort(key=lambda x: x["score"] * x["weight"], reverse=True)
 
         return {
-            'factors': detailed_factors,
-            'total_score': round(total_score, 2),
-            'contributing_factors_count': len(detailed_factors)
+            "factors": detailed_factors,
+            "total_score": round(total_score, 2),
+            "contributing_factors_count": len(detailed_factors),
         }
 
     def check_and_send_sinusitis_notifications(self, predictions: dict):
@@ -456,7 +477,7 @@ class NotificationService:
             int: Number of notifications sent
         """
         # Get all locations with associated users
-        locations = Location.objects.select_related('user').all()
+        locations = Location.objects.select_related("user").all()
 
         notifications_sent = 0
 
@@ -478,7 +499,7 @@ class NotificationService:
 
             # Enforce per-location daily notification limit
             try:
-                limit = int(getattr(location, 'daily_notification_limit', 1))
+                limit = int(getattr(location, "daily_notification_limit", 1))
             except (TypeError, ValueError):
                 limit = 1
             if limit is None:
@@ -488,6 +509,7 @@ class NotificationService:
                 continue
 
             from django.utils import timezone
+
             now = timezone.now()
             start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = start_of_day + timedelta(days=1)
@@ -514,7 +536,7 @@ class NotificationService:
 
             if probability_level is not None and prediction is not None:
                 # Check if notification should be sent (HIGH/MEDIUM probability and not already sent)
-                if probability_level == 'HIGH' or probability_level == 'MEDIUM':
+                if probability_level == "HIGH" or probability_level == "MEDIUM":
                     if not prediction.notification_sent and sent_today < limit:
                         self.send_sinusitis_alert(prediction)
 
@@ -549,7 +571,7 @@ class NotificationService:
 
         # Check if user has email notifications enabled
         try:
-            if hasattr(user, 'health_profile') and not user.health_profile.email_notifications_enabled:
+            if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
                 logger.info(f"Skipping sinusitis alert for user {user.username}: Email notifications disabled")
                 return False
         except Exception as e:
@@ -561,31 +583,31 @@ class NotificationService:
 
         # Prepare email context
         context = {
-            'user': user,
-            'location': location,
-            'prediction': prediction,
-            'forecast': forecast,
-            'start_time': prediction.target_time_start,
-            'end_time': prediction.target_time_end,
-            'temperature': forecast.temperature,
-            'humidity': forecast.humidity,
-            'pressure': forecast.pressure,
-            'precipitation': forecast.precipitation,
-            'cloud_cover': forecast.cloud_cover,
-            'probability_level': probability_level,
-            'weather_factors': weather_factors,
-            'detailed_factors': detailed_factors,
-            'llm_analysis_text': (weather_factors or {}).get('llm_analysis_text'),
-            'llm_prevention_tips': (weather_factors or {}).get('llm_prevention_tips') or [],
+            "user": user,
+            "location": location,
+            "prediction": prediction,
+            "forecast": forecast,
+            "start_time": prediction.target_time_start,
+            "end_time": prediction.target_time_end,
+            "temperature": forecast.temperature,
+            "humidity": forecast.humidity,
+            "pressure": forecast.pressure,
+            "precipitation": forecast.precipitation,
+            "cloud_cover": forecast.cloud_cover,
+            "probability_level": probability_level,
+            "weather_factors": weather_factors,
+            "detailed_factors": detailed_factors,
+            "llm_analysis_text": (weather_factors or {}).get("llm_analysis_text"),
+            "llm_prevention_tips": (weather_factors or {}).get("llm_prevention_tips") or [],
         }
 
         # Render email content
-        factor_count = detailed_factors.get('contributing_factors_count', 0)
+        factor_count = detailed_factors.get("contributing_factors_count", 0)
         if factor_count > 0:
             subject = f"{probability_level} Sinusitis Alert for {location.city} - {factor_count} Weather Factor{'s' if factor_count != 1 else ''}"
         else:
             subject = f"{probability_level} Sinusitis Alert for {location.city}"
-        html_message = render_to_string('forecast/email/sinusitis_alert.html', context)
+        html_message = render_to_string("forecast/email/sinusitis_alert.html", context)
         plain_message = strip_tags(html_message)
 
         try:
@@ -620,7 +642,7 @@ class NotificationService:
             int: Number of notifications sent
         """
         # Get all locations with associated users
-        locations = Location.objects.select_related('user').all()
+        locations = Location.objects.select_related("user").all()
 
         notifications_sent = 0
 
@@ -633,7 +655,7 @@ class NotificationService:
 
             # Check if user has email notifications enabled
             try:
-                if hasattr(user, 'health_profile') and not user.health_profile.email_notifications_enabled:
+                if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
                     logger.info(f"Skipping notifications for user {user.username}: Email notifications disabled")
                     continue
             except Exception as e:
@@ -642,7 +664,7 @@ class NotificationService:
 
             # Enforce per-location daily notification limit
             try:
-                limit = int(getattr(location, 'daily_notification_limit', 1))
+                limit = int(getattr(location, "daily_notification_limit", 1))
             except (TypeError, ValueError):
                 limit = 1
             if limit is None:
@@ -652,6 +674,7 @@ class NotificationService:
                 continue
 
             from django.utils import timezone
+
             now = timezone.now()
             start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = start_of_day + timedelta(days=1)
@@ -700,7 +723,7 @@ class NotificationService:
                 if migraine_data:
                     prob_level = migraine_data.get("probability")
                     pred = migraine_data.get("prediction")
-                    if prob_level in ['HIGH', 'MEDIUM'] and pred and not pred.notification_sent:
+                    if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
                         migraine_pred = pred
 
             # Check sinusitis prediction
@@ -715,7 +738,7 @@ class NotificationService:
                 if sinusitis_data:
                     prob_level = sinusitis_data.get("probability")
                     pred = sinusitis_data.get("prediction")
-                    if prob_level in ['HIGH', 'MEDIUM'] and pred and not pred.notification_sent:
+                    if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
                         sinusitis_pred = pred
 
             # Send notification if we have at least one prediction to send
@@ -771,112 +794,125 @@ class NotificationService:
         forecasts = WeatherForecast.objects.filter(
             location=prediction.location,
             target_time__gte=prediction.target_time_start,
-            target_time__lte=prediction.target_time_end
-        ).order_by('target_time')
+            target_time__lte=prediction.target_time_end,
+        ).order_by("target_time")
 
         # Get previous forecasts for comparison
         previous_forecasts = WeatherForecast.objects.filter(
-            location=prediction.location,
-            target_time__lt=prediction.target_time_start
-        ).order_by('-target_time')[:6]
+            location=prediction.location, target_time__lt=prediction.target_time_start
+        ).order_by("-target_time")[:6]
 
         if not forecasts:
-            return {'factors': detailed_factors, 'total_score': 0}
+            return {"factors": detailed_factors, "total_score": 0}
 
         # Temperature change analysis
-        if weather_factors.get('temperature_change', 0) > 0 and previous_forecasts:
+        if weather_factors.get("temperature_change", 0) > 0 and previous_forecasts:
             avg_prev_temp = np.mean([f.temperature for f in previous_forecasts])
             avg_forecast_temp = np.mean([f.temperature for f in forecasts])
             temp_change = abs(avg_forecast_temp - avg_prev_temp)
 
-            if temp_change >= thresholds['temperature_change']:
+            if temp_change >= thresholds["temperature_change"]:
                 direction = "increase" if avg_forecast_temp > avg_prev_temp else "decrease"
-                detailed_factors.append({
-                    'name': 'Temperature Change',
-                    'score': weather_factors['temperature_change'],
-                    'weight': weights['temperature_change'],
-                    'explanation': f"Temperature will {direction} by {temp_change:.1f}°C (from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). Rapid temperature changes can irritate sinuses.",
-                    'severity': 'high' if temp_change >= thresholds['temperature_change'] * 1.5 else 'medium'
-                })
+                detailed_factors.append(
+                    {
+                        "name": "Temperature Change",
+                        "score": weather_factors["temperature_change"],
+                        "weight": weights["temperature_change"],
+                        "explanation": f"Temperature will {direction} by {temp_change:.1f}°C (from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). Rapid temperature changes can irritate sinuses.",
+                        "severity": "high" if temp_change >= thresholds["temperature_change"] * 1.5 else "medium",
+                    }
+                )
 
         # Humidity analysis
-        if weather_factors.get('humidity_extreme', 0) > 0:
+        if weather_factors.get("humidity_extreme", 0) > 0:
             avg_humidity = np.mean([f.humidity for f in forecasts])
 
-            if avg_humidity >= thresholds['humidity_high']:
-                detailed_factors.append({
-                    'name': 'High Humidity',
-                    'score': weather_factors['humidity_extreme'],
-                    'weight': weights['humidity_extreme'],
-                    'explanation': f"Humidity will be {avg_humidity:.1f}%, which is above the {thresholds['humidity_high']}% threshold. High humidity promotes mold growth and allergens that can trigger sinusitis.",
-                    'severity': 'high' if avg_humidity >= 85 else 'medium'
-                })
-            elif avg_humidity <= thresholds['humidity_low']:
-                detailed_factors.append({
-                    'name': 'Low Humidity',
-                    'score': weather_factors['humidity_extreme'],
-                    'weight': weights['humidity_extreme'],
-                    'explanation': f"Humidity will be {avg_humidity:.1f}%, which is below the {thresholds['humidity_low']}% threshold. Very dry air can dry out and irritate sinus passages.",
-                    'severity': 'high' if avg_humidity <= 15 else 'medium'
-                })
+            if avg_humidity >= thresholds["humidity_high"]:
+                detailed_factors.append(
+                    {
+                        "name": "High Humidity",
+                        "score": weather_factors["humidity_extreme"],
+                        "weight": weights["humidity_extreme"],
+                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is above the {thresholds['humidity_high']}% threshold. High humidity promotes mold growth and allergens that can trigger sinusitis.",
+                        "severity": "high" if avg_humidity >= 85 else "medium",
+                    }
+                )
+            elif avg_humidity <= thresholds["humidity_low"]:
+                detailed_factors.append(
+                    {
+                        "name": "Low Humidity",
+                        "score": weather_factors["humidity_extreme"],
+                        "weight": weights["humidity_extreme"],
+                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is below the {thresholds['humidity_low']}% threshold. Very dry air can dry out and irritate sinus passages.",
+                        "severity": "high" if avg_humidity <= 15 else "medium",
+                    }
+                )
 
         # Pressure change analysis
-        if weather_factors.get('pressure_change', 0) > 0 and previous_forecasts:
+        if weather_factors.get("pressure_change", 0) > 0 and previous_forecasts:
             avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
             avg_forecast_pressure = np.mean([f.pressure for f in forecasts])
             pressure_change = abs(avg_forecast_pressure - avg_prev_pressure)
 
-            if pressure_change >= thresholds['pressure_change']:
+            if pressure_change >= thresholds["pressure_change"]:
                 direction = "increase" if avg_forecast_pressure > avg_prev_pressure else "drop"
-                detailed_factors.append({
-                    'name': 'Barometric Pressure Change',
-                    'score': weather_factors['pressure_change'],
-                    'weight': weights['pressure_change'],
-                    'explanation': f"Barometric pressure will {direction} by {pressure_change:.1f} hPa (from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). Pressure changes can affect sinus pressure and cause discomfort.",
-                    'severity': 'high' if pressure_change >= thresholds['pressure_change'] * 1.5 else 'medium'
-                })
+                detailed_factors.append(
+                    {
+                        "name": "Barometric Pressure Change",
+                        "score": weather_factors["pressure_change"],
+                        "weight": weights["pressure_change"],
+                        "explanation": f"Barometric pressure will {direction} by {pressure_change:.1f} hPa (from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). Pressure changes can affect sinus pressure and cause discomfort.",
+                        "severity": "high" if pressure_change >= thresholds["pressure_change"] * 1.5 else "medium",
+                    }
+                )
 
         # Low pressure analysis
-        if weather_factors.get('pressure_low', 0) > 0:
+        if weather_factors.get("pressure_low", 0) > 0:
             avg_pressure = np.mean([f.pressure for f in forecasts])
-            detailed_factors.append({
-                'name': 'Low Barometric Pressure',
-                'score': weather_factors['pressure_low'],
-                'weight': weights['pressure_low'],
-                'explanation': f"Barometric pressure will be {avg_pressure:.1f} hPa, which is below the {thresholds['pressure_low']} hPa threshold. Low pressure systems can worsen sinus symptoms.",
-                'severity': 'high' if avg_pressure <= 990 else 'medium'
-            })
+            detailed_factors.append(
+                {
+                    "name": "Low Barometric Pressure",
+                    "score": weather_factors["pressure_low"],
+                    "weight": weights["pressure_low"],
+                    "explanation": f"Barometric pressure will be {avg_pressure:.1f} hPa, which is below the {thresholds['pressure_low']} hPa threshold. Low pressure systems can worsen sinus symptoms.",
+                    "severity": "high" if avg_pressure <= 990 else "medium",
+                }
+            )
 
         # Precipitation analysis
-        if weather_factors.get('precipitation', 0) > 0:
+        if weather_factors.get("precipitation", 0) > 0:
             max_precipitation = max([f.precipitation for f in forecasts], default=0)
-            detailed_factors.append({
-                'name': 'Precipitation',
-                'score': weather_factors['precipitation'],
-                'weight': weights['precipitation'],
-                'explanation': f"Expected precipitation of {max_precipitation:.1f} mm. Rain can increase mold spores and allergens in the air.",
-                'severity': 'high' if max_precipitation >= 8 else 'medium'
-            })
+            detailed_factors.append(
+                {
+                    "name": "Precipitation",
+                    "score": weather_factors["precipitation"],
+                    "weight": weights["precipitation"],
+                    "explanation": f"Expected precipitation of {max_precipitation:.1f} mm. Rain can increase mold spores and allergens in the air.",
+                    "severity": "high" if max_precipitation >= 8 else "medium",
+                }
+            )
 
         # Cloud cover analysis
-        if weather_factors.get('cloud_cover', 0) > 0:
+        if weather_factors.get("cloud_cover", 0) > 0:
             avg_cloud_cover = np.mean([f.cloud_cover for f in forecasts])
-            detailed_factors.append({
-                'name': 'Cloud Cover',
-                'score': weather_factors['cloud_cover'],
-                'weight': weights['cloud_cover'],
-                'explanation': f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the {thresholds['cloud_cover_high']}% threshold.",
-                'severity': 'medium'
-            })
+            detailed_factors.append(
+                {
+                    "name": "Cloud Cover",
+                    "score": weather_factors["cloud_cover"],
+                    "weight": weights["cloud_cover"],
+                    "explanation": f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the {thresholds['cloud_cover_high']}% threshold.",
+                    "severity": "medium",
+                }
+            )
 
         # Calculate total weighted score
-        total_score = sum(factor['score'] * factor['weight'] for factor in detailed_factors)
+        total_score = sum(factor["score"] * factor["weight"] for factor in detailed_factors)
 
         # Sort factors by their weighted contribution (score * weight)
-        detailed_factors.sort(key=lambda x: x['score'] * x['weight'], reverse=True)
+        detailed_factors.sort(key=lambda x: x["score"] * x["weight"], reverse=True)
 
         return {
-            'factors': detailed_factors,
-            'total_score': round(total_score, 2),
-            'contributing_factors_count': len(detailed_factors)
+            "factors": detailed_factors,
+            "total_score": round(total_score, 2),
+            "contributing_factors_count": len(detailed_factors),
         }

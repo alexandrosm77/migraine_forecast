@@ -6,8 +6,14 @@ from unittest.mock import patch, MagicMock, Mock
 import json
 
 from .models import (
-    Location, WeatherForecast, ActualWeather, MigrainePrediction,
-    SinusitisPrediction, UserHealthProfile, LLMResponse, LLMConfiguration
+    Location,
+    WeatherForecast,
+    ActualWeather,
+    MigrainePrediction,
+    SinusitisPrediction,
+    UserHealthProfile,
+    LLMResponse,
+    LLMConfiguration,
 )
 from .weather_api import OpenMeteoClient
 from .weather_service import WeatherService
@@ -18,51 +24,33 @@ from .notification_service import NotificationService
 from .forms import UserHealthProfileForm
 from .tools import ensure_timezone_aware
 
+
 class LocationModelTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
 
     def test_location_creation(self):
         location = Location.objects.create(
-            user=self.user,
-            city='New York',
-            country='USA',
-            latitude=40.7128,
-            longitude=-74.0060
+            user=self.user, city="New York", country="USA", latitude=40.7128, longitude=-74.0060
         )
-        self.assertEqual(location.city, 'New York')
-        self.assertEqual(location.country, 'USA')
+        self.assertEqual(location.city, "New York")
+        self.assertEqual(location.country, "USA")
         self.assertEqual(location.latitude, 40.7128)
         self.assertEqual(location.longitude, -74.0060)
         self.assertEqual(location.user, self.user)
 
     def test_location_string_representation(self):
         location = Location.objects.create(
-            user=self.user,
-            city='New York',
-            country='USA',
-            latitude=40.7128,
-            longitude=-74.0060
+            user=self.user, city="New York", country="USA", latitude=40.7128, longitude=-74.0060
         )
-        self.assertEqual(str(location), 'New York, USA')
+        self.assertEqual(str(location), "New York, USA")
+
 
 class WeatherForecastModelTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
         self.location = Location.objects.create(
-            user=self.user,
-            city='New York',
-            country='USA',
-            latitude=40.7128,
-            longitude=-74.0060
+            user=self.user, city="New York", country="USA", latitude=40.7128, longitude=-74.0060
         )
 
     def test_weather_forecast_creation(self):
@@ -78,7 +66,7 @@ class WeatherForecastModelTest(TestCase):
             pressure=1013.2,
             wind_speed=10.5,
             precipitation=0.0,
-            cloud_cover=30.0
+            cloud_cover=30.0,
         )
 
         self.assertEqual(forecast.location, self.location)
@@ -99,29 +87,30 @@ class WeatherForecastModelTest(TestCase):
             pressure=1013.2,
             wind_speed=10.5,
             precipitation=0.0,
-            cloud_cover=30.0
+            cloud_cover=30.0,
         )
 
         expected_str = f"Forecast for {self.location} at {target_time}"
         self.assertEqual(str(forecast), expected_str)
 
+
 class OpenMeteoClientTest(TestCase):
-    @patch('forecast.weather_api.requests.get')
+    @patch("forecast.weather_api.requests.get")
     def test_get_forecast(self, mock_get):
         # Mock the API response
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = {
-            'hourly': {
-                'time': ['2025-03-31T12:00:00Z', '2025-03-31T13:00:00Z'],
-                'temperature_2m': [25.5, 26.0],
-                'relative_humidity_2m': [65.0, 64.0],
-                'precipitation_probability': [10, 5],
-                'precipitation': [0.0, 0.0],
-                'surface_pressure': [1013.2, 1013.0],
-                'cloud_cover': [30.0, 25.0],
-                'visibility': [20000, 20000],
-                'wind_speed_10m': [10.5, 11.0]
+            "hourly": {
+                "time": ["2025-03-31T12:00:00Z", "2025-03-31T13:00:00Z"],
+                "temperature_2m": [25.5, 26.0],
+                "relative_humidity_2m": [65.0, 64.0],
+                "precipitation_probability": [10, 5],
+                "precipitation": [0.0, 0.0],
+                "surface_pressure": [1013.2, 1013.0],
+                "cloud_cover": [30.0, 25.0],
+                "visibility": [20000, 20000],
+                "wind_speed_10m": [10.5, 11.0],
             }
         }
         mock_get.return_value = mock_response
@@ -132,26 +121,19 @@ class OpenMeteoClientTest(TestCase):
         # Verify the API was called with correct parameters
         mock_get.assert_called_once()
         call_args = mock_get.call_args[1]
-        self.assertEqual(call_args['params']['latitude'], 40.7128)
-        self.assertEqual(call_args['params']['longitude'], -74.0060)
+        self.assertEqual(call_args["params"]["latitude"], 40.7128)
+        self.assertEqual(call_args["params"]["longitude"], -74.0060)
 
         # Verify the result
-        self.assertIn('hourly', result)
-        self.assertEqual(len(result['hourly']['time']), 2)
+        self.assertIn("hourly", result)
+        self.assertEqual(len(result["hourly"]["time"]), 2)
+
 
 class MigrainePredictionServiceTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
         self.location = Location.objects.create(
-            user=self.user,
-            city='New York',
-            country='USA',
-            latitude=40.7128,
-            longitude=-74.0060
+            user=self.user, city="New York", country="USA", latitude=40.7128, longitude=-74.0060
         )
 
         # Create forecasts for testing
@@ -162,13 +144,13 @@ class MigrainePredictionServiceTest(TestCase):
             WeatherForecast.objects.create(
                 location=self.location,
                 forecast_time=now - timedelta(hours=12),
-                target_time=now - timedelta(hours=6-i),
+                target_time=now - timedelta(hours=6 - i),
                 temperature=25.0,
                 humidity=65.0,
                 pressure=1013.0,
                 wind_speed=10.0,
                 precipitation=0.0,
-                cloud_cover=30.0
+                cloud_cover=30.0,
             )
 
         # Forecasts for the prediction window (3-6 hours ahead)
@@ -176,16 +158,16 @@ class MigrainePredictionServiceTest(TestCase):
             WeatherForecast.objects.create(
                 location=self.location,
                 forecast_time=now,
-                target_time=now + timedelta(hours=3+i),
+                target_time=now + timedelta(hours=3 + i),
                 temperature=30.0,  # Significant temperature change
-                humidity=75.0,     # High humidity
-                pressure=1000.0,   # Low pressure
+                humidity=75.0,  # High humidity
+                pressure=1000.0,  # Low pressure
                 wind_speed=15.0,
-                precipitation=5.0, # Heavy precipitation
-                cloud_cover=90.0   # Heavy cloud cover
+                precipitation=5.0,  # Heavy precipitation
+                cloud_cover=90.0,  # Heavy cloud cover
             )
 
-    @patch('forecast.models.LLMConfiguration.get_config')
+    @patch("forecast.models.LLMConfiguration.get_config")
     def test_predict_migraine_probability_high(self, mock_get_config):
         """Test migraine prediction with high risk factors (LLM disabled)"""
         # Mock LLM configuration as inactive
@@ -196,13 +178,13 @@ class MigrainePredictionServiceTest(TestCase):
         service = MigrainePredictionService()
         probability, prediction = service.predict_migraine_probability(self.location, self.user)
 
-        self.assertEqual(probability, 'HIGH')
+        self.assertEqual(probability, "HIGH")
         self.assertIsNotNone(prediction)
         self.assertEqual(prediction.user, self.user)
         self.assertEqual(prediction.location, self.location)
-        self.assertEqual(prediction.probability, 'HIGH')
+        self.assertEqual(prediction.probability, "HIGH")
 
-    @patch('forecast.models.LLMConfiguration.get_config')
+    @patch("forecast.models.LLMConfiguration.get_config")
     def test_predict_migraine_probability_with_llm(self, mock_get_config):
         """Test migraine prediction with LLM enabled"""
         # Mock LLM configuration as active
@@ -215,32 +197,32 @@ class MigrainePredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
-        with patch('forecast.prediction_service.LLMClient') as mock_llm_class:
+        with patch("forecast.prediction_service.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_probability.return_value = (
-                'HIGH',
+                "HIGH",
                 {
-                    'raw': {
-                        'probability_level': 'HIGH',
-                        'confidence': 0.9,
-                        'rationale': 'High risk conditions',
-                        'analysis_text': 'Weather is risky',
-                        'prevention_tips': ['Stay hydrated']
+                    "raw": {
+                        "probability_level": "HIGH",
+                        "confidence": 0.9,
+                        "rationale": "High risk conditions",
+                        "analysis_text": "Weather is risky",
+                        "prevention_tips": ["Stay hydrated"],
                     }
-                }
+                },
             )
             mock_llm_class.return_value = mock_llm_instance
 
             service = MigrainePredictionService()
             probability, prediction = service.predict_migraine_probability(self.location, self.user)
 
-            self.assertEqual(probability, 'HIGH')
+            self.assertEqual(probability, "HIGH")
             self.assertIsNotNone(prediction)
 
             # Verify LLM was called
             mock_llm_instance.predict_probability.assert_called_once()
 
-    @patch('forecast.models.LLMConfiguration.get_config')
+    @patch("forecast.models.LLMConfiguration.get_config")
     def test_predict_migraine_probability_no_forecasts(self, mock_get_config):
         """Test migraine prediction with no forecasts available"""
         # Mock LLM configuration as inactive
@@ -250,11 +232,7 @@ class MigrainePredictionServiceTest(TestCase):
 
         # Create a new location with no forecasts
         new_location = Location.objects.create(
-            user=self.user,
-            city='Test City',
-            country='USA',
-            latitude=40.0,
-            longitude=-100.0
+            user=self.user, city="Test City", country="USA", latitude=40.0, longitude=-100.0
         )
 
         service = MigrainePredictionService()
@@ -268,12 +246,7 @@ class LLMClientTest(TestCase):
     """Test cases for LLMClient"""
 
     def setUp(self):
-        self.client = LLMClient(
-            base_url="http://localhost:8000",
-            api_key="test_key",
-            model="test_model",
-            timeout=10.0
-        )
+        self.client = LLMClient(base_url="http://localhost:8000", api_key="test_key", model="test_model", timeout=10.0)
 
     def test_initialization(self):
         """Test LLMClient initialization"""
@@ -300,13 +273,11 @@ class LLMClientTest(TestCase):
         self.assertEqual(headers["Content-Type"], "application/json")
         self.assertNotIn("Authorization", headers)
 
-    @patch('forecast.llm_client.requests.Session.post')
+    @patch("forecast.llm_client.requests.Session.post")
     def test_chat_complete_success(self, mock_post):
         """Test successful chat completion"""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "test response"}}]
-        }
+        mock_response.json.return_value = {"choices": [{"message": {"content": "test response"}}]}
         mock_post.return_value = mock_response
 
         messages = [{"role": "user", "content": "test"}]
@@ -315,10 +286,10 @@ class LLMClientTest(TestCase):
         self.assertIn("choices", result)
         mock_post.assert_called_once()
         call_kwargs = mock_post.call_args[1]
-        self.assertEqual(call_kwargs['json']['model'], "test_model")
-        self.assertEqual(call_kwargs['json']['messages'], messages)
+        self.assertEqual(call_kwargs["json"]["model"], "test_model")
+        self.assertEqual(call_kwargs["json"]["messages"], messages)
 
-    @patch('forecast.llm_client.requests.Session.post')
+    @patch("forecast.llm_client.requests.Session.post")
     def test_chat_complete_with_kwargs(self, mock_post):
         """Test chat completion with additional kwargs"""
         mock_response = MagicMock()
@@ -329,8 +300,8 @@ class LLMClientTest(TestCase):
         self.client.chat_complete(messages, temperature=0.5, max_tokens=100)
 
         call_kwargs = mock_post.call_args[1]
-        self.assertEqual(call_kwargs['json']['temperature'], 0.5)
-        self.assertEqual(call_kwargs['json']['max_tokens'], 100)
+        self.assertEqual(call_kwargs["json"]["temperature"], 0.5)
+        self.assertEqual(call_kwargs["json"]["max_tokens"], 100)
 
     def test_extract_json_direct(self):
         """Test extracting JSON from direct JSON string"""
@@ -355,22 +326,26 @@ class LLMClientTest(TestCase):
         result = LLMClient._extract_json("not json at all")
         self.assertIsNone(result)
 
-    @patch('forecast.llm_client.requests.Session.post')
+    @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_success(self, mock_post):
         """Test successful probability prediction"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{
-                "message": {
-                    "content": json.dumps({
-                        "probability_level": "HIGH",
-                        "confidence": 0.85,
-                        "rationale": "High risk factors",
-                        "analysis_text": "Weather conditions are risky",
-                        "prevention_tips": ["Stay hydrated", "Rest"]
-                    })
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "probability_level": "HIGH",
+                                "confidence": 0.85,
+                                "rationale": "High risk factors",
+                                "analysis_text": "Weather conditions are risky",
+                                "prevention_tips": ["Stay hydrated", "Rest"],
+                            }
+                        )
+                    }
                 }
-            }]
+            ]
         }
         mock_post.return_value = mock_response
 
@@ -382,16 +357,14 @@ class LLMClientTest(TestCase):
         self.assertIn("raw", payload)
         self.assertEqual(payload["raw"]["probability_level"], "HIGH")
 
-    @patch('forecast.llm_client.requests.Session.post')
+    @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_with_context(self, mock_post):
         """Test probability prediction with full context"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{
-                "message": {
-                    "content": '{"probability_level": "MEDIUM", "confidence": 0.6, "rationale": "test"}'
-                }
-            }]
+            "choices": [
+                {"message": {"content": '{"probability_level": "MEDIUM", "confidence": 0.6, "rationale": "test"}'}}
+            ]
         }
         mock_post.return_value = mock_response
 
@@ -400,21 +373,19 @@ class LLMClientTest(TestCase):
         context = {
             "forecast_time": {"day_period": "morning", "hours_ahead": 3},
             "aggregates": {"avg_forecast_humidity": 65.0},
-            "changes": {"temperature_change": 5.0, "pressure_change": 3.0}
+            "changes": {"temperature_change": 5.0, "pressure_change": 3.0},
         }
 
-        level, payload = self.client.predict_probability(
-            scores, "Boston, USA", user_profile, context
-        )
+        level, payload = self.client.predict_probability(scores, "Boston, USA", user_profile, context)
 
         self.assertEqual(level, "MEDIUM")
         # Verify request was made with context
         call_kwargs = mock_post.call_args[1]
-        user_content = call_kwargs['json']['messages'][1]['content']
+        user_content = call_kwargs["json"]["messages"][1]["content"]
         self.assertIn("Boston, USA", user_content)
         self.assertIn("sensitivity", user_content.lower())
 
-    @patch('forecast.llm_client.requests.Session.post')
+    @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_network_error(self, mock_post):
         """Test probability prediction with network error"""
         mock_post.side_effect = Exception("Network error")
@@ -426,15 +397,11 @@ class LLMClientTest(TestCase):
         self.assertIn("error", payload)
         self.assertEqual(payload["error"], "Network error")
 
-    @patch('forecast.llm_client.requests.Session.post')
+    @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_invalid_response(self, mock_post):
         """Test probability prediction with invalid JSON response"""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [{
-                "message": {"content": "not valid json"}
-            }]
-        }
+        mock_response.json.return_value = {"choices": [{"message": {"content": "not valid json"}}]}
         mock_post.return_value = mock_response
 
         scores = {"temperature_change": 0.8}
@@ -443,22 +410,26 @@ class LLMClientTest(TestCase):
         self.assertIsNone(level)
         self.assertIn("raw", payload)
 
-    @patch('forecast.llm_client.requests.Session.post')
+    @patch("forecast.llm_client.requests.Session.post")
     def test_predict_sinusitis_probability_success(self, mock_post):
         """Test successful sinusitis probability prediction"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{
-                "message": {
-                    "content": json.dumps({
-                        "probability_level": "LOW",
-                        "confidence": 0.9,
-                        "rationale": "Low risk",
-                        "analysis_text": "Conditions are favorable",
-                        "prevention_tips": ["Keep sinuses moist"]
-                    })
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "probability_level": "LOW",
+                                "confidence": 0.9,
+                                "rationale": "Low risk",
+                                "analysis_text": "Conditions are favorable",
+                                "prevention_tips": ["Keep sinuses moist"],
+                            }
+                        )
+                    }
                 }
-            }]
+            ]
         }
         mock_post.return_value = mock_response
 
@@ -468,9 +439,6 @@ class LLMClientTest(TestCase):
         self.assertEqual(level, "LOW")
         self.assertIsNotNone(payload)
         self.assertIn("raw", payload)
-
-
-
 
 
 class LLMConfigurationTest(TestCase):
@@ -484,7 +452,7 @@ class LLMConfigurationTest(TestCase):
             model="test-model",
             api_key="test-key",
             timeout=30.0,
-            is_active=True
+            is_active=True,
         )
         self.assertEqual(config.name, "Test Config")
         self.assertEqual(config.base_url, "http://test.com")
@@ -493,27 +461,15 @@ class LLMConfigurationTest(TestCase):
 
     def test_llm_configuration_string_representation(self):
         """Test string representation of LLM configuration"""
-        config = LLMConfiguration.objects.create(
-            name="Test Config",
-            model="test-model",
-            is_active=True
-        )
+        config = LLMConfiguration.objects.create(name="Test Config", model="test-model", is_active=True)
         self.assertIn("Test Config", str(config))
         self.assertIn("test-model", str(config))
         self.assertIn("ACTIVE", str(config))
 
     def test_only_one_active_configuration(self):
         """Test that only one configuration can be active at a time"""
-        config1 = LLMConfiguration.objects.create(
-            name="Config 1",
-            model="model-1",
-            is_active=True
-        )
-        config2 = LLMConfiguration.objects.create(
-            name="Config 2",
-            model="model-2",
-            is_active=True
-        )
+        config1 = LLMConfiguration.objects.create(name="Config 1", model="model-1", is_active=True)
+        config2 = LLMConfiguration.objects.create(name="Config 2", model="model-2", is_active=True)
 
         # Refresh config1 from database
         config1.refresh_from_db()
@@ -524,16 +480,8 @@ class LLMConfigurationTest(TestCase):
 
     def test_get_config_returns_active(self):
         """Test get_config returns the active configuration"""
-        config1 = LLMConfiguration.objects.create(
-            name="Config 1",
-            model="model-1",
-            is_active=False
-        )
-        config2 = LLMConfiguration.objects.create(
-            name="Config 2",
-            model="model-2",
-            is_active=True
-        )
+        config1 = LLMConfiguration.objects.create(name="Config 1", model="model-1", is_active=False)
+        config2 = LLMConfiguration.objects.create(name="Config 2", model="model-2", is_active=True)
 
         active_config = LLMConfiguration.get_config()
         self.assertEqual(active_config.id, config2.id)
@@ -551,16 +499,8 @@ class LLMConfigurationTest(TestCase):
 
     def test_get_config_activates_first_if_none_active(self):
         """Test get_config activates first config if none are active"""
-        config1 = LLMConfiguration.objects.create(
-            name="Config 1",
-            model="model-1",
-            is_active=False
-        )
-        config2 = LLMConfiguration.objects.create(
-            name="Config 2",
-            model="model-2",
-            is_active=False
-        )
+        config1 = LLMConfiguration.objects.create(name="Config 1", model="model-1", is_active=False)
+        config2 = LLMConfiguration.objects.create(name="Config 2", model="model-2", is_active=False)
 
         active_config = LLMConfiguration.get_config()
 
@@ -573,11 +513,7 @@ class UserHealthProfileTest(TestCase):
     """Test cases for UserHealthProfile model"""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
 
     def test_user_health_profile_creation(self):
         """Test creating a user health profile"""
@@ -589,7 +525,7 @@ class UserHealthProfileTest(TestCase):
             sensitivity_temperature=2.0,
             email_notifications_enabled=True,
             migraine_predictions_enabled=True,
-            sinusitis_predictions_enabled=False
+            sinusitis_predictions_enabled=False,
         )
 
         self.assertEqual(profile.user, self.user)
@@ -628,17 +564,9 @@ class SinusitisPredictionTest(TestCase):
     """Test cases for SinusitisPrediction model"""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
         self.location = Location.objects.create(
-            user=self.user,
-            city='Seattle',
-            country='USA',
-            latitude=47.6062,
-            longitude=-122.3321
+            user=self.user, city="Seattle", country="USA", latitude=47.6062, longitude=-122.3321
         )
         self.forecast = WeatherForecast.objects.create(
             location=self.location,
@@ -649,7 +577,7 @@ class SinusitisPredictionTest(TestCase):
             pressure=1010.0,
             wind_speed=10.0,
             precipitation=2.0,
-            cloud_cover=70.0
+            cloud_cover=70.0,
         )
 
     def test_sinusitis_prediction_creation(self):
@@ -661,13 +589,13 @@ class SinusitisPredictionTest(TestCase):
             forecast=self.forecast,
             target_time_start=now + timedelta(hours=3),
             target_time_end=now + timedelta(hours=6),
-            probability='MEDIUM',
-            weather_factors={'humidity_score': 0.6}
+            probability="MEDIUM",
+            weather_factors={"humidity_score": 0.6},
         )
 
         self.assertEqual(prediction.user, self.user)
         self.assertEqual(prediction.location, self.location)
-        self.assertEqual(prediction.probability, 'MEDIUM')
+        self.assertEqual(prediction.probability, "MEDIUM")
         self.assertFalse(prediction.notification_sent)
 
     def test_sinusitis_prediction_string_representation(self):
@@ -679,31 +607,22 @@ class SinusitisPredictionTest(TestCase):
             forecast=self.forecast,
             target_time_start=now + timedelta(hours=3),
             target_time_end=now + timedelta(hours=6),
-            probability='HIGH'
+            probability="HIGH",
         )
 
         str_repr = str(prediction)
         self.assertIn(self.user.username, str_repr)
-        self.assertIn('HIGH', str_repr)
+        self.assertIn("HIGH", str_repr)
         self.assertIn(self.location.city, str_repr)
-
 
 
 class SinusitisPredictionServiceTest(TestCase):
     """Test cases for SinusitisPredictionService"""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
         self.location = Location.objects.create(
-            user=self.user,
-            city='Portland',
-            country='USA',
-            latitude=45.5152,
-            longitude=-122.6784
+            user=self.user, city="Portland", country="USA", latitude=45.5152, longitude=-122.6784
         )
 
         # Create forecasts for testing
@@ -714,13 +633,13 @@ class SinusitisPredictionServiceTest(TestCase):
             WeatherForecast.objects.create(
                 location=self.location,
                 forecast_time=now - timedelta(hours=12),
-                target_time=now - timedelta(hours=6-i),
+                target_time=now - timedelta(hours=6 - i),
                 temperature=20.0,
                 humidity=60.0,
                 pressure=1015.0,
                 wind_speed=8.0,
                 precipitation=0.0,
-                cloud_cover=40.0
+                cloud_cover=40.0,
             )
 
         # Forecasts for the prediction window (3-6 hours ahead)
@@ -729,16 +648,16 @@ class SinusitisPredictionServiceTest(TestCase):
             WeatherForecast.objects.create(
                 location=self.location,
                 forecast_time=now,
-                target_time=now + timedelta(hours=3+i),
+                target_time=now + timedelta(hours=3 + i),
                 temperature=10.0,  # Significant temperature drop
-                humidity=85.0,     # High humidity
-                pressure=1005.0,   # Low pressure
+                humidity=85.0,  # High humidity
+                pressure=1005.0,  # Low pressure
                 wind_speed=12.0,
                 precipitation=3.0,
-                cloud_cover=80.0
+                cloud_cover=80.0,
             )
 
-    @patch('forecast.models.LLMConfiguration.get_config')
+    @patch("forecast.models.LLMConfiguration.get_config")
     def test_predict_sinusitis_probability_high(self, mock_get_config):
         """Test sinusitis prediction with high risk factors (LLM disabled)"""
         # Mock LLM configuration as inactive
@@ -749,12 +668,12 @@ class SinusitisPredictionServiceTest(TestCase):
         service = SinusitisPredictionService()
         probability, prediction = service.predict_sinusitis_probability(self.location, self.user)
 
-        self.assertIn(probability, ['LOW', 'MEDIUM', 'HIGH'])
+        self.assertIn(probability, ["LOW", "MEDIUM", "HIGH"])
         self.assertIsNotNone(prediction)
         self.assertEqual(prediction.user, self.user)
         self.assertEqual(prediction.location, self.location)
 
-    @patch('forecast.models.LLMConfiguration.get_config')
+    @patch("forecast.models.LLMConfiguration.get_config")
     def test_predict_sinusitis_probability_with_llm(self, mock_get_config):
         """Test sinusitis prediction with LLM enabled"""
         # Mock LLM configuration as active
@@ -767,32 +686,32 @@ class SinusitisPredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
-        with patch('forecast.prediction_service_sinusitis.LLMClient') as mock_llm_class:
+        with patch("forecast.prediction_service_sinusitis.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_sinusitis_probability.return_value = (
-                'MEDIUM',
+                "MEDIUM",
                 {
-                    'raw': {
-                        'probability_level': 'MEDIUM',
-                        'confidence': 0.75,
-                        'rationale': 'Moderate risk conditions',
-                        'analysis_text': 'Some risk factors present',
-                        'prevention_tips': ['Use humidifier']
+                    "raw": {
+                        "probability_level": "MEDIUM",
+                        "confidence": 0.75,
+                        "rationale": "Moderate risk conditions",
+                        "analysis_text": "Some risk factors present",
+                        "prevention_tips": ["Use humidifier"],
                     }
-                }
+                },
             )
             mock_llm_class.return_value = mock_llm_instance
 
             service = SinusitisPredictionService()
             probability, prediction = service.predict_sinusitis_probability(self.location, self.user)
 
-            self.assertEqual(probability, 'MEDIUM')
+            self.assertEqual(probability, "MEDIUM")
             self.assertIsNotNone(prediction)
 
             # Verify LLM was called
             mock_llm_instance.predict_sinusitis_probability.assert_called_once()
 
-    @patch('forecast.models.LLMConfiguration.get_config')
+    @patch("forecast.models.LLMConfiguration.get_config")
     def test_predict_sinusitis_probability_no_forecasts(self, mock_get_config):
         """Test sinusitis prediction with no forecasts available"""
         # Mock LLM configuration as inactive
@@ -802,11 +721,7 @@ class SinusitisPredictionServiceTest(TestCase):
 
         # Create a new location with no forecasts
         new_location = Location.objects.create(
-            user=self.user,
-            city='Test City',
-            country='USA',
-            latitude=40.0,
-            longitude=-100.0
+            user=self.user, city="Test City", country="USA", latitude=40.0, longitude=-100.0
         )
 
         service = SinusitisPredictionService()
@@ -822,17 +737,17 @@ class UserHealthProfileFormTest(TestCase):
     def test_form_valid_data(self):
         """Test form with valid data"""
         form_data = {
-            'age': 30,
-            'prior_conditions': 'Aura, hypertension',
-            'email_notifications_enabled': True,
-            'migraine_predictions_enabled': True,
-            'sinusitis_predictions_enabled': False,
-            'sensitivity_overall': 1.5,
-            'sensitivity_temperature': 1.2,
-            'sensitivity_humidity': 1.0,
-            'sensitivity_pressure': 1.3,
-            'sensitivity_cloud_cover': 1.0,
-            'sensitivity_precipitation': 1.1,
+            "age": 30,
+            "prior_conditions": "Aura, hypertension",
+            "email_notifications_enabled": True,
+            "migraine_predictions_enabled": True,
+            "sinusitis_predictions_enabled": False,
+            "sensitivity_overall": 1.5,
+            "sensitivity_temperature": 1.2,
+            "sensitivity_humidity": 1.0,
+            "sensitivity_pressure": 1.3,
+            "sensitivity_cloud_cover": 1.0,
+            "sensitivity_precipitation": 1.1,
         }
         form = UserHealthProfileForm(data=form_data)
         self.assertTrue(form.is_valid())
@@ -840,36 +755,36 @@ class UserHealthProfileFormTest(TestCase):
     def test_form_clamps_sensitivity_values(self):
         """Test that form clamps sensitivity values to valid range"""
         form_data = {
-            'email_notifications_enabled': True,
-            'migraine_predictions_enabled': True,
-            'sinusitis_predictions_enabled': True,
-            'sensitivity_overall': 5.0,  # Too high
-            'sensitivity_temperature': -1.0,  # Too low
-            'sensitivity_humidity': 1.5,  # Valid
-            'sensitivity_pressure': 1.0,
-            'sensitivity_cloud_cover': 1.0,
-            'sensitivity_precipitation': 1.0,
+            "email_notifications_enabled": True,
+            "migraine_predictions_enabled": True,
+            "sinusitis_predictions_enabled": True,
+            "sensitivity_overall": 5.0,  # Too high
+            "sensitivity_temperature": -1.0,  # Too low
+            "sensitivity_humidity": 1.5,  # Valid
+            "sensitivity_pressure": 1.0,
+            "sensitivity_cloud_cover": 1.0,
+            "sensitivity_precipitation": 1.0,
         }
         form = UserHealthProfileForm(data=form_data)
         self.assertTrue(form.is_valid())
 
         cleaned = form.cleaned_data
-        self.assertEqual(cleaned['sensitivity_overall'], 3.0)  # Clamped to max
-        self.assertEqual(cleaned['sensitivity_temperature'], 0.0)  # Clamped to min
-        self.assertEqual(cleaned['sensitivity_humidity'], 1.5)  # Unchanged
+        self.assertEqual(cleaned["sensitivity_overall"], 3.0)  # Clamped to max
+        self.assertEqual(cleaned["sensitivity_temperature"], 0.0)  # Clamped to min
+        self.assertEqual(cleaned["sensitivity_humidity"], 1.5)  # Unchanged
 
     def test_form_optional_fields(self):
         """Test that optional fields can be omitted"""
         form_data = {
-            'email_notifications_enabled': True,
-            'migraine_predictions_enabled': True,
-            'sinusitis_predictions_enabled': True,
-            'sensitivity_overall': 1.0,
-            'sensitivity_temperature': 1.0,
-            'sensitivity_humidity': 1.0,
-            'sensitivity_pressure': 1.0,
-            'sensitivity_cloud_cover': 1.0,
-            'sensitivity_precipitation': 1.0,
+            "email_notifications_enabled": True,
+            "migraine_predictions_enabled": True,
+            "sinusitis_predictions_enabled": True,
+            "sensitivity_overall": 1.0,
+            "sensitivity_temperature": 1.0,
+            "sensitivity_humidity": 1.0,
+            "sensitivity_pressure": 1.0,
+            "sensitivity_cloud_cover": 1.0,
+            "sensitivity_precipitation": 1.0,
         }
         form = UserHealthProfileForm(data=form_data)
         self.assertTrue(form.is_valid())
@@ -895,46 +810,36 @@ class ToolsTest(TestCase):
         self.assertTrue(timezone.is_aware(result_dt))
 
 
-
-
 class WeatherServiceTest(TestCase):
     """Test cases for WeatherService"""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
         self.location = Location.objects.create(
-            user=self.user,
-            city='Denver',
-            country='USA',
-            latitude=39.7392,
-            longitude=-104.9903
+            user=self.user, city="Denver", country="USA", latitude=39.7392, longitude=-104.9903
         )
         self.service = WeatherService()
 
-    @patch('forecast.weather_api.OpenMeteoClient.get_forecast')
-    @patch('forecast.weather_api.OpenMeteoClient.parse_forecast_data')
+    @patch("forecast.weather_api.OpenMeteoClient.get_forecast")
+    @patch("forecast.weather_api.OpenMeteoClient.parse_forecast_data")
     def test_update_forecast_for_location(self, mock_parse, mock_get):
         """Test updating forecast for a location"""
         # Mock API response
-        mock_get.return_value = {'hourly': {'time': [], 'temperature_2m': []}}
+        mock_get.return_value = {"hourly": {"time": [], "temperature_2m": []}}
 
         # Mock parsed data
         now = timezone.now()
         mock_parse.return_value = [
             {
-                'location': self.location,
-                'forecast_time': now,
-                'target_time': now + timedelta(hours=1),
-                'temperature': 20.0,
-                'humidity': 50.0,
-                'pressure': 1013.0,
-                'wind_speed': 10.0,
-                'precipitation': 0.0,
-                'cloud_cover': 30.0
+                "location": self.location,
+                "forecast_time": now,
+                "target_time": now + timedelta(hours=1),
+                "temperature": 20.0,
+                "humidity": 50.0,
+                "pressure": 1013.0,
+                "wind_speed": 10.0,
+                "precipitation": 0.0,
+                "cloud_cover": 30.0,
             }
         ]
 
@@ -944,7 +849,7 @@ class WeatherServiceTest(TestCase):
         self.assertEqual(forecasts[0].location, self.location)
         mock_get.assert_called_once()
 
-    @patch('forecast.weather_api.OpenMeteoClient.get_forecast')
+    @patch("forecast.weather_api.OpenMeteoClient.get_forecast")
     def test_update_forecast_for_location_api_failure(self, mock_get):
         """Test handling API failure when updating forecast"""
         mock_get.return_value = None
@@ -967,7 +872,7 @@ class WeatherServiceTest(TestCase):
             pressure=1013.0,
             wind_speed=10.0,
             precipitation=0.0,
-            cloud_cover=30.0
+            cloud_cover=30.0,
         )
 
         forecast2 = WeatherForecast.objects.create(
@@ -979,7 +884,7 @@ class WeatherServiceTest(TestCase):
             pressure=1014.0,
             wind_speed=11.0,
             precipitation=0.0,
-            cloud_cover=31.0
+            cloud_cover=31.0,
         )
 
         latest = self.service.get_latest_forecast(self.location)
@@ -1002,7 +907,7 @@ class WeatherServiceTest(TestCase):
             pressure=1013.0,
             wind_speed=10.0,
             precipitation=0.0,
-            cloud_cover=30.0
+            cloud_cover=30.0,
         )
 
         forecast_out = WeatherForecast.objects.create(
@@ -1014,12 +919,10 @@ class WeatherServiceTest(TestCase):
             pressure=1015.0,
             wind_speed=12.0,
             precipitation=0.0,
-            cloud_cover=32.0
+            cloud_cover=32.0,
         )
 
-        forecasts = self.service.get_forecasts_for_timeframe(
-            self.location, start_time, end_time
-        )
+        forecasts = self.service.get_forecasts_for_timeframe(self.location, start_time, end_time)
 
         self.assertEqual(forecasts.count(), 1)
         self.assertEqual(forecasts.first().id, forecast_in.id)
@@ -1029,17 +932,9 @@ class NotificationServiceTest(TestCase):
     """Test cases for NotificationService"""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpassword'
-        )
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
         self.location = Location.objects.create(
-            user=self.user,
-            city='Austin',
-            country='USA',
-            latitude=30.2672,
-            longitude=-97.7431
+            user=self.user, city="Austin", country="USA", latitude=30.2672, longitude=-97.7431
         )
         self.service = NotificationService()
 
@@ -1049,7 +944,7 @@ class NotificationServiceTest(TestCase):
         self.assertIsNotNone(self.service.sinusitis_prediction_service)
         self.assertIsNotNone(self.service.weather_service)
 
-    @patch('forecast.notification_service.send_mail')
+    @patch("forecast.notification_service.send_mail")
     def test_send_migraine_alert_email(self, mock_send_mail):
         """Test sending migraine alert email"""
         now = timezone.now()
@@ -1062,7 +957,7 @@ class NotificationServiceTest(TestCase):
             pressure=1010.0,
             wind_speed=15.0,
             precipitation=2.0,
-            cloud_cover=80.0
+            cloud_cover=80.0,
         )
 
         prediction = MigrainePrediction.objects.create(
@@ -1071,8 +966,8 @@ class NotificationServiceTest(TestCase):
             forecast=forecast,
             target_time_start=now + timedelta(hours=3),
             target_time_end=now + timedelta(hours=6),
-            probability='HIGH',
-            weather_factors={'temperature_score': 0.8}
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.8},
         )
 
         # Call the public method
@@ -1082,7 +977,9 @@ class NotificationServiceTest(TestCase):
         self.assertTrue(result)
         mock_send_mail.assert_called_once()
 
-    def test_get_detailed_weather_factors(self, ):
+    def test_get_detailed_weather_factors(
+        self,
+    ):
         """Test getting detailed weather factors for a prediction"""
         now = timezone.now()
         forecast = WeatherForecast.objects.create(
@@ -1094,7 +991,7 @@ class NotificationServiceTest(TestCase):
             pressure=1005.0,
             wind_speed=15.0,
             precipitation=5.0,
-            cloud_cover=90.0
+            cloud_cover=90.0,
         )
 
         prediction = MigrainePrediction.objects.create(
@@ -1103,16 +1000,11 @@ class NotificationServiceTest(TestCase):
             forecast=forecast,
             target_time_start=now + timedelta(hours=3),
             target_time_end=now + timedelta(hours=6),
-            probability='HIGH',
-            weather_factors={
-                'temperature_score': 0.8,
-                'humidity_score': 0.7,
-                'pressure_score': 0.9
-            }
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.8, "humidity_score": 0.7, "pressure_score": 0.9},
         )
 
         detailed = self.service._get_detailed_weather_factors(prediction)
 
         self.assertIsNotNone(detailed)
-        self.assertIn('factors', detailed)
-
+        self.assertIn("factors", detailed)
