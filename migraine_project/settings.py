@@ -179,4 +179,4 @@ LLM_ENABLED = os.getenv('LLM_ENABLED', 'true').lower() in ('1', 'true', 'yes', '
 LLM_BASE_URL = os.getenv('LLM_BASE_URL', 'http://192.168.0.11:11434')
 LLM_MODEL = os.getenv('LLM_MODEL', 'ibm/granite4:tiny-h')
 LLM_API_KEY = os.getenv('LLM_API_KEY', '')
-LLM_TIMEOUT = float(os.getenv('LLM_TIMEOUT', '120.0'))
+LLM_TIMEOUT = float(os.getenv('LLM_TIMEOUT', '240.0'))
