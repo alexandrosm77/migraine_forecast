@@ -435,6 +435,8 @@ class NotificationService:
             'probability_level': probability_level,
             'weather_factors': weather_factors,
             'detailed_factors': detailed_factors,
+            'llm_analysis_text': (weather_factors or {}).get('llm_analysis_text'),
+            'llm_prevention_tips': (weather_factors or {}).get('llm_prevention_tips') or [],
         }
 
         # Render email content
@@ -443,39 +445,8 @@ class NotificationService:
             subject = f"{probability_level} Sinusitis Alert for {location.city} - {factor_count} Weather Factor{'s' if factor_count != 1 else ''}"
         else:
             subject = f"{probability_level} Sinusitis Alert for {location.city}"
-
-        # For now, use a simple plain text message (can create HTML template later)
-        plain_message = f"""
-Sinusitis Alert for {location.city}, {location.country}
-
-Dear {user.username},
-
-This is a {probability_level} probability alert for sinusitis conditions in your area.
-
-Time Window: {prediction.target_time_start.strftime('%B %d, %Y %I:%M %p')} - {prediction.target_time_end.strftime('%I:%M %p')}
-
-Weather Conditions:
-- Temperature: {forecast.temperature}°C
-- Humidity: {forecast.humidity}%
-- Pressure: {forecast.pressure} hPa
-- Precipitation: {forecast.precipitation} mm
-
-Contributing Factors ({factor_count}):
-"""
-        for factor in detailed_factors.get('factors', []):
-            plain_message += f"\n- {factor['name']}: {factor['explanation']}"
-
-        plain_message += """
-
-Prevention Tips:
-- Stay hydrated
-- Use a humidifier if air is dry
-- Avoid allergens and irritants
-- Consider nasal irrigation
-- Monitor your symptoms
-
-This is an automated alert from the Migraine & Sinusitis Forecast App.
-"""
+        html_message = render_to_string('forecast/email/sinusitis_alert.html', context)
+        plain_message = strip_tags(html_message)
 
         try:
             # Send email
@@ -484,6 +455,7 @@ This is an automated alert from the Migraine & Sinusitis Forecast App.
                 message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
+                html_message=html_message,
                 fail_silently=False,
             )
             logger.info(f"Sent sinusitis alert email to {user.email}")
