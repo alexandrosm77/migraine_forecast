@@ -77,11 +77,19 @@ class LLMClient:
           - rationale: short string
         Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
         """
-        # Compact system prompt - removed verbose schema
+        # System prompt with explicit JSON output instruction and schema
         sys_prompt = (
             "You are a migraine risk assessor. Analyze weather risk factors (0-1 scale, higher=riskier) "
-            "and output JSON with: probability_level (LOW/MEDIUM/HIGH), confidence (0-1), "
-            "rationale (brief), analysis_text (concise user explanation), prevention_tips (2-5 tips array)."
+            "and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\n"
+            "<schema>\n"
+            "{\n"
+            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
+            '  "confidence": <float between 0 and 1>,\n'
+            '  "rationale": "<brief explanation>",\n'
+            '  "analysis_text": "<concise user explanation>",\n'
+            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
+            "}\n"
+            "</schema>"
         )
 
         # Build minimal user prompt with only essential data
@@ -203,13 +211,21 @@ class LLMClient:
           - rationale: short string
         Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
         """
-        # Compact system prompt for sinusitis - removed verbose schema
+        # System prompt for sinusitis with explicit JSON output instruction and schema
         sys_prompt = (
             "You are a sinusitis risk assessor. Analyze weather risk factors (0-1 scale, higher=riskier) "
-            "and output JSON with: probability_level (LOW/MEDIUM/HIGH), confidence (0-1), "
-            "rationale (brief), analysis_text (concise user explanation), prevention_tips (2-5 tips array). "
+            "and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON. "
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
-            "low dries sinuses), barometric pressure changes, and precipitation (increases allergens)."
+            "low dries sinuses), barometric pressure changes, and precipitation (increases allergens).\n\n"
+            "<schema>\n"
+            "{\n"
+            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
+            '  "confidence": <float between 0 and 1>,\n'
+            '  "rationale": "<brief explanation>",\n'
+            '  "analysis_text": "<concise user explanation>",\n'
+            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
+            "}\n"
+            "</schema>"
         )
 
         # Build minimal user prompt with only essential data
