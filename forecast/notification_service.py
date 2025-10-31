@@ -111,6 +111,15 @@ class NotificationService:
             logger.warning(f"Cannot send migraine alert to user {user.username}: No email address")
             return False
 
+        # Check if user has email notifications enabled
+        try:
+            if hasattr(user, 'health_profile') and not user.health_profile.email_notifications_enabled:
+                logger.info(f"Skipping migraine alert for user {user.username}: Email notifications disabled")
+                return False
+        except Exception as e:
+            logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
+            # Continue with sending email if we can't determine preference
+
         # Get additional context for human-friendly explanations
         detailed_factors = self._get_detailed_weather_factors(prediction)
 
@@ -415,6 +424,15 @@ class NotificationService:
         if not user.email:
             logger.warning(f"Cannot send sinusitis alert to user {user.username}: No email address")
             return False
+
+        # Check if user has email notifications enabled
+        try:
+            if hasattr(user, 'health_profile') and not user.health_profile.email_notifications_enabled:
+                logger.info(f"Skipping sinusitis alert for user {user.username}: Email notifications disabled")
+                return False
+        except Exception as e:
+            logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
+            # Continue with sending email if we can't determine preference
 
         # Get additional context for human-friendly explanations
         detailed_factors = self._get_detailed_sinusitis_factors(prediction)

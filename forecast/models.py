@@ -17,6 +17,7 @@ class UserHealthProfile(models.Model):
     sensitivity_pressure = models.FloatField(default=1.0)
     sensitivity_cloud_cover = models.FloatField(default=1.0)
     sensitivity_precipitation = models.FloatField(default=1.0)
+    email_notifications_enabled = models.BooleanField(default=True, help_text="Enable or disable email notifications for migraine and sinusitis alerts")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

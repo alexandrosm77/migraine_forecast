@@ -8,6 +8,7 @@ class UserHealthProfileForm(forms.ModelForm):
         fields = [
             'age',
             'prior_conditions',
+            'email_notifications_enabled',
             'sensitivity_overall',
             'sensitivity_temperature',
             'sensitivity_humidity',

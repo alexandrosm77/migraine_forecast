@@ -88,6 +88,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
     list_display = (
         'user',
         'age',
+        'email_notifications_enabled',
         'sensitivity_overall',
         'sensitivity_temperature',
         'sensitivity_humidity',
@@ -97,6 +98,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         'updated_at',
     )
     search_fields = ('user__username',)
+    list_filter = ('email_notifications_enabled',)
 
     def get_queryset(self, request):
         """Filter health profiles to show only the user's own profile unless they're a superuser."""
