@@ -69,3 +69,39 @@ jobs:
           script: |
             chmod +x /home/alexandros/migraine/deploy.sh
             /home/alexandros/migraine/deploy.sh --dockerhub_username ${{ vars.DOCKERHUB_USERNAME }} --dockerhub_token ${{ secrets.DOCKERHUB_TOKEN }}
+
+  test:
+    needs: deploy
+    runs-on: self-hosted
+    continue-on-error: true
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Run linting checks
+        run: |
+          docker run --rm \
+            -v $(pwd):/app \
+            -w /app \
+            alexandrosm77/migraine_forecast:latest \
+            sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
+
+      -
+        name: Run unit tests in Docker container
+        run: |
+          docker run --rm \
+            -v $(pwd):/app \
+            -w /app \
+            alexandrosm77/migraine_forecast:latest \
+            python manage.py test forecast.tests --verbosity=2
+
+      -
+        name: Run integration tests in Docker container
+        run: |
+          docker run --rm \
+            -v $(pwd):/app \
+            -w /app \
+            alexandrosm77/migraine_forecast:latest \
+            python manage.py test forecast.integration_tests --verbosity=2
