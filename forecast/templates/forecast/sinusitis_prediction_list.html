@@ -1,0 +1,149 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}Sinusitis Predictions - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Sinusitis Predictions</h1>
+    
+    {% if predictions %}
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <p class="mb-0 text-muted">
+                    Showing {{ predictions.start_index }} - {{ predictions.end_index }} of {{ predictions.paginator.count }} predictions
+                </p>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th>Prediction Time</th>
+                            <th>Target Window</th>
+                            <th>Probability</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in predictions %}
+                        <tr>
+                            <td>{{ prediction.location.city }}, {{ prediction.location.country }}</td>
+                            <td>{{ prediction.prediction_time|date:"M d, H:i" }}</td>
+                            <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
+                            <td>
+                                {% if prediction.probability == 'HIGH' %}
+                                <span class="badge bg-danger">High</span>
+                                {% elif prediction.probability == 'MEDIUM' %}
+                                <span class="badge bg-warning text-dark">Medium</span>
+                                {% else %}
+                                <span class="badge bg-success">Low</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'forecast:sinusitis_prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-primary">Details</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if predictions.has_other_pages %}
+    <nav aria-label="Predictions pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if predictions.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1" aria-label="First">
+                    <span aria-hidden="true">&laquo;&laquo;</span>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ predictions.previous_page_number }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&laquo;&laquo;</span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">&laquo;</span>
+            </li>
+            {% endif %}
+
+            {% for num in predictions.paginator.page_range %}
+                {% if predictions.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > predictions.number|add:'-3' and num < predictions.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if predictions.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ predictions.next_page_number }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ predictions.paginator.num_pages }}" aria-label="Last">
+                    <span aria-hidden="true">&raquo;&raquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&raquo;</span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">&raquo;&raquo;</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="alert alert-info">
+        <p>No sinusitis prediction data available yet. Predictions will appear here once they are generated for your locations.</p>
+        {% if not locations %}
+        <p>You need to add locations first to receive sinusitis predictions.</p>
+        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">Add Location</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">About Sinusitis Predictions</h5>
+        </div>
+        <div class="card-body">
+            <p>Our prediction algorithm analyzes several weather parameters known to trigger sinusitis:</p>
+            <ul>
+                <li><strong>Rapid Temperature Changes:</strong> Sudden temperature fluctuations (especially cold fronts) can irritate sinuses</li>
+                <li><strong>High Humidity:</strong> Promotes mold growth and allergen proliferation</li>
+                <li><strong>Low Humidity:</strong> Dries out nasal passages and sinuses, reducing natural defenses</li>
+                <li><strong>Barometric Pressure Changes:</strong> Affects sinus pressure and can cause inflammation</li>
+                <li><strong>Precipitation:</strong> Can increase airborne allergens and mold spores</li>
+                <li><strong>Cloud Cover:</strong> Associated with weather pattern changes</li>
+            </ul>
+            <p>Predictions are classified as:</p>
+            <ul>
+                <li><span class="badge bg-danger">High</span> - Strong likelihood of sinusitis triggers present</li>
+                <li><span class="badge bg-warning text-dark">Medium</span> - Some sinusitis triggers present</li>
+                <li><span class="badge bg-success">Low</span> - Few or no sinusitis triggers detected</li>
+            </ul>
+            <div class="alert alert-info mt-3">
+                <small><strong>Note:</strong> Sinusitis predictions focus on weather-related triggers. Individual sensitivity varies, and these predictions should not replace medical advice from your healthcare provider.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

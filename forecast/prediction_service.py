@@ -284,7 +284,8 @@ class MigrainePredictionService:
                         LLMResponse.objects.create(
                             user=user,
                             location=location,
-                            prediction=prediction,
+                            prediction_type='migraine',
+                            migraine_prediction=prediction,
                             request_payload=(llm_detail or {}).get('request_payload', {}),
                             response_api_raw=(llm_detail or {}).get('api_raw'),
                             response_parsed=(llm_detail or {}).get('raw'),

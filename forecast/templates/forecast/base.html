@@ -55,8 +55,14 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'forecast:location_list' %}">Locations</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'forecast:prediction_list' %}">Predictions</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="predictionsDropdown" role="button" data-bs-toggle="dropdown">
+                            Predictions
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'forecast:prediction_list' %}">Migraine Predictions</a></li>
+                            <li><a class="dropdown-item" href="{% url 'forecast:sinusitis_prediction_list' %}">Sinusitis Predictions</a></li>
+                        </ul>
                     </li>
                     {% endif %}
                 </ul>

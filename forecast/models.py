@@ -122,14 +122,28 @@ class WeatherComparisonReport(models.Model):
 
 class LLMResponse(models.Model):
     """
-    Stores raw and parsed responses from the LLM model used during migraine prediction.
+    Stores raw and parsed responses from the LLM model used during predictions.
+    Can be linked to either migraine or sinusitis predictions.
     """
+    PREDICTION_TYPE_CHOICES = [
+        ('migraine', 'Migraine'),
+        ('sinusitis', 'Sinusitis'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='llm_responses')
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='llm_responses')
-    prediction = models.ForeignKey('MigrainePrediction', on_delete=models.SET_NULL, null=True, blank=True, related_name='llm_responses')
+
+    # Prediction type and references
+    prediction_type = models.CharField(max_length=20, choices=PREDICTION_TYPE_CHOICES, default='migraine', db_index=True)
+    migraine_prediction = models.ForeignKey('MigrainePrediction', on_delete=models.SET_NULL, null=True, blank=True, related_name='llm_responses', db_column='prediction_id')
+    sinusitis_prediction = models.ForeignKey('SinusitisPrediction', on_delete=models.SET_NULL, null=True, blank=True, related_name='llm_responses')
+
+    # LLM request and response data
     request_payload = JSONField(default=dict, null=True, blank=True)
     response_api_raw = JSONField(default=dict, null=True, blank=True)
     response_parsed = JSONField(default=dict, null=True, blank=True)
+
+    # Extracted fields from LLM response
     probability_level = models.CharField(max_length=10, blank=True)
     confidence = models.FloatField(null=True, blank=True)
     rationale = models.TextField(blank=True)
@@ -139,4 +153,14 @@ class LLMResponse(models.Model):
 
     def __str__(self):
         loc = getattr(self.location, 'city', 'Unknown')
-        return f"LLMResponse for {loc} at {self.created_at:%Y-%m-%d %H:%M}"
+        pred_type = self.get_prediction_type_display()
+        return f"LLMResponse ({pred_type}) for {loc} at {self.created_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def prediction(self):
+        """Return the associated prediction (migraine or sinusitis)."""
+        if self.prediction_type == 'migraine':
+            return self.migraine_prediction
+        elif self.prediction_type == 'sinusitis':
+            return self.sinusitis_prediction
+        return None

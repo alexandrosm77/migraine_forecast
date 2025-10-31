@@ -284,7 +284,7 @@ def sinusitis_prediction_detail(request, prediction_id):
     """View for sinusitis prediction details."""
     prediction = get_object_or_404(SinusitisPrediction, id=prediction_id, user=request.user)
 
-    # Build detailed factors similar to email
+    # Build detailed factors similar to email, and expose LLM analysis/tips
     notif = NotificationService()
     try:
         detailed_factors = notif._get_detailed_sinusitis_factors(prediction)
@@ -295,6 +295,8 @@ def sinusitis_prediction_detail(request, prediction_id):
     context = {
         'prediction': prediction,
         'detailed_factors': detailed_factors,
+        'llm_analysis_text': wf.get('llm_analysis_text'),
+        'llm_prevention_tips': wf.get('llm_prevention_tips') or [],
     }
 
     return render(request, 'forecast/sinusitis_prediction_detail.html', context)

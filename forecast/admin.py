@@ -108,14 +108,28 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
 @admin.register(LLMResponse)
 class LLMResponseAdmin(admin.ModelAdmin):
     list_display = (
-        'created_at', 'user', 'location', 'prediction', 'probability_level', 'confidence'
+        'created_at', 'user', 'location', 'prediction_type', 'get_prediction_link', 'probability_level', 'confidence'
     )
-    list_filter = ('probability_level', 'created_at', 'location')
+    list_filter = ('prediction_type', 'probability_level', 'created_at', 'location')
     search_fields = ('location__city', 'location__country', 'user__username')
     readonly_fields = ('created_at',)
     formfield_overrides = {
         JSONField: {'widget': JSONEditorWidget(options={'mode': 'text', 'modes': ['text', 'tree', 'view']})},
     }
+
+    def get_prediction_link(self, obj):
+        """Display a link to the associated prediction."""
+        from django.urls import reverse
+        from django.utils.html import format_html
+
+        if obj.prediction_type == 'migraine' and obj.migraine_prediction:
+            url = reverse('admin:forecast_migraineprediction_change', args=[obj.migraine_prediction.id])
+            return format_html('<a href="{}">Migraine #{}</a>', url, obj.migraine_prediction.id)
+        elif obj.prediction_type == 'sinusitis' and obj.sinusitis_prediction:
+            url = reverse('admin:forecast_sinusitisprediction_change', args=[obj.sinusitis_prediction.id])
+            return format_html('<a href="{}">Sinusitis #{}</a>', url, obj.sinusitis_prediction.id)
+        return '-'
+    get_prediction_link.short_description = 'Prediction'
 
     def get_queryset(self, request):
         """Filter LLM responses to show only the user's own responses unless they're a superuser."""

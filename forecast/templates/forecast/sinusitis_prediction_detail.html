@@ -1,0 +1,200 @@
+{% extends 'forecast/base.html' %}
+
+{% block title %}Sinusitis Prediction Details - Migraine Forecast{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Sinusitis Prediction Details</h1>
+        <a href="{% url 'forecast:sinusitis_prediction_list' %}" class="btn btn-outline-secondary">Back to Predictions</a>
+    </div>
+    
+    <div class="row">
+        <!-- Prediction Info -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Prediction Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Location:</strong> {{ prediction.location.city }}, {{ prediction.location.country }}</p>
+                    <p><strong>Prediction Made:</strong> {{ prediction.prediction_time|date:"F j, Y, g:i a" }}</p>
+                    <p><strong>Target Time Window:</strong> {{ prediction.target_time_start|date:"F j, Y, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</p>
+                    <p>
+                        <strong>Sinusitis Probability:</strong>
+                        {% if prediction.probability == 'HIGH' %}
+                        <span class="badge bg-danger">High</span>
+                        {% elif prediction.probability == 'MEDIUM' %}
+                        <span class="badge bg-warning text-dark">Medium</span>
+                        {% else %}
+                        <span class="badge bg-success">Low</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Notification Sent:</strong> {{ prediction.notification_sent|yesno:"Yes,No" }}</p>
+
+                    {% if prediction.weather_factors %}
+                    <hr>
+                    <h6 class="mb-3">Weather Factors</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                {% if prediction.weather_factors.temperature_change is not None %}
+                                <tr>
+                                    <td><strong>Temperature Change:</strong></td>
+                                    <td>{{ prediction.weather_factors.temperature_change }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.humidity_extreme is not None %}
+                                <tr>
+                                    <td><strong>Humidity Extreme:</strong></td>
+                                    <td>{{ prediction.weather_factors.humidity_extreme }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.pressure_change is not None %}
+                                <tr>
+                                    <td><strong>Pressure Change:</strong></td>
+                                    <td>{{ prediction.weather_factors.pressure_change }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.pressure_low is not None %}
+                                <tr>
+                                    <td><strong>Pressure Low:</strong></td>
+                                    <td>{{ prediction.weather_factors.pressure_low }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.precipitation is not None %}
+                                <tr>
+                                    <td><strong>Precipitation:</strong></td>
+                                    <td>{{ prediction.weather_factors.precipitation }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if prediction.weather_factors.cloud_cover is not None %}
+                                <tr>
+                                    <td><strong>Cloud Cover:</strong></td>
+                                    <td>{{ prediction.weather_factors.cloud_cover }}</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Weather Conditions -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Weather Conditions</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Temperature:</strong> {{ prediction.forecast.temperature|floatformat:1 }}°C</p>
+                    <p><strong>Humidity:</strong> {{ prediction.forecast.humidity|floatformat:0 }}%</p>
+                    <p><strong>Barometric Pressure:</strong> {{ prediction.forecast.pressure|floatformat:1 }} hPa</p>
+                    <p><strong>Wind Speed:</strong> {{ prediction.forecast.wind_speed|floatformat:1 }} km/h</p>
+                    <p><strong>Precipitation:</strong> {{ prediction.forecast.precipitation|floatformat:1 }} mm</p>
+                    <p><strong>Cloud Cover:</strong> {{ prediction.forecast.cloud_cover|floatformat:0 }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if llm_analysis_text %}
+    <div class="alert alert-success" role="alert">
+        <h5 class="alert-heading">🧠 Model Analysis</h5>
+        <p class="mb-0">{{ llm_analysis_text }}</p>
+    </div>
+    {% endif %}
+
+    {% if detailed_factors and detailed_factors.contributing_factors_count > 0 %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Prediction Details</h5>
+        </div>
+        <div class="card-body">
+            <p>
+                <strong>Overall Risk Score:</strong>
+                {{ detailed_factors.total_score }}/1.0
+                {% if prediction.probability == 'HIGH' %}
+                    (High risk - score ≥ 0.65)
+                {% elif prediction.probability == 'MEDIUM' %}
+                    (Medium risk - score 0.35-0.64)
+                {% else %}
+                    (Low risk - score < 0.35)
+                {% endif %}
+            </p>
+            <p><strong>{{ detailed_factors.contributing_factors_count }} weather factor{{ detailed_factors.contributing_factors_count|pluralize }} {{ detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing:</strong></p>
+
+            {% for factor in detailed_factors.factors %}
+            <div class="mb-3 p-3 rounded" style="background-color: {% if factor.severity == 'high' %}#fff5f5{% else %}#fffbf0{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#dc3545{% else %}#fd7e14{% endif %};">
+                <h6 class="mb-1">
+                    {{ factor.name }}
+                    <span class="text-muted" style="font-size: 12px;">
+                        (Impact: {{ factor.score|floatformat:1 }}/1.0)
+                    </span>
+                </h6>
+                <p class="mb-0">{{ factor.explanation }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Sinusitis Prevention Tips -->
+    {% if prediction.probability == 'HIGH' or prediction.probability == 'MEDIUM' %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Sinusitis Prevention Tips</h5>
+        </div>
+        <div class="card-body">
+            {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
+            <div class="mb-3">
+                <h6>🎯 Personalized tips based on current factors</h6>
+                <ul class="mb-0">
+                    {% for tip in llm_prevention_tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <hr>
+            {% endif %}
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Immediate Actions</h6>
+                    <ul>
+                        <li>Use saline nasal rinse or spray to keep sinuses moist</li>
+                        <li>Stay well-hydrated - drink plenty of water</li>
+                        <li>Use a humidifier if air is dry (especially indoors)</li>
+                        <li>Apply warm compresses to sinus areas</li>
+                        <li>Take prescribed antihistamines or decongestants if needed</li>
+                        <li>Avoid known allergens and irritants</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>Preventive Measures</h6>
+                    <ul>
+                        <li>Keep indoor humidity between 30-50%</li>
+                        <li>Use air purifiers with HEPA filters</li>
+                        <li>Avoid sudden temperature changes when possible</li>
+                        <li>Limit outdoor activities during high pollen/mold days</li>
+                        <li>Keep windows closed during high allergen periods</li>
+                        <li>Maintain good hand hygiene to prevent infections</li>
+                        <li>Get adequate sleep to support immune function</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="alert alert-info mt-3">
+                <small><strong>Note:</strong> These are general suggestions and not medical advice. If you experience severe or persistent sinus symptoms, please consult with your healthcare provider for personalized recommendations.</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
