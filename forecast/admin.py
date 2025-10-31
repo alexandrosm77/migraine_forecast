@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django_json_widget.widgets import JSONEditorWidget
+from django.db.models import JSONField
 from forecast.models import (
     Location,
     WeatherForecast,
@@ -29,6 +31,9 @@ class MigrainePredictionAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'location__city')
     list_filter = ('probability', 'notification_sent', 'prediction_time')
     date_hierarchy = 'prediction_time'
+    formfield_overrides = {
+        JSONField: {'widget': JSONEditorWidget},
+    }
 
 
 @admin.register(UserHealthProfile)
@@ -55,3 +60,6 @@ class LLMResponseAdmin(admin.ModelAdmin):
     list_filter = ('probability_level', 'created_at', 'location')
     search_fields = ('location__city', 'location__country', 'user__username')
     readonly_fields = ('created_at',)
+    formfield_overrides = {
+        JSONField: {'widget': JSONEditorWidget},
+    }

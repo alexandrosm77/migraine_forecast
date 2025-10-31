@@ -2,3 +2,4 @@ Django>=5.1.0,<6.0.0
 requests>=2.30.0
 numpy>=1.24.0
 python-dateutil>=2.8.2
+django-json-widget==2.1.0
