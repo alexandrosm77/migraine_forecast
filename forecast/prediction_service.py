@@ -182,6 +182,34 @@ class MigrainePredictionService:
                                 'low_count': pred_list.count('LOW'),
                             }
 
+                    # Add summarized previous weather forecasts (last 12-24h)
+                    # This helps LLM understand recent weather trends
+                    if prev_list:
+                        # Get weather from 12-24h ago for trend analysis
+                        older_forecasts = WeatherForecast.objects.filter(
+                            location=location,
+                            target_time__gte=start_time - timedelta(hours=24),
+                            target_time__lt=start_time - timedelta(hours=12)
+                        ).order_by('target_time')
+
+                        if older_forecasts.exists():
+                            older_list = list(older_forecasts)
+                            # Calculate trends: are conditions getting worse or better?
+                            prev_avg_temp = np.mean([f.temperature for f in prev_list]) if prev_list else 0
+                            older_avg_temp = np.mean([f.temperature for f in older_list]) if older_list else 0
+                            prev_avg_pressure = np.mean([f.pressure for f in prev_list]) if prev_list else 0
+                            older_avg_pressure = np.mean([f.pressure for f in older_list]) if older_list else 0
+
+                            # Only include if there's a meaningful trend
+                            temp_trend = prev_avg_temp - older_avg_temp
+                            pressure_trend = prev_avg_pressure - older_avg_pressure
+
+                            if abs(temp_trend) > 2 or abs(pressure_trend) > 3:
+                                context_payload['weather_trend'] = {
+                                    'temp_trend': round(float(temp_trend), 1),
+                                    'pressure_trend': round(float(pressure_trend), 1),
+                                }
+
                 except Exception:
                     logger.exception('Failed building LLM context payload')
                     context_payload = {}

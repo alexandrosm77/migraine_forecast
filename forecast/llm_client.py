@@ -130,7 +130,24 @@ class LLMClient:
                 if prev_summary.get('low_count', 0) > 0:
                     summary_parts.append(f"{prev_summary['low_count']}L")
                 if summary_parts:
-                    user_prompt_parts.append(f"Last 24h: {'/'.join(summary_parts)}")
+                    user_prompt_parts.append(f"Last 24h predictions: {'/'.join(summary_parts)}")
+
+        # Add weather trend information if available
+        if context and 'weather_trend' in context:
+            trend = context['weather_trend']
+            trend_parts = []
+            temp_trend = trend.get('temp_trend', 0)
+            pressure_trend = trend.get('pressure_trend', 0)
+
+            if temp_trend != 0:
+                direction = "rising" if temp_trend > 0 else "falling"
+                trend_parts.append(f"temp {direction} {abs(temp_trend):.1f}°C")
+            if pressure_trend != 0:
+                direction = "rising" if pressure_trend > 0 else "falling"
+                trend_parts.append(f"pressure {direction} {abs(pressure_trend):.1f}hPa")
+
+            if trend_parts:
+                user_prompt_parts.append(f"24h trend: {', '.join(trend_parts)}")
 
         user_prompt_str = "\n".join(user_prompt_parts)
 
