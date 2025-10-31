@@ -90,6 +90,13 @@ class LLMClient:
             f"Risk scores: {json.dumps(scores)}",
         ]
 
+        # Add temporal context if available (compact format)
+        if context and 'forecast_time' in context:
+            forecast_info = context['forecast_time']
+            user_prompt_parts.append(
+                f"Time: {forecast_info.get('day_period', '')} {forecast_info.get('hours_ahead', '')}h ahead"
+            )
+
         # Add user sensitivity if available
         if user_profile:
             sensitivity = user_profile.get('sensitivity_overall', 1.0)
@@ -109,6 +116,21 @@ class LLMClient:
                 weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
             if weather_summary:
                 user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
+
+        # Add summarized previous predictions history if available
+        if context and 'previous_predictions' in context:
+            prev_summary = context['previous_predictions']
+            if prev_summary.get('count', 0) > 0:
+                # Compact summary: just counts by level in last 24h
+                summary_parts = []
+                if prev_summary.get('high_count', 0) > 0:
+                    summary_parts.append(f"{prev_summary['high_count']}H")
+                if prev_summary.get('medium_count', 0) > 0:
+                    summary_parts.append(f"{prev_summary['medium_count']}M")
+                if prev_summary.get('low_count', 0) > 0:
+                    summary_parts.append(f"{prev_summary['low_count']}L")
+                if summary_parts:
+                    user_prompt_parts.append(f"Last 24h: {'/'.join(summary_parts)}")
 
         user_prompt_str = "\n".join(user_prompt_parts)
 

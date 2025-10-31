@@ -146,6 +146,42 @@ class MigrainePredictionService:
                             'pressure_change': round(float(abs((np.mean([f.pressure for f in fc_list]) if fc_list else 0) - (np.mean([f.pressure for f in prev_list]) if prev_list else 0))), 1),
                         },
                     }
+
+                    # Add compact temporal context
+                    hours_ahead = round((end_time - start_time).total_seconds() / 3600, 1)
+                    hour_of_day = start_time.hour
+                    if 5 <= hour_of_day < 12:
+                        day_period = "morning"
+                    elif 12 <= hour_of_day < 17:
+                        day_period = "afternoon"
+                    elif 17 <= hour_of_day < 21:
+                        day_period = "evening"
+                    else:
+                        day_period = "night"
+
+                    context_payload['forecast_time'] = {
+                        'hours_ahead': hours_ahead,
+                        'day_period': day_period,
+                    }
+
+                    # Add summarized previous predictions (last 24h only)
+                    if user:
+                        from datetime import timedelta
+                        recent_predictions = MigrainePrediction.objects.filter(
+                            user=user,
+                            location=location,
+                            prediction_time__gte=start_time - timedelta(hours=24)
+                        ).values_list('probability', flat=True)
+
+                        if recent_predictions:
+                            pred_list = list(recent_predictions)
+                            context_payload['previous_predictions'] = {
+                                'count': len(pred_list),
+                                'high_count': pred_list.count('HIGH'),
+                                'medium_count': pred_list.count('MEDIUM'),
+                                'low_count': pred_list.count('LOW'),
+                            }
+
                 except Exception:
                     logger.exception('Failed building LLM context payload')
                     context_payload = {}
