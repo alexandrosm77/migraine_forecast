@@ -134,7 +134,7 @@ class SinusitisPredictionService:
         from forecast.models import LLMConfiguration
         llm_config = LLMConfiguration.get_config()
 
-        if llm_config.enabled:
+        if llm_config.is_active:
             try:
                 client = LLMClient(
                     base_url=llm_config.base_url,
