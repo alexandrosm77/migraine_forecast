@@ -116,17 +116,13 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(self.style.WARNING(f"Sinusitis predictions disabled for user {user.username}"))
 
-        # Send notifications
-        self.stdout.write("Checking and sending migraine notifications...")
-        migraine_notifications_sent = notification_service.check_and_send_notifications(migraine_predictions)
-        self.stdout.write(f"Sent {migraine_notifications_sent} migraine notifications")
-
-        self.stdout.write("Checking and sending sinusitis notifications...")
-        sinusitis_notifications_sent = notification_service.check_and_send_sinusitis_notifications(sinusitis_predictions)
-        self.stdout.write(f"Sent {sinusitis_notifications_sent} sinusitis notifications")
-
-        total_notifications = migraine_notifications_sent + sinusitis_notifications_sent
-        self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] Check completed. Total notifications sent: {total_notifications}"))
+        # Send combined notifications (single email for users with both predictions)
+        self.stdout.write("Checking and sending combined notifications...")
+        notifications_sent = notification_service.check_and_send_combined_notifications(
+            migraine_predictions,
+            sinusitis_predictions
+        )
+        self.stdout.write(self.style.SUCCESS(f"[{timezone.now()}] Check completed. Total notifications sent: {notifications_sent}"))
 
     def _handle_test_notification(self, options):
         """

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Health Alert - Migraine & Sinusitis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #3498db 0%, #f59e0b 100%);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        .migraine-section {
+            border-color: #3498db;
+            background-color: #f0f8ff;
+        }
+        .sinusitis-section {
+            border-color: #f59e0b;
+            background-color: #fffbf0;
+        }
+        .section-header {
+            margin: 0 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid;
+        }
+        .migraine-section .section-header {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+        .sinusitis-section .section-header {
+            color: #f59e0b;
+            border-bottom-color: #f59e0b;
+        }
+        .weather-data {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .weather-item {
+            margin-bottom: 8px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+        }
+        .alert-level {
+            font-weight: bold;
+        }
+        .time-window {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌤️ Health Alert</h1>
+        <p style="margin: 5px 0 0 0; font-size: 14px;">Migraine & Sinusitis Forecast</p>
+    </div>
+    <div class="content">
+        <p>Hello {{ user.first_name|default:user.username }},</p>
+        
+        <p>Our system has detected weather conditions that may affect your health in <strong>{{ location.city }}, {{ location.country }}</strong> during the time window:
+        <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} to {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
+
+        {% if migraine_prediction %}
+        <div class="section migraine-section">
+            <h2 class="section-header">🧠 Migraine Alert - {{ migraine_probability_level }} Probability</h2>
+            
+            {% if migraine_llm_analysis_text %}
+            <div style="background-color: #eefcf4; padding: 15px; border: 1px solid #c6f6d5; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #276749;">Model Analysis</h3>
+                <p style="margin: 0;">{{ migraine_llm_analysis_text }}</p>
+            </div>
+            {% endif %}
+
+            {% if migraine_detailed_factors.contributing_factors_count > 0 %}
+            <p><strong>{{ migraine_detailed_factors.contributing_factors_count }} weather factor{{ migraine_detailed_factors.contributing_factors_count|pluralize }} {{ migraine_detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to migraine risk:</strong></p>
+
+            {% for factor in migraine_detailed_factors.factors %}
+            <div class="weather-factor-detail" style="background-color: {% if factor.severity == 'high' %}#fff5f5{% else %}#fffbf0{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %}; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h4 style="margin: 0 0 8px 0; color: {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %};">
+                    {{ factor.name }}
+                    <span style="font-size: 12px; font-weight: normal; color: #666;">
+                        (Impact: {{ factor.score|floatformat:1 }}/1.0)
+                    </span>
+                </h4>
+                <p style="margin: 0; line-height: 1.4;">{{ factor.explanation }}</p>
+            </div>
+            {% endfor %}
+
+            <div style="background-color: #e6f2ff; padding: 15px; margin: 15px 0; border-radius: 5px; border: 1px solid #bee3f8;">
+                <p style="margin: 0; font-size: 14px;"><strong>Overall Migraine Risk Score:</strong> {{ migraine_detailed_factors.total_score }}/1.0
+                {% if migraine_probability_level == 'HIGH' %}(High risk - score ≥ 0.7){% elif migraine_probability_level == 'MEDIUM' %}(Medium risk - score 0.4-0.69){% else %}(Low risk - score < 0.4){% endif %}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if sinusitis_prediction %}
+        <div class="section sinusitis-section">
+            <h2 class="section-header">👃 Sinusitis Alert - {{ sinusitis_probability_level }} Probability</h2>
+            
+            {% if sinusitis_llm_analysis_text %}
+            <div style="background-color: #fef3c7; padding: 15px; border: 1px solid #fde68a; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #92400e;">Model Analysis</h3>
+                <p style="margin: 0;">{{ sinusitis_llm_analysis_text }}</p>
+            </div>
+            {% endif %}
+
+            {% if sinusitis_detailed_factors.contributing_factors_count > 0 %}
+            <p><strong>{{ sinusitis_detailed_factors.contributing_factors_count }} weather factor{{ sinusitis_detailed_factors.contributing_factors_count|pluralize }} {{ sinusitis_detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to sinusitis risk:</strong></p>
+
+            {% for factor in sinusitis_detailed_factors.factors %}
+            <div class="weather-factor-detail" style="background-color: {% if factor.severity == 'high' %}#fef2f2{% else %}#fffbeb{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#dc2626{% else %}#f59e0b{% endif %}; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                <h4 style="margin: 0 0 8px 0; color: {% if factor.severity == 'high' %}#dc2626{% else %}#f59e0b{% endif %};">
+                    {{ factor.name }}
+                    <span style="font-size: 12px; font-weight: normal; color: #666;">
+                        (Impact: {{ factor.score|floatformat:1 }}/1.0)
+                    </span>
+                </h4>
+                <p style="margin: 0; line-height: 1.4;">{{ factor.explanation }}</p>
+            </div>
+            {% endfor %}
+
+            <div style="background-color: #fef3c7; padding: 15px; margin: 15px 0; border-radius: 5px; border: 1px solid #fde68a;">
+                <p style="margin: 0; font-size: 14px;"><strong>Overall Sinusitis Risk Score:</strong> {{ sinusitis_detailed_factors.total_score }}/1.0
+                {% if sinusitis_probability_level == 'HIGH' %}(High risk - score ≥ 0.65){% elif sinusitis_probability_level == 'MEDIUM' %}(Medium risk - score 0.35-0.64){% else %}(Low risk - score < 0.35){% endif %}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div style="background-color: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 5px; border: 2px solid #86efac;">
+            <h3 style="margin: 0 0 15px 0; color: #166534;">💡 Recommended Actions</h3>
+            
+            {% if migraine_prediction %}
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #3498db; margin: 0 0 10px 0;">For Migraine Prevention:</h4>
+                <ul style="margin: 0 0 10px 0;">
+                    <li>Take prescribed preventive medication if you have any</li>
+                    <li>Stay well hydrated throughout the day</li>
+                    <li>Maintain regular sleep and meal schedules</li>
+                    <li>Avoid known personal triggers (certain foods, stress, etc.)</li>
+                    <li>Have your rescue medication readily available</li>
+                </ul>
+                {% if migraine_llm_prevention_tips and migraine_llm_prevention_tips|length > 0 %}
+                <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
+                <ul style="margin: 0;">
+                    {% for tip in migraine_llm_prevention_tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if sinusitis_prediction %}
+            <div>
+                <h4 style="color: #f59e0b; margin: 0 0 10px 0;">For Sinusitis Prevention:</h4>
+                <ul style="margin: 0 0 10px 0;">
+                    <li>Use saline nasal rinse to keep sinuses clear</li>
+                    <li>Stay well hydrated throughout the day</li>
+                    <li>Use a humidifier if air is dry</li>
+                    <li>Avoid allergens and irritants (smoke, strong odors)</li>
+                    <li>Apply warm compresses to sinus areas if needed</li>
+                </ul>
+                {% if sinusitis_llm_prevention_tips and sinusitis_llm_prevention_tips|length > 0 %}
+                <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
+                <ul style="margin: 0;">
+                    {% for tip in sinusitis_llm_prevention_tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
+                <strong>Remember:</strong> If symptoms persist or worsen, consult with your healthcare provider.
+            </p>
+        </div>
+
+        {% if forecast %}
+        <div class="weather-data">
+            <h4 style="margin-top: 0;">Current Weather Forecast:</h4>
+            <div class="weather-item"><strong>Temperature:</strong> {{ forecast.temperature }}°C</div>
+            <div class="weather-item"><strong>Humidity:</strong> {{ forecast.humidity }}%</div>
+            <div class="weather-item"><strong>Barometric Pressure:</strong> {{ forecast.pressure }} hPa</div>
+            <div class="weather-item"><strong>Precipitation:</strong> {{ forecast.precipitation }} mm</div>
+            <div class="weather-item"><strong>Cloud Cover:</strong> {{ forecast.cloud_cover }}%</div>
+        </div>
+        {% endif %}
+        
+        <p>Stay well,<br>
+        The Health Forecast Team</p>
+    </div>
+    <div class="footer">
+        <p>This is an automated message from the Migraine & Sinusitis Forecast application. 
+        The predictions are based on weather data and statistical models, and should not be considered medical advice.</p>
+    </div>
+</body>
+</html>
+
