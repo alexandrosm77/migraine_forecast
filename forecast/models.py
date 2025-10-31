@@ -3,6 +3,8 @@ from time import timezone
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import JSONField
+from django.conf import settings
+import os
 
 
 class UserHealthProfile(models.Model):
@@ -164,3 +166,70 @@ class LLMResponse(models.Model):
         elif self.prediction_type == 'sinusitis':
             return self.sinusitis_prediction
         return None
+
+
+class LLMConfiguration(models.Model):
+    """
+    Singleton model for LLM configuration.
+    Allows runtime configuration through Django admin.
+    Falls back to environment variables if not configured.
+    """
+    # Singleton pattern - only one instance should exist
+    singleton_id = models.IntegerField(default=1, unique=True, editable=False)
+
+    enabled = models.BooleanField(
+        default=True,
+        help_text="Enable or disable LLM predictions"
+    )
+    base_url = models.CharField(
+        max_length=500,
+        default='http://192.168.0.11:11434',
+        help_text="Base URL for the LLM API (OpenAI-compatible endpoint)"
+    )
+    model = models.CharField(
+        max_length=200,
+        default='ibm/granite4:3b-h',
+        help_text="Model name to use for predictions"
+    )
+    api_key = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text="API key for authentication (leave empty if not required)"
+    )
+    timeout = models.FloatField(
+        default=240.0,
+        help_text="Request timeout in seconds"
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "LLM Configuration"
+        verbose_name_plural = "LLM Configuration"
+
+    def __str__(self):
+        return f"LLM Config: {self.model} ({'Enabled' if self.enabled else 'Disabled'})"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one instance exists (singleton pattern)
+        self.singleton_id = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_config(cls):
+        """
+        Get the LLM configuration, creating default if it doesn't exist.
+        Falls back to environment variables for initial values.
+        """
+        config, created = cls.objects.get_or_create(
+            singleton_id=1,
+            defaults={
+                'enabled': os.getenv('LLM_ENABLED', 'true').lower() in ('1', 'true', 'yes', 'on'),
+                'base_url': os.getenv('LLM_BASE_URL', 'http://192.168.0.11:11434'),
+                'model': os.getenv('LLM_MODEL', 'ibm/granite4:3b-h'),
+                'api_key': os.getenv('LLM_API_KEY', ''),
+                'timeout': float(os.getenv('LLM_TIMEOUT', '240.0')),
+            }
+        )
+        return config

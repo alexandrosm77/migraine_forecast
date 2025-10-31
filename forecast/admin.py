@@ -8,6 +8,7 @@ from forecast.models import (
     SinusitisPrediction,
     UserHealthProfile,
     LLMResponse,
+    LLMConfiguration,
 )
 
 
@@ -137,3 +138,41 @@ class LLMResponseAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return qs
         return qs.filter(user=request.user)
+
+
+@admin.register(LLMConfiguration)
+class LLMConfigurationAdmin(admin.ModelAdmin):
+    """
+    Admin interface for LLM configuration.
+    Only superusers can modify this.
+    """
+    list_display = ('enabled', 'model', 'base_url', 'timeout', 'updated_at')
+    readonly_fields = ('updated_at',)
+    fieldsets = (
+        ('Status', {
+            'fields': ('enabled',),
+            'description': 'Enable or disable LLM predictions globally'
+        }),
+        ('API Configuration', {
+            'fields': ('base_url', 'model', 'api_key', 'timeout'),
+            'description': 'Configure the LLM API endpoint and model'
+        }),
+        ('Metadata', {
+            'fields': ('updated_at',),
+        }),
+    )
+
+    def has_add_permission(self, request):
+        # Only allow one instance (singleton)
+        return not LLMConfiguration.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        # Don't allow deletion of the singleton
+        return False
+
+    def get_queryset(self, request):
+        """Only superusers can see/edit LLM configuration."""
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser:
+            return qs.none()
+        return qs

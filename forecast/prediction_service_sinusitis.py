@@ -130,13 +130,18 @@ class SinusitisPredictionService:
         llm_detail = None
         probability_level = None
 
-        if getattr(settings, 'LLM_ENABLED', True):
+        # Get LLM configuration from database (with fallback to settings)
+        from forecast.models import LLMConfiguration
+        llm_config = LLMConfiguration.get_config()
+
+        if llm_config.enabled:
             try:
-                base_url = getattr(settings, 'LLM_BASE_URL', 'http://localhost:11434')
-                api_key = getattr(settings, 'LLM_API_KEY', '')
-                model = getattr(settings, 'LLM_MODEL', 'ibm/granite4:tiny-h')
-                timeout = getattr(settings, 'LLM_TIMEOUT', 8.0)
-                client = LLMClient(base_url=base_url, api_key=api_key, model=model, timeout=timeout)
+                client = LLMClient(
+                    base_url=llm_config.base_url,
+                    api_key=llm_config.api_key,
+                    model=llm_config.model,
+                    timeout=llm_config.timeout
+                )
                 loc_label = f"{location.city}, {location.country}"
                 # Build minimal context with only essential aggregates and changes
                 try:
