@@ -192,6 +192,7 @@ class MigraineAdminSite(admin.AdminSite):
     site_header = "Migraine Forecast Administration"
     site_title = "Migraine Forecast Admin"
     index_title = "Welcome to Migraine Forecast Administration"
+    index_template = 'admin/custom_index.html'
 
     def get_urls(self):
         urls = super().get_urls()
@@ -200,6 +201,12 @@ class MigraineAdminSite(admin.AdminSite):
             path('run-prediction-check/execute/', self.admin_view(self.execute_prediction_check), name='execute_prediction_check'),
         ]
         return custom_urls + urls
+
+    def index(self, request, extra_context=None):
+        """Override index to add custom context."""
+        extra_context = extra_context or {}
+        extra_context['show_quick_actions'] = request.user.is_superuser
+        return super().index(request, extra_context)
 
     def run_prediction_check_view(self, request):
         """View to display the prediction check form."""
