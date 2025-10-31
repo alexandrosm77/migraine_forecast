@@ -77,40 +77,46 @@ class LLMClient:
           - rationale: short string
         Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
         """
+        # Compact system prompt - removed verbose schema
         sys_prompt = (
-            "You are a migraine risk assessor. You receive weather-derived risk factors (0-1, higher is riskier). "
-            "Follow the output JSON schema exactly and output only a single JSON object, no extra text.\n"
-            "<schema>{\n"
-            "  \"type\": \"object\",\n"
-            "  \"additionalProperties\": false,\n"
-            "  \"properties\": {\n"
-            "    \"probability_level\": {\n"
-            "      \"type\": \"string\",\n"
-            "      \"enum\": [\"LOW\", \"MEDIUM\", \"HIGH\"]\n"
-            "    },\n"
-            "    \"confidence\": {\n"
-            "      \"type\": \"number\",\n"
-            "      \"minimum\": 0,\n"
-            "      \"maximum\": 1\n"
-            "    },\n"
-            "    \"rationale\": { \"type\": \"string\" },\n"
-            "    \"analysis_text\": { \"type\": \"string\", \"description\": \"Concise analysis to show users why this prediction was made\" },\n"
-            "    \"prevention_tips\": { \"type\": \"array\", \"items\": { \"type\": \"string\" }, \"minItems\": 2, \"maxItems\": 8 }\n"
-            "  },\n"
-            "  \"required\": [\"probability_level\", \"confidence\", \"rationale\", \"analysis_text\", \"prevention_tips\"]\n"
-            "}</schema>"
+            "You are a migraine risk assessor. Analyze weather risk factors (0-1 scale, higher=riskier) "
+            "and output JSON with: probability_level (LOW/MEDIUM/HIGH), confidence (0-1), "
+            "rationale (brief), analysis_text (concise user explanation), prevention_tips (2-5 tips array)."
         )
-        user_prompt = {
-            "location": location_label,
-            "scores": scores,
-            "user_profile": user_profile or {},
-            "context": context or {},
-        }
+
+        # Build minimal user prompt with only essential data
+        user_prompt_parts = [
+            f"Location: {location_label}",
+            f"Risk scores: {json.dumps(scores)}",
+        ]
+
+        # Add user sensitivity if available
+        if user_profile:
+            sensitivity = user_profile.get('sensitivity_overall', 1.0)
+            if sensitivity != 1.0:
+                user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
+
+        # Add key weather changes from context if available
+        if context and 'aggregates' in context:
+            agg = context['aggregates']
+            changes = context.get('changes', {})
+            weather_summary = []
+            if changes.get('temperature_change'):
+                weather_summary.append(f"temp Δ{changes['temperature_change']:.1f}°C")
+            if changes.get('pressure_change'):
+                weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
+            if agg.get('avg_forecast_humidity'):
+                weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
+            if weather_summary:
+                user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
+
+        user_prompt_str = "\n".join(user_prompt_parts)
+
         try:
             result = self.chat_complete(
                 messages=[
                     {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": json.dumps(user_prompt)},
+                    {"role": "user", "content": user_prompt_str},
                 ],
                 temperature=0.2,
             )

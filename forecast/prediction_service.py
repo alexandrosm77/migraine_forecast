@@ -73,7 +73,7 @@ class MigrainePredictionService:
         
         # Calculate scores for different weather factors
         scores = self._calculate_weather_scores(forecasts, previous_forecasts)
-        
+
         # Optionally adjust scores/weights based on user health profile
         adjusted_weights = dict(self.WEIGHTS)
         applied_profile = None
@@ -110,35 +110,17 @@ class MigrainePredictionService:
                 pass
             except Exception:
                 logger.exception("Failed to apply user health profile, proceeding with default weights")
-        
-        # Calculate overall probability score (0-1)
-        total_score = sum(scores[factor] * adjusted_weights.get(factor, 0.0) for factor in scores)
-        
-        # Determine probability level (shift thresholds slightly by overall sensitivity)
-        high_thr = 0.7
-        med_thr = 0.4
-        if user is not None and applied_profile is not None:
-            overall = applied_profile.get('sensitivity_overall', 1.0)
-            # More sensitive → lower thresholds; less sensitive → higher thresholds (clamped)
-            shift = (overall - 1.0) * 0.15  # max +/- 15% threshold shift per overall unit
-            high_thr = min(max(high_thr - shift, 0.5), 0.9)
-            med_thr = min(max(med_thr - shift, 0.25), 0.7)
-        
-        if total_score >= high_thr:
-            probability_level = 'HIGH'
-        elif total_score >= med_thr:
-            probability_level = 'MEDIUM'
-        else:
-            probability_level = 'LOW'
 
         factors_payload = dict(scores)
         if applied_profile is not None:
             factors_payload['applied_profile'] = applied_profile
             factors_payload['weights'] = adjusted_weights
 
-        # Optional: Enhance with LLM decision
+        # Try LLM prediction first as the main prediction engine
         llm_used = False
         llm_detail = None
+        probability_level = None
+
         if getattr(settings, 'LLM_ENABLED', True):
             try:
                 base_url = getattr(settings, 'LLM_BASE_URL', 'http://localhost:11434')
@@ -147,58 +129,21 @@ class MigrainePredictionService:
                 timeout = getattr(settings, 'LLM_TIMEOUT', 8.0)
                 client = LLMClient(base_url=base_url, api_key=api_key, model=model, timeout=timeout)
                 loc_label = f"{location.city}, {location.country}"
-                # Build rich context with weather changes, aggregates, thresholds, and location/time details
+                # Build minimal context with only essential aggregates and changes
                 try:
                     fc_list = list(forecasts)
                     prev_list = list(previous_forecasts)
+                    # Only send aggregates and changes, not raw samples (reduces token count significantly)
                     context_payload = {
-                        'time_window': {
-                            'now': start_time.isoformat(),
-                            'end': end_time.isoformat(),
-                            'window_hours': 6,
-                        },
-                        'location': {
-                            'city': location.city,
-                            'country': location.country,
-                            'latitude': location.latitude,
-                            'longitude': location.longitude,
-                        },
-                        'thresholds': self.THRESHOLDS,
-                        'weights': adjusted_weights,
                         'aggregates': {
-                            'avg_forecast_temperature': float(np.mean([f.temperature for f in fc_list])) if fc_list else None,
-                            'avg_prev_temperature': float(np.mean([f.temperature for f in prev_list])) if prev_list else None,
-                            'avg_forecast_humidity': float(np.mean([f.humidity for f in fc_list])) if fc_list else None,
-                            'avg_forecast_pressure': float(np.mean([f.pressure for f in fc_list])) if fc_list else None,
-                            'avg_prev_pressure': float(np.mean([f.pressure for f in prev_list])) if prev_list else None,
-                            'avg_cloud_cover': float(np.mean([f.cloud_cover for f in fc_list])) if fc_list else None,
-                            'max_precipitation': float(max([f.precipitation for f in fc_list], default=0)),
+                            'avg_forecast_temperature': round(float(np.mean([f.temperature for f in fc_list])), 1) if fc_list else None,
+                            'avg_forecast_humidity': round(float(np.mean([f.humidity for f in fc_list])), 0) if fc_list else None,
+                            'avg_forecast_pressure': round(float(np.mean([f.pressure for f in fc_list])), 1) if fc_list else None,
+                            'max_precipitation': round(float(max([f.precipitation for f in fc_list], default=0)), 1),
                         },
                         'changes': {
-                            'temperature_change': float(abs((np.mean([f.temperature for f in fc_list]) if fc_list else 0) - (np.mean([f.temperature for f in prev_list]) if prev_list else 0))),
-                            'pressure_change': float(abs((np.mean([f.pressure for f in fc_list]) if fc_list else 0) - (np.mean([f.pressure for f in prev_list]) if prev_list else 0))),
-                        },
-                        'samples': {
-                            'forecast_next_hours': [
-                                {
-                                    'time': f.target_time.isoformat(),
-                                    'temperature': f.temperature,
-                                    'humidity': f.humidity,
-                                    'pressure': f.pressure,
-                                    'precipitation': f.precipitation,
-                                    'cloud_cover': f.cloud_cover,
-                                } for f in fc_list
-                            ],
-                            'previous_hours': [
-                                {
-                                    'time': f.target_time.isoformat(),
-                                    'temperature': f.temperature,
-                                    'humidity': f.humidity,
-                                    'pressure': f.pressure,
-                                    'precipitation': f.precipitation,
-                                    'cloud_cover': f.cloud_cover,
-                                } for f in prev_list
-                            ],
+                            'temperature_change': round(float(abs((np.mean([f.temperature for f in fc_list]) if fc_list else 0) - (np.mean([f.temperature for f in prev_list]) if prev_list else 0))), 1),
+                            'pressure_change': round(float(abs((np.mean([f.pressure for f in fc_list]) if fc_list else 0) - (np.mean([f.pressure for f in prev_list]) if prev_list else 0))), 1),
                         },
                     }
                 except Exception:
@@ -214,8 +159,36 @@ class MigrainePredictionService:
                 if llm_level in {'LOW', 'MEDIUM', 'HIGH'}:
                     llm_used = True
                     probability_level = llm_level
+                    logger.info(f'LLM prediction successful: {probability_level}')
+                else:
+                    logger.warning('LLM returned invalid probability level, will fall back to manual calculation')
             except Exception:
-                logger.exception('LLM enhancement failed; falling back to heuristic')
+                logger.exception('LLM prediction failed; falling back to manual calculation')
+
+        # Fallback to manual calculation if LLM is disabled or failed
+        if probability_level is None:
+            logger.info('Using manual calculation for prediction')
+            # Calculate overall probability score (0-1)
+            total_score = sum(scores[factor] * adjusted_weights.get(factor, 0.0) for factor in scores)
+
+            # Determine probability level (shift thresholds slightly by overall sensitivity)
+            high_thr = 0.7
+            med_thr = 0.4
+            if user is not None and applied_profile is not None:
+                overall = applied_profile.get('sensitivity_overall', 1.0)
+                # More sensitive → lower thresholds; less sensitive → higher thresholds (clamped)
+                shift = (overall - 1.0) * 0.15  # max +/- 15% threshold shift per overall unit
+                high_thr = min(max(high_thr - shift, 0.5), 0.9)
+                med_thr = min(max(med_thr - shift, 0.25), 0.7)
+
+            if total_score >= high_thr:
+                probability_level = 'HIGH'
+            elif total_score >= med_thr:
+                probability_level = 'MEDIUM'
+            else:
+                probability_level = 'LOW'
+
+        # Add LLM details to factors payload if available
         if llm_detail is not None:
             factors_payload['llm'] = {
                 'used': llm_used,
