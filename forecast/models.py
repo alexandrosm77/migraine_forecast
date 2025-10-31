@@ -176,16 +176,19 @@ class LLMResponse(models.Model):
 
 class LLMConfiguration(models.Model):
     """
-    Singleton model for LLM configuration.
+    Model for LLM configuration.
+    Allows storing multiple LLM configurations with only one active at a time.
     Allows runtime configuration through Django admin.
     Falls back to environment variables if not configured.
     """
-    # Singleton pattern - only one instance should exist
-    singleton_id = models.IntegerField(default=1, unique=True, editable=False)
-
-    enabled = models.BooleanField(
-        default=True,
-        help_text="Enable or disable LLM predictions"
+    name = models.CharField(
+        max_length=200,
+        unique=True,
+        help_text="Unique name for this LLM configuration"
+    )
+    is_active = models.BooleanField(
+        default=False,
+        help_text="Set this configuration as the active one (only one can be active at a time)"
     )
     base_url = models.CharField(
         max_length=500,
@@ -208,34 +211,56 @@ class LLMConfiguration(models.Model):
         help_text="Request timeout in seconds"
     )
 
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "LLM Configuration"
-        verbose_name_plural = "LLM Configuration"
+        verbose_name_plural = "LLM Configurations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_active'],
+                condition=models.Q(is_active=True),
+                name='unique_active_llm_config'
+            )
+        ]
 
     def __str__(self):
-        return f"LLM Config: {self.model} ({'Enabled' if self.enabled else 'Disabled'})"
+        active_str = " (ACTIVE)" if self.is_active else ""
+        return f"{self.name}: {self.model}{active_str}"
 
     def save(self, *args, **kwargs):
-        # Ensure only one instance exists (singleton pattern)
-        self.singleton_id = 1
+        # If this config is being set as active, deactivate all others
+        if self.is_active:
+            LLMConfiguration.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
         super().save(*args, **kwargs)
 
     @classmethod
     def get_config(cls):
         """
-        Get the LLM configuration, creating default if it doesn't exist.
+        Get the active LLM configuration, creating default if none exists.
         Falls back to environment variables for initial values.
         """
-        config, created = cls.objects.get_or_create(
-            singleton_id=1,
-            defaults={
-                'enabled': os.getenv('LLM_ENABLED', 'true').lower() in ('1', 'true', 'yes', 'on'),
-                'base_url': os.getenv('LLM_BASE_URL', 'http://192.168.0.11:11434'),
-                'model': os.getenv('LLM_MODEL', 'ibm/granite4:3b-h'),
-                'api_key': os.getenv('LLM_API_KEY', ''),
-                'timeout': float(os.getenv('LLM_TIMEOUT', '240.0')),
-            }
+        # Try to get the active configuration
+        config = cls.objects.filter(is_active=True).first()
+
+        if config:
+            return config
+
+        # If no active config exists, try to get any config and activate it
+        config = cls.objects.first()
+        if config:
+            config.is_active = True
+            config.save()
+            return config
+
+        # If no configs exist at all, create a default one from environment variables
+        config = cls.objects.create(
+            name='Default',
+            is_active=True,
+            base_url=os.getenv('LLM_BASE_URL', 'http://192.168.0.11:11434'),
+            model=os.getenv('LLM_MODEL', 'ibm/granite4:3b-h'),
+            api_key=os.getenv('LLM_API_KEY', ''),
+            timeout=float(os.getenv('LLM_TIMEOUT', '240.0')),
         )
         return config

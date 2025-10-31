@@ -156,30 +156,25 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
     """
     Admin interface for LLM configuration.
     Only superusers can modify this.
+    Supports multiple configurations with only one active at a time.
     """
-    list_display = ('enabled', 'model', 'base_url', 'timeout', 'updated_at')
-    readonly_fields = ('updated_at',)
+    list_display = ('name', 'is_active', 'model', 'base_url', 'timeout', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'model', 'base_url')
+    readonly_fields = ('created_at', 'updated_at')
     fieldsets = (
-        ('Status', {
-            'fields': ('enabled',),
-            'description': 'Enable or disable LLM predictions globally'
+        ('Identification', {
+            'fields': ('name', 'is_active'),
+            'description': 'Name this configuration and set it as active (only one can be active at a time)'
         }),
         ('API Configuration', {
             'fields': ('base_url', 'model', 'api_key', 'timeout'),
             'description': 'Configure the LLM API endpoint and model'
         }),
         ('Metadata', {
-            'fields': ('updated_at',),
+            'fields': ('created_at', 'updated_at'),
         }),
     )
-
-    def has_add_permission(self, request):
-        # Only allow one instance (singleton)
-        return not LLMConfiguration.objects.exists()
-
-    def has_delete_permission(self, request, obj=None):
-        # Don't allow deletion of the singleton
-        return False
 
     def get_queryset(self, request):
         """Only superusers can see/edit LLM configuration."""
@@ -187,6 +182,10 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
         if not request.user.is_superuser:
             return qs.none()
         return qs
+
+    def has_module_permission(self, request):
+        """Only superusers can access this module."""
+        return request.user.is_superuser
 
 
 # Custom Admin Site with additional views
