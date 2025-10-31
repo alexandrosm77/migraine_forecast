@@ -413,6 +413,10 @@ class MigraineAdminSite(admin.AdminSite):
 # Replace the default admin site
 admin_site = MigraineAdminSite(name='admin')
 
+# Import Django's default User and Group models
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
+
 # Re-register all models with the custom admin site
 admin_site.register(Location, LocationAdmin)
 admin_site.register(WeatherForecast, WeatherForecastAdmin)
@@ -421,3 +425,7 @@ admin_site.register(SinusitisPrediction, SinusitisPredictionAdmin)
 admin_site.register(UserHealthProfile, UserHealthProfileAdmin)
 admin_site.register(LLMResponse, LLMResponseAdmin)
 admin_site.register(LLMConfiguration, LLMConfigurationAdmin)
+
+# Register Django's default User and Group models
+admin_site.register(User, UserAdmin)
+admin_site.register(Group, GroupAdmin)
