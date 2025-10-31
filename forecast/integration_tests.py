@@ -134,16 +134,54 @@ class ViewsIntegrationTest(TestCase):
     def test_location_delete_view(self):
         # Login
         self.client.login(username='testuser', password='testpassword')
-        
+
         # Get the confirmation page
         response = self.client.get(reverse('forecast:location_delete', args=[self.location.id]))
         self.assertEqual(response.status_code, 200)
-        
+
         # Test deletion
         response = self.client.post(reverse('forecast:location_delete', args=[self.location.id]))
-        
+
         # Should redirect to location list
         self.assertEqual(response.status_code, 302)
-        
+
         # Check if location was deleted
         self.assertFalse(Location.objects.filter(id=self.location.id).exists())
+
+    def test_prediction_list_pagination(self):
+        # Login
+        self.client.login(username='testuser', password='testpassword')
+
+        # Create 25 predictions to test pagination (page size is 20)
+        now = timezone.now()
+        for i in range(24):  # We already have 1 from setUp
+            MigrainePrediction.objects.create(
+                user=self.user,
+                location=self.location,
+                forecast=self.forecast,
+                prediction_time=now - timedelta(hours=i),
+                target_time_start=now + timedelta(hours=3),
+                target_time_end=now + timedelta(hours=6),
+                probability='LOW'
+            )
+
+        # Test first page
+        response = self.client.get(reverse('forecast:prediction_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'forecast/prediction_list.html')
+
+        # Check pagination context
+        self.assertIn('predictions', response.context)
+        predictions = response.context['predictions']
+        self.assertTrue(predictions.has_other_pages())
+        self.assertEqual(len(predictions), 20)  # First page should have 20 items
+        self.assertTrue(predictions.has_next())
+        self.assertFalse(predictions.has_previous())
+
+        # Test second page
+        response = self.client.get(reverse('forecast:prediction_list') + '?page=2')
+        self.assertEqual(response.status_code, 200)
+        predictions = response.context['predictions']
+        self.assertEqual(len(predictions), 5)  # Second page should have remaining 5 items
+        self.assertFalse(predictions.has_next())
+        self.assertTrue(predictions.has_previous())

@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.utils import timezone
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
 
 from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile
@@ -190,14 +191,27 @@ def location_delete(request, location_id):
 @login_required
 def prediction_list(request):
     """View for listing migraine predictions."""
-    predictions = MigrainePrediction.objects.filter(
+    predictions_queryset = MigrainePrediction.objects.filter(
         user=request.user
     ).order_by('-prediction_time')
-    
+
+    # Pagination - show 20 predictions per page
+    paginator = Paginator(predictions_queryset, 20)
+    page = request.GET.get('page', 1)
+
+    try:
+        predictions = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page
+        predictions = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range, deliver last page of results
+        predictions = paginator.page(paginator.num_pages)
+
     context = {
         'predictions': predictions,
     }
-    
+
     return render(request, 'forecast/prediction_list.html', context)
 
 @login_required
