@@ -34,10 +34,14 @@
                             <div class="row mb-3">
                                 <div class="col-5"><strong>Notifications:</strong></div>
                                 <div class="col-7">
-                                    {% if user.email %}
-                                        Enabled (sent to {{ user.email }})
+                                    {% if not user.email %}
+                                        <span class="text-muted">Disabled (no email provided)</span>
                                     {% else %}
-                                        Disabled (no email provided)
+                                        {% if form.instance.email_notifications_enabled %}
+                                            <span class="text-success">✓ Enabled</span> (sent to {{ user.email }})
+                                        {% else %}
+                                            <span class="text-warning">Disabled by user</span>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </div>
@@ -55,6 +59,15 @@
                                         <label for="id_prior_conditions" class="form-label">Prior Health Issues</label>
                                         {{ form.prior_conditions }}
                                         <div class="form-text">Optional: anything that influences your migraines.</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-check form-switch">
+                                            {{ form.email_notifications_enabled }}
+                                            <label class="form-check-label" for="id_email_notifications_enabled">
+                                                Enable Email Notifications
+                                            </label>
+                                            <div class="form-text">Receive email alerts for migraine and sinusitis predictions</div>
+                                        </div>
                                     </div>
                                     <div class="col-12">
                                         <label for="id_sensitivity_overall" class="form-label">Overall Sensitivity</label>

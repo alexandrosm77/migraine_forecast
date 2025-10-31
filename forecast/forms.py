@@ -21,6 +21,9 @@ class UserHealthProfileForm(forms.ModelForm):
                 'rows': 3,
                 'placeholder': 'e.g., aura, sinus issues, hypertension, etc.'
             }),
+            'email_notifications_enabled': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
         }
         help_texts = {
             'sensitivity_overall': '0.5 = less sensitive, 1 = average, 2 = very sensitive',
