@@ -1,4 +1,3 @@
-from django.db import models
 from .models import Location, WeatherForecast
 from .weather_api import OpenMeteoClient
 import logging

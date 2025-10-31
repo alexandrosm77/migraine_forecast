@@ -1,0 +1,30 @@
+[flake8]
+max-line-length = 120
+exclude =
+    migrations,
+    __pycache__,
+    .git,
+    .venv,
+    venv,
+    env,
+    build,
+    dist,
+    .eggs,
+    *.egg-info
+# E203: whitespace before ':' (conflicts with Black)
+# W503: line break before binary operator (conflicts with Black)
+extend-ignore = E203, W503
+statistics = True
+count = True
+# Per-file ignores for common patterns
+per-file-ignores =
+    __init__.py:F401
+    tests.py:F401,F841
+    */tests.py:F401,F841
+    integration_tests.py:F401,F841
+    */integration_tests.py:F401,F841
+    settings.py:F401,F403
+    */settings.py:F401,F403
+    comparison_service.py:E501,E402
+    */comparison_service.py:E501,E402
+

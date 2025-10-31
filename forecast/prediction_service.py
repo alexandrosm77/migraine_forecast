@@ -1,10 +1,9 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 import numpy as np
 from django.utils import timezone
-from django.conf import settings
 
-from .models import Location, WeatherForecast, MigrainePrediction, UserHealthProfile, LLMResponse
+from .models import WeatherForecast, MigrainePrediction, UserHealthProfile, LLMResponse
 from .llm_client import LLMClient
 
 logger = logging.getLogger(__name__)

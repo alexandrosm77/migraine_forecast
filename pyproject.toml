@@ -22,3 +22,17 @@ extend-exclude = '''
 )/
 '''
 
+[tool.flake8]
+max-line-length = 120
+exclude = [
+    "migrations",
+    "__pycache__",
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "build",
+    "dist",
+]
+extend-ignore = ["E203", "W503"]
+

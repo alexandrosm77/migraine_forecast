@@ -4,8 +4,6 @@ from django.db.models import JSONField
 from django.urls import path
 from django.shortcuts import render
 from django.http import StreamingHttpResponse
-from django.contrib.admin.views.decorators import staff_member_required
-from django.utils.decorators import method_decorator
 from forecast.models import (
     Location,
     WeatherForecast,
@@ -17,6 +15,10 @@ from forecast.models import (
 )
 import subprocess
 import time
+import sys
+from django.conf import settings
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
 
 
 @admin.register(Location)
@@ -257,10 +259,6 @@ class MigraineAdminSite(admin.AdminSite):
 
         def stream_output():
             """Generator function to stream command output."""
-            import os
-            import sys
-            from django.conf import settings
-
             # Build command
             cmd = [sys.executable, "manage.py", "check_migraine_probability"]
 
@@ -437,10 +435,6 @@ class MigraineAdminSite(admin.AdminSite):
 
 # Replace the default admin site
 admin_site = MigraineAdminSite(name="admin")
-
-# Import Django's default User and Group models
-from django.contrib.auth.models import User, Group
-from django.contrib.auth.admin import UserAdmin, GroupAdmin
 
 # Re-register all models with the custom admin site
 admin_site.register(Location, LocationAdmin)

@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
 
-from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction, UserHealthProfile
+from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction
 from .weather_service import WeatherService
 from .prediction_service import MigrainePredictionService
 from .prediction_service_sinusitis import SinusitisPredictionService

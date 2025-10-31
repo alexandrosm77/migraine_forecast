@@ -79,8 +79,9 @@ class LLMClient:
         """
         # System prompt with explicit JSON output instruction and schema
         sys_prompt = (
-            "You are a migraine risk assessor. Analyze weather risk factors (0-1 scale, higher=riskier) "
-            "and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\n"
+            "You are a migraine risk assessor. Analyze weather risk factors "
+            "(0-1 scale, higher=riskier) and output ONLY valid JSON matching "
+            "the schema below. Do not include any text before or after the JSON.\n\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'

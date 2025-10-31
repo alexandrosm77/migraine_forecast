@@ -3,7 +3,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from .models import MigrainePrediction, SinusitisPrediction, Location
 from .prediction_service import MigrainePredictionService
@@ -159,7 +159,10 @@ class NotificationService:
         # Render email content
         factor_count = detailed_factors.get("contributing_factors_count", 0)
         if factor_count > 0:
-            subject = f"{probability_level} Migraine Alert for {location.city} - {factor_count} Weather Factor{'s' if factor_count != 1 else ''}"
+            factor_word = "Factor" if factor_count == 1 else "Factors"
+            subject = (
+                f"{probability_level} Migraine Alert for {location.city} - " f"{factor_count} Weather {factor_word}"
+            )
         else:
             subject = f"{probability_level} Migraine Alert for {location.city}"
         html_message = render_to_string("forecast/email/migraine_alert.html", context)
@@ -280,7 +283,9 @@ class NotificationService:
                 fail_silently=False,
             )
             logger.info(
-                f"Sent combined alert email to {user.email} (migraine: {bool(migraine_prediction)}, sinusitis: {bool(sinusitis_prediction)})"
+                f"Sent combined alert email to {user.email} "
+                f"(migraine: {bool(migraine_prediction)}, "
+                f"sinusitis: {bool(sinusitis_prediction)})"
             )
             return True
         except Exception as e:
@@ -298,7 +303,10 @@ class NotificationService:
             bool: True if email was sent successfully, False otherwise
         """
         subject = "Test Email from Migraine Forecast App"
-        message = "This is a test email from the Migraine Forecast application. If you received this, email notifications are working correctly."
+        message = (
+            "This is a test email from the Migraine Forecast application. "
+            "If you received this, email notifications are working correctly."
+        )
 
         try:
             send_mail(
@@ -334,8 +342,6 @@ class NotificationService:
         detailed_factors = []
 
         # Get current and previous weather data for context
-        from django.utils import timezone
-        from datetime import timedelta
         from .models import WeatherForecast
         import numpy as np
 
@@ -367,8 +373,13 @@ class NotificationService:
                         "name": "Temperature Change",
                         "score": weather_factors["temperature_change"],
                         "weight": weights["temperature_change"],
-                        "explanation": f"Temperature will {direction} by {temp_change:.1f}°C (from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). Changes of {thresholds['temperature_change']}°C or more can trigger migraines.",
-                        "severity": "high" if temp_change >= thresholds["temperature_change"] * 2 else "medium",
+                        "explanation": (
+                            f"Temperature will {direction} by {temp_change:.1f}°C "
+                            f"(from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). "
+                            f"Changes of {thresholds['temperature_change']}°C or more "
+                            "can trigger migraines."
+                        ),
+                        "severity": ("high" if temp_change >= thresholds["temperature_change"] * 2 else "medium"),
                     }
                 )
 
@@ -382,7 +393,11 @@ class NotificationService:
                         "name": "High Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
-                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is above the {thresholds['humidity_high']}% threshold. High humidity can increase migraine risk.",
+                        "explanation": (
+                            f"Humidity will be {avg_humidity:.1f}%, which is above the "
+                            f"{thresholds['humidity_high']}% threshold. "
+                            "High humidity can increase migraine risk."
+                        ),
                         "severity": "high" if avg_humidity >= 85 else "medium",
                     }
                 )
@@ -392,7 +407,11 @@ class NotificationService:
                         "name": "Low Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
-                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is below the {thresholds['humidity_low']}% threshold. Very dry air can trigger migraines.",
+                        "explanation": (
+                            f"Humidity will be {avg_humidity:.1f}%, which is below the "
+                            f"{thresholds['humidity_low']}% threshold. "
+                            "Very dry air can trigger migraines."
+                        ),
                         "severity": "high" if avg_humidity <= 20 else "medium",
                     }
                 )
@@ -410,8 +429,13 @@ class NotificationService:
                         "name": "Barometric Pressure Change",
                         "score": weather_factors["pressure_change"],
                         "weight": weights["pressure_change"],
-                        "explanation": f"Barometric pressure will {direction} by {pressure_change:.1f} hPa (from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). Pressure changes of {thresholds['pressure_change']} hPa or more are strong migraine triggers.",
-                        "severity": "high" if pressure_change >= thresholds["pressure_change"] * 2 else "medium",
+                        "explanation": (
+                            f"Barometric pressure will {direction} by {pressure_change:.1f} hPa "
+                            f"(from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). "
+                            f"Pressure changes of {thresholds['pressure_change']} hPa or more "
+                            "are strong migraine triggers."
+                        ),
+                        "severity": ("high" if pressure_change >= thresholds["pressure_change"] * 2 else "medium"),
                     }
                 )
 
@@ -423,7 +447,11 @@ class NotificationService:
                     "name": "Low Barometric Pressure",
                     "score": weather_factors["pressure_low"],
                     "weight": weights["pressure_low"],
-                    "explanation": f"Barometric pressure will be {avg_pressure:.1f} hPa, which is below the {thresholds['pressure_low']} hPa threshold. Low pressure systems are associated with increased migraine frequency.",
+                    "explanation": (
+                        f"Barometric pressure will be {avg_pressure:.1f} hPa, "
+                        f"which is below the {thresholds['pressure_low']} hPa threshold. "
+                        "Low pressure systems are associated with increased migraine frequency."
+                    ),
                     "severity": "high" if avg_pressure <= 995 else "medium",
                 }
             )
@@ -436,7 +464,11 @@ class NotificationService:
                     "name": "Heavy Precipitation",
                     "score": weather_factors["precipitation"],
                     "weight": weights["precipitation"],
-                    "explanation": f"Expected precipitation of {max_precipitation:.1f} mm, which exceeds the {thresholds['precipitation_high']} mm threshold. Heavy rain or storms can trigger migraines.",
+                    "explanation": (
+                        f"Expected precipitation of {max_precipitation:.1f} mm, "
+                        f"which exceeds the {thresholds['precipitation_high']} mm threshold. "
+                        "Heavy rain or storms can trigger migraines."
+                    ),
                     "severity": "high" if max_precipitation >= 10 else "medium",
                 }
             )
@@ -449,7 +481,11 @@ class NotificationService:
                     "name": "Heavy Cloud Cover",
                     "score": weather_factors["cloud_cover"],
                     "weight": weights["cloud_cover"],
-                    "explanation": f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the {thresholds['cloud_cover_high']}% threshold. Overcast conditions can affect some migraine sufferers.",
+                    "explanation": (
+                        f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the "
+                        f"{thresholds['cloud_cover_high']}% threshold. "
+                        "Overcast conditions can affect some migraine sufferers."
+                    ),
                     "severity": "medium",
                 }
             )
@@ -604,7 +640,10 @@ class NotificationService:
         # Render email content
         factor_count = detailed_factors.get("contributing_factors_count", 0)
         if factor_count > 0:
-            subject = f"{probability_level} Sinusitis Alert for {location.city} - {factor_count} Weather Factor{'s' if factor_count != 1 else ''}"
+            factor_word = "Factor" if factor_count == 1 else "Factors"
+            subject = (
+                f"{probability_level} Sinusitis Alert for {location.city} - " f"{factor_count} Weather {factor_word}"
+            )
         else:
             subject = f"{probability_level} Sinusitis Alert for {location.city}"
         html_message = render_to_string("forecast/email/sinusitis_alert.html", context)
@@ -785,8 +824,6 @@ class NotificationService:
         detailed_factors = []
 
         # Get current and previous weather data for context
-        from django.utils import timezone
-        from datetime import timedelta
         from .models import WeatherForecast
         import numpy as np
 
@@ -818,8 +855,12 @@ class NotificationService:
                         "name": "Temperature Change",
                         "score": weather_factors["temperature_change"],
                         "weight": weights["temperature_change"],
-                        "explanation": f"Temperature will {direction} by {temp_change:.1f}°C (from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). Rapid temperature changes can irritate sinuses.",
-                        "severity": "high" if temp_change >= thresholds["temperature_change"] * 1.5 else "medium",
+                        "explanation": (
+                            f"Temperature will {direction} by {temp_change:.1f}°C "
+                            f"(from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). "
+                            "Rapid temperature changes can irritate sinuses."
+                        ),
+                        "severity": ("high" if temp_change >= thresholds["temperature_change"] * 1.5 else "medium"),
                     }
                 )
 
@@ -833,7 +874,11 @@ class NotificationService:
                         "name": "High Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
-                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is above the {thresholds['humidity_high']}% threshold. High humidity promotes mold growth and allergens that can trigger sinusitis.",
+                        "explanation": (
+                            f"Humidity will be {avg_humidity:.1f}%, which is above the "
+                            f"{thresholds['humidity_high']}% threshold. "
+                            "High humidity promotes mold growth and allergens that can trigger sinusitis."
+                        ),
                         "severity": "high" if avg_humidity >= 85 else "medium",
                     }
                 )
@@ -843,7 +888,11 @@ class NotificationService:
                         "name": "Low Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
-                        "explanation": f"Humidity will be {avg_humidity:.1f}%, which is below the {thresholds['humidity_low']}% threshold. Very dry air can dry out and irritate sinus passages.",
+                        "explanation": (
+                            f"Humidity will be {avg_humidity:.1f}%, which is below the "
+                            f"{thresholds['humidity_low']}% threshold. "
+                            "Very dry air can dry out and irritate sinus passages."
+                        ),
                         "severity": "high" if avg_humidity <= 15 else "medium",
                     }
                 )
@@ -861,8 +910,12 @@ class NotificationService:
                         "name": "Barometric Pressure Change",
                         "score": weather_factors["pressure_change"],
                         "weight": weights["pressure_change"],
-                        "explanation": f"Barometric pressure will {direction} by {pressure_change:.1f} hPa (from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). Pressure changes can affect sinus pressure and cause discomfort.",
-                        "severity": "high" if pressure_change >= thresholds["pressure_change"] * 1.5 else "medium",
+                        "explanation": (
+                            f"Barometric pressure will {direction} by {pressure_change:.1f} hPa "
+                            f"(from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). "
+                            "Pressure changes can affect sinus pressure and cause discomfort."
+                        ),
+                        "severity": ("high" if pressure_change >= thresholds["pressure_change"] * 1.5 else "medium"),
                     }
                 )
 
@@ -874,7 +927,11 @@ class NotificationService:
                     "name": "Low Barometric Pressure",
                     "score": weather_factors["pressure_low"],
                     "weight": weights["pressure_low"],
-                    "explanation": f"Barometric pressure will be {avg_pressure:.1f} hPa, which is below the {thresholds['pressure_low']} hPa threshold. Low pressure systems can worsen sinus symptoms.",
+                    "explanation": (
+                        f"Barometric pressure will be {avg_pressure:.1f} hPa, "
+                        f"which is below the {thresholds['pressure_low']} hPa threshold. "
+                        "Low pressure systems can worsen sinus symptoms."
+                    ),
                     "severity": "high" if avg_pressure <= 990 else "medium",
                 }
             )
@@ -887,7 +944,10 @@ class NotificationService:
                     "name": "Precipitation",
                     "score": weather_factors["precipitation"],
                     "weight": weights["precipitation"],
-                    "explanation": f"Expected precipitation of {max_precipitation:.1f} mm. Rain can increase mold spores and allergens in the air.",
+                    "explanation": (
+                        f"Expected precipitation of {max_precipitation:.1f} mm. "
+                        "Rain can increase mold spores and allergens in the air."
+                    ),
                     "severity": "high" if max_precipitation >= 8 else "medium",
                 }
             )
@@ -900,7 +960,10 @@ class NotificationService:
                     "name": "Cloud Cover",
                     "score": weather_factors["cloud_cover"],
                     "weight": weights["cloud_cover"],
-                    "explanation": f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the {thresholds['cloud_cover_high']}% threshold.",
+                    "explanation": (
+                        f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the "
+                        f"{thresholds['cloud_cover_high']}% threshold."
+                    ),
                     "severity": "medium",
                 }
             )

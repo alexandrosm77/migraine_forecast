@@ -1,7 +1,6 @@
 import requests
 import logging
-from datetime import datetime, timedelta
-from django.conf import settings
+from datetime import datetime
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)

@@ -167,10 +167,13 @@ class Command(BaseCommand):
             weather_factors = {
                 "test_mode": True,
                 "test_level": test_level,
-                "temperature_change": 0.5 if test_level == "LOW" else (0.7 if test_level == "MEDIUM" else 0.9),
-                "humidity_extreme": 0.3 if test_level == "LOW" else (0.6 if test_level == "MEDIUM" else 0.8),
-                "pressure_change": 0.4 if test_level == "LOW" else (0.7 if test_level == "MEDIUM" else 0.95),
-                "llm_analysis_text": f"This is a TEST {test_level} risk notification. Weather conditions are simulated for testing purposes.",
+                "temperature_change": (0.5 if test_level == "LOW" else (0.7 if test_level == "MEDIUM" else 0.9)),
+                "humidity_extreme": (0.3 if test_level == "LOW" else (0.6 if test_level == "MEDIUM" else 0.8)),
+                "pressure_change": (0.4 if test_level == "LOW" else (0.7 if test_level == "MEDIUM" else 0.95)),
+                "llm_analysis_text": (
+                    f"This is a TEST {test_level} risk notification. "
+                    "Weather conditions are simulated for testing purposes."
+                ),
                 "llm_prevention_tips": [
                     "This is a test notification",
                     "No real weather analysis was performed",

@@ -1,6 +1,5 @@
 import os
 
-from django.conf import settings
 
 # Add email settings to Django settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
