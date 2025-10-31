@@ -166,7 +166,6 @@ class MigrainePredictionService:
 
                     # Add summarized previous predictions (last 24h only)
                     if user:
-                        from datetime import timedelta
                         recent_predictions = MigrainePrediction.objects.filter(
                             user=user,
                             location=location,
