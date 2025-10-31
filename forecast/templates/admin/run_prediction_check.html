@@ -1,0 +1,116 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Run Prediction Check{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <h1>Run Prediction Check</h1>
+    
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #007bff;">
+        <h3 style="margin-top: 0;">About This Tool</h3>
+        <p>This tool allows you to manually trigger the migraine and sinusitis prediction check process. You can:</p>
+        <ul>
+            <li>Run a full prediction check (update forecasts + generate predictions + send notifications)</li>
+            <li>Run notifications only (skip forecast updates)</li>
+            <li>Send test notifications with fake predictions for testing purposes</li>
+        </ul>
+        <p><strong>Note:</strong> The output will be displayed in real-time as the command executes.</p>
+    </div>
+
+    <form method="get" action="{% url 'admin:execute_prediction_check' %}" target="_blank" style="background-color: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 10px;">Normal Mode</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" name="notify_only" style="margin-right: 10px;">
+                    <span><strong>Notify Only</strong> - Skip forecast updates, only send notifications for existing predictions</span>
+                </label>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;">
+            <h3 style="margin-top: 0; border-bottom: 2px solid #ffc107; padding-bottom: 10px;">Test Mode</h3>
+            <p style="color: #856404; background-color: #fff3cd; padding: 10px; border-radius: 3px; border-left: 4px solid #ffc107;">
+                <strong>⚠️ Test Mode:</strong> Send fake notifications for testing. This will create test predictions and send actual emails.
+            </p>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Test Notification Level:</label>
+                <select name="test_notification" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                    <option value="">-- None (Normal Mode) --</option>
+                    <option value="high">High Risk</option>
+                    <option value="medium">Medium Risk</option>
+                    <option value="low">Low Risk</option>
+                    <option value="none">None (No notification)</option>
+                </select>
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                    Select a risk level to send test notifications. Leave empty for normal operation.
+                </small>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Test Type:</label>
+                <select name="test_type" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                    <option value="both">Both (Migraine + Sinusitis)</option>
+                    <option value="migraine">Migraine Only</option>
+                    <option value="sinusitis">Sinusitis Only</option>
+                </select>
+                <small style="color: #6c757d; display: block; margin-top: 5px;">
+                    Choose which type of test notification to send.
+                </small>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef;">
+            <button type="submit" style="background-color: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold;">
+                ▶ Run Prediction Check
+            </button>
+            <a href="{% url 'admin:index' %}" style="margin-left: 15px; padding: 12px 30px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+    <div style="margin-top: 30px; padding: 15px; background-color: #e7f3ff; border-radius: 5px; border-left: 4px solid #007bff;">
+        <h4 style="margin-top: 0;">💡 Tips</h4>
+        <ul style="margin-bottom: 0;">
+            <li>The command will open in a new tab/window with real-time output</li>
+            <li>Test mode is useful for verifying email configuration and templates</li>
+            <li>Test notifications will be sent to all configured user locations</li>
+            <li>Normal mode will update weather forecasts, generate predictions, and send notifications</li>
+        </ul>
+    </div>
+
+    <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
+        <h4 style="margin-top: 0;">⚠️ Command Line Equivalent</h4>
+        <p style="margin-bottom: 5px;"><strong>Normal mode:</strong></p>
+        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
+            python manage.py check_migraine_probability
+        </code>
+        
+        <p style="margin-bottom: 5px;"><strong>Test mode (high risk):</strong></p>
+        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
+            python manage.py check_migraine_probability --test-notification high --test-type both
+        </code>
+        
+        <p style="margin-bottom: 5px;"><strong>Notify only:</strong></p>
+        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px;">
+            python manage.py check_migraine_probability --notify-only
+        </code>
+    </div>
+</div>
+
+<style>
+    button:hover {
+        background-color: #218838 !important;
+    }
+    select:focus, input[type="checkbox"]:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+</style>
+{% endblock %}
+
