@@ -52,7 +52,7 @@ class MigrainePredictionAdmin(admin.ModelAdmin):
     list_filter = ('probability', 'notification_sent', 'prediction_time')
     date_hierarchy = 'prediction_time'
     formfield_overrides = {
-        JSONField: {'widget': JSONEditorWidget},
+        JSONField: {'widget': JSONEditorWidget(options={'mode': 'text', 'modes': ['text', 'tree', 'view']})},
     }
 
     def get_queryset(self, request):
@@ -95,7 +95,7 @@ class LLMResponseAdmin(admin.ModelAdmin):
     search_fields = ('location__city', 'location__country', 'user__username')
     readonly_fields = ('created_at',)
     formfield_overrides = {
-        JSONField: {'widget': JSONEditorWidget},
+        JSONField: {'widget': JSONEditorWidget(options={'mode': 'text', 'modes': ['text', 'tree', 'view']})},
     }
 
     def get_queryset(self, request):
