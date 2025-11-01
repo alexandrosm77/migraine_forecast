@@ -30,6 +30,11 @@ class UserHealthProfile(models.Model):
         default=True, help_text="Enable or disable sinusitis predictions for this user"
     )
 
+    # Notification preferences
+    daily_notification_limit = models.IntegerField(
+        default=1, help_text="Maximum health alert emails per day for this user (0 = disabled)"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

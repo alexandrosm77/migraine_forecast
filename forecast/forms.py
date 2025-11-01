@@ -9,6 +9,7 @@ class UserHealthProfileForm(forms.ModelForm):
             "age",
             "prior_conditions",
             "email_notifications_enabled",
+            "daily_notification_limit",
             "migraine_predictions_enabled",
             "sinusitis_predictions_enabled",
             "sensitivity_overall",

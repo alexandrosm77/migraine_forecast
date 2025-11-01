@@ -751,6 +751,9 @@ class NotificationService:
         # Get all locations with associated users
         locations = Location.objects.select_related("user").all()
 
+        # Track which users we've already processed to avoid duplicate checks
+        processed_users = set()
+
         for location in locations:
             # Skip if no user associated
             if not location.user:
@@ -758,77 +761,97 @@ class NotificationService:
 
             user = location.user
 
-            # Check per-location daily notification limit
-            try:
-                limit = int(getattr(location, "daily_notification_limit", 1))
-            except (TypeError, ValueError):
-                limit = 1
-            if limit is None:
-                limit = 1
-            if limit <= 0:
-                # Notifications disabled for this location
+            # Skip if we've already processed this user (since we now send one email per user)
+            if user.id in processed_users:
                 continue
 
+            # Mark this user as processed
+            processed_users.add(user.id)
+
+            # Check user-level daily notification limit
+            try:
+                user_profile = user.health_profile
+                limit = int(user_profile.daily_notification_limit)
+            except Exception:
+                limit = 1  # Default to 1 if no profile exists
+
+            if limit <= 0:
+                # Notifications disabled for this user
+                logger.debug(f"Notifications disabled for user {user.username} (limit={limit})")
+                continue
+
+            # Count notifications sent today for this user (across all locations)
             now = timezone.now()
             start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = start_of_day + timedelta(days=1)
 
-            # Count notifications sent today for this location
+            # Count unique notification emails sent today (we now send combined emails)
+            # We'll count by checking if any prediction was sent today
             migraine_sent_today = MigrainePrediction.objects.filter(
                 user=user,
-                location=location,
                 notification_sent=True,
                 prediction_time__gte=start_of_day,
                 prediction_time__lt=end_of_day,
-            ).count()
+            ).exists()
 
             sinusitis_sent_today = SinusitisPrediction.objects.filter(
                 user=user,
-                location=location,
                 notification_sent=True,
                 prediction_time__gte=start_of_day,
                 prediction_time__lt=end_of_day,
-            ).count()
+            ).exists()
 
-            sent_today = max(migraine_sent_today, sinusitis_sent_today)
+            # If either type was sent today, count it as 1 email sent
+            emails_sent_today = 1 if (migraine_sent_today or sinusitis_sent_today) else 0
 
-            if sent_today >= limit:
-                # Already reached today's limit for this location
+            if emails_sent_today >= limit:
+                # Already reached today's limit for this user
+                logger.debug(f"User {user.username} has reached daily limit ({limit})")
                 continue
 
-            # Get predictions for this location
-            migraine_data = migraine_predictions.get(location.id)
-            sinusitis_data = sinusitis_predictions.get(location.id)
+            # Collect predictions for ALL locations for this user
+            user_migraine_preds = []
+            user_sinusitis_preds = []
 
-            # Check migraine prediction
-            if migraine_data:
-                try:
-                    user_profile = user.health_profile
-                    if not user_profile.migraine_predictions_enabled:
-                        migraine_data = None
-                except Exception:
-                    pass
+            for user_location in user.locations.all():
+                # Get predictions for this location
+                migraine_data = migraine_predictions.get(user_location.id)
+                sinusitis_data = sinusitis_predictions.get(user_location.id)
 
+                # Check migraine prediction
                 if migraine_data:
-                    prob_level = migraine_data.get("probability")
-                    pred = migraine_data.get("prediction")
-                    if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
-                        user_predictions[user.id]["migraine"].append(pred)
+                    try:
+                        user_profile = user.health_profile
+                        if not user_profile.migraine_predictions_enabled:
+                            migraine_data = None
+                    except Exception:
+                        pass
 
-            # Check sinusitis prediction
-            if sinusitis_data:
-                try:
-                    user_profile = user.health_profile
-                    if not user_profile.sinusitis_predictions_enabled:
-                        sinusitis_data = None
-                except Exception:
-                    pass
+                    if migraine_data:
+                        prob_level = migraine_data.get("probability")
+                        pred = migraine_data.get("prediction")
+                        if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
+                            user_migraine_preds.append(pred)
 
+                # Check sinusitis prediction
                 if sinusitis_data:
-                    prob_level = sinusitis_data.get("probability")
-                    pred = sinusitis_data.get("prediction")
-                    if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
-                        user_predictions[user.id]["sinusitis"].append(pred)
+                    try:
+                        user_profile = user.health_profile
+                        if not user_profile.sinusitis_predictions_enabled:
+                            sinusitis_data = None
+                    except Exception:
+                        pass
+
+                    if sinusitis_data:
+                        prob_level = sinusitis_data.get("probability")
+                        pred = sinusitis_data.get("prediction")
+                        if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
+                            user_sinusitis_preds.append(pred)
+
+            # Add to user_predictions if we have any predictions
+            if user_migraine_preds or user_sinusitis_preds:
+                user_predictions[user.id]["migraine"] = user_migraine_preds
+                user_predictions[user.id]["sinusitis"] = user_sinusitis_preds
 
         # Now send one email per user with all their predictions
         notifications_sent = 0
