@@ -123,6 +123,7 @@ class Command(BaseCommand):
     def _handle_test_notification(self, options):
         """
         Handle test notification mode - create fake predictions and send test emails.
+        Uses the combined notification system with user-level daily limits.
 
         Args:
             options: Command options containing test_notification and test_type
@@ -141,14 +142,17 @@ class Command(BaseCommand):
             return
 
         notification_service = NotificationService()
-        total_sent = 0
+        now = timezone.now()
+
+        # Create test predictions grouped by location
+        migraine_predictions = {}
+        sinusitis_predictions = {}
 
         for location in locations:
             user = location.user
-            self.stdout.write(f"Creating test notification for {user.username} at {location}")
+            self.stdout.write(f"Creating test prediction for {user.username} at {location}")
 
             # Get or create a dummy forecast for this location
-            now = timezone.now()
             forecast, created = WeatherForecast.objects.get_or_create(
                 location=location,
                 target_time=now + timedelta(hours=3),
@@ -193,19 +197,11 @@ class Command(BaseCommand):
                     weather_factors=weather_factors,
                     notification_sent=False,
                 )
-
-                # Send the test notification
-                if notification_service.send_migraine_alert(migraine_prediction):
-                    self.stdout.write(
-                        self.style.SUCCESS(f"✓ Sent test MIGRAINE {test_level} notification to {user.email}")
-                    )
-                    migraine_prediction.notification_sent = True
-                    migraine_prediction.save()
-                    total_sent += 1
-                else:
-                    self.stdout.write(
-                        self.style.WARNING(f"✗ Failed to send test MIGRAINE notification to {user.email}")
-                    )
+                migraine_predictions[location.id] = {
+                    "probability": test_level,
+                    "prediction": migraine_prediction,
+                }
+                self.stdout.write(f"  Created test MIGRAINE {test_level} prediction")
 
             # Create sinusitis test prediction if requested
             if test_type in ["sinusitis", "both"] and test_level != "NONE":
@@ -219,27 +215,34 @@ class Command(BaseCommand):
                     weather_factors=weather_factors,
                     notification_sent=False,
                 )
+                sinusitis_predictions[location.id] = {
+                    "probability": test_level,
+                    "prediction": sinusitis_prediction,
+                }
+                self.stdout.write(f"  Created test SINUSITIS {test_level} prediction")
 
-                # Send the test notification
-                if notification_service.send_sinusitis_alert(sinusitis_prediction):
-                    self.stdout.write(
-                        self.style.SUCCESS(f"✓ Sent test SINUSITIS {test_level} notification to {user.email}")
-                    )
-                    sinusitis_prediction.notification_sent = True
-                    sinusitis_prediction.save()
-                    total_sent += 1
-                else:
-                    self.stdout.write(
-                        self.style.WARNING(f"✗ Failed to send test SINUSITIS notification to {user.email}")
-                    )
-
-        if test_level == "NONE":
-            self.stdout.write(
-                self.style.SUCCESS(f"[{timezone.now()}] TEST MODE: No notifications sent (test level = NONE)")
+        # Send combined notifications using the production notification system
+        # This respects user-level daily notification limits
+        if test_level != "NONE":
+            self.stdout.write("\nSending combined test notifications...")
+            notifications_sent = notification_service.check_and_send_combined_notifications(
+                migraine_predictions, sinusitis_predictions
             )
+
+            if notifications_sent > 0:
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"[{timezone.now()}] TEST MODE completed. Sent {notifications_sent} combined notification(s)"
+                    )
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"[{timezone.now()}] TEST MODE completed. No notifications sent "
+                        "(check user notification preferences and daily limits)"
+                    )
+                )
         else:
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"[{timezone.now()}] TEST MODE completed. Total test notifications sent: {total_sent}"
-                )
+                self.style.SUCCESS(f"[{timezone.now()}] TEST MODE: No notifications sent (test level = NONE)")
             )

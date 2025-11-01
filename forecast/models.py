@@ -48,9 +48,6 @@ class Location(models.Model):
     country = models.CharField(max_length=100)
     latitude = models.FloatField()
     longitude = models.FloatField()
-    daily_notification_limit = models.IntegerField(
-        default=1, help_text="Maximum migraine alert emails per day for this location (0 = disabled)"
-    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
