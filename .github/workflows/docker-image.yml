@@ -68,7 +68,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             chmod +x /home/alexandros/migraine/deploy.sh
-            /home/alexandros/migraine/deploy.sh --dockerhub_username ${{ vars.DOCKERHUB_USERNAME }} --dockerhub_token ${{ secrets.DOCKERHUB_TOKEN }}
+            /home/alexandros/migraine/deploy.sh \
+              --dockerhub_username ${{ vars.DOCKERHUB_USERNAME }} \
+              --dockerhub_token ${{ secrets.DOCKERHUB_TOKEN }} \
+              --sentry_dsn "${{ secrets.SENTRY_DSN }}" \
+              --sentry_enabled "${{ vars.SENTRY_ENABLED }}" \
+              --sentry_environment "${{ vars.SENTRY_ENVIRONMENT }}" \
+              --sentry_traces_sample_rate "${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
+              --sentry_profiles_sample_rate "${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}"
 
   test:
     needs: deploy

@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -160,6 +163,8 @@ LOGGING = {
             "filename": os.path.join(BASE_DIR, "migraine_forecast.log"),
             "formatter": "verbose",
         },
+        # Sentry handler is automatically added by LoggingIntegration
+        # It will capture ERROR level and above logs
     },
     "loggers": {
         "django": {
@@ -172,6 +177,12 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
+        # Sentry's own logger
+        "sentry_sdk": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
     },
 }
 
@@ -182,3 +193,46 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://192.168.0.11:11434")
 LLM_MODEL = os.getenv("LLM_MODEL", "ibm/granite4:3b-h")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "240.0"))
+
+# Sentry/GlitchTip configuration
+SENTRY_DSN = os.getenv("SENTRY_DSN", "http://da3f96ceb002454e85ac49a5f1916cd0@192.168.0.11:8001/1")
+SENTRY_ENABLED = os.getenv("SENTRY_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "development" if DEBUG else "production")
+SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0"))  # 1.0 = 100% of transactions
+SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "1.0"))  # 1.0 = 100% of transactions
+
+if SENTRY_ENABLED and SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(
+                transaction_style="url",  # Track transactions by URL pattern
+                middleware_spans=True,  # Create spans for middleware
+                signals_spans=True,  # Create spans for Django signals
+                cache_spans=True,  # Create spans for cache operations
+            ),
+            LoggingIntegration(
+                level=None,  # Capture all log levels
+                event_level="ERROR",  # Send ERROR and above as events to Sentry
+            ),
+        ],
+        # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        # Set profiles_sample_rate to 1.0 to profile 100% of sampled transactions
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
+        # Environment name
+        environment=SENTRY_ENVIRONMENT,
+        # Send default PII (Personally Identifiable Information) like user IP, user ID
+        send_default_pii=True,
+        # Release tracking (optional - useful for tracking which version caused issues)
+        # release=f"migraine-forecast@{os.getenv('APP_VERSION', 'dev')}",
+        # Additional options
+        debug=DEBUG,  # Enable debug mode in development
+        attach_stacktrace=True,  # Attach stacktraces to all messages
+        # Request bodies
+        max_request_body_size="medium",  # Capture request bodies (small/medium/always)
+        # Breadcrumbs
+        max_breadcrumbs=50,  # Number of breadcrumbs to keep
+        # Before send hook to filter/modify events before sending
+        # before_send=lambda event, hint: event if not DEBUG else None,
+    )

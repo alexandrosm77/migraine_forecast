@@ -19,6 +19,13 @@ DATA_VOLUME="/home/alexandros/migraine/db.sqlite3:/app/db.sqlite3"
 DOCKER_USERNAME=""
 DOCKER_ACCESS_TOKEN=""
 
+# Default Sentry configuration
+SENTRY_DSN=""
+SENTRY_ENABLED=""
+SENTRY_ENVIRONMENT=""
+SENTRY_TRACES_SAMPLE_RATE=""
+SENTRY_PROFILES_SAMPLE_RATE=""
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -30,9 +37,29 @@ while [[ $# -gt 0 ]]; do
       DOCKER_ACCESS_TOKEN="$2"
       shift 2
       ;;
+    --sentry_dsn)
+      SENTRY_DSN="$2"
+      shift 2
+      ;;
+    --sentry_enabled)
+      SENTRY_ENABLED="$2"
+      shift 2
+      ;;
+    --sentry_environment)
+      SENTRY_ENVIRONMENT="$2"
+      shift 2
+      ;;
+    --sentry_traces_sample_rate)
+      SENTRY_TRACES_SAMPLE_RATE="$2"
+      shift 2
+      ;;
+    --sentry_profiles_sample_rate)
+      SENTRY_PROFILES_SAMPLE_RATE="$2"
+      shift 2
+      ;;
     *)
       log "Unknown option: $1"
-      log "Usage: $0 --dockerhub_username <username> --dockerhub_token <token>"
+      log "Usage: $0 --dockerhub_username <username> --dockerhub_token <token> [--sentry_dsn <dsn>] [--sentry_enabled <true|false>] [--sentry_environment <env>] [--sentry_traces_sample_rate <rate>] [--sentry_profiles_sample_rate <rate>]"
       exit 1
       ;;
   esac
@@ -85,8 +112,25 @@ log "Creating and starting new container..."
 # Uncomment and modify volume mounts if needed
 VOLUME_PARAM="-v $DATA_VOLUME"
 
-# Uncomment and modify if you need environment variables
+# Build environment variables
 ENV_PARAMS="-e DJANGO_DEBUG=True"
+
+# Add Sentry environment variables if provided
+if [[ -n "$SENTRY_DSN" ]]; then
+  ENV_PARAMS="$ENV_PARAMS -e SENTRY_DSN=$SENTRY_DSN"
+fi
+if [[ -n "$SENTRY_ENABLED" ]]; then
+  ENV_PARAMS="$ENV_PARAMS -e SENTRY_ENABLED=$SENTRY_ENABLED"
+fi
+if [[ -n "$SENTRY_ENVIRONMENT" ]]; then
+  ENV_PARAMS="$ENV_PARAMS -e SENTRY_ENVIRONMENT=$SENTRY_ENVIRONMENT"
+fi
+if [[ -n "$SENTRY_TRACES_SAMPLE_RATE" ]]; then
+  ENV_PARAMS="$ENV_PARAMS -e SENTRY_TRACES_SAMPLE_RATE=$SENTRY_TRACES_SAMPLE_RATE"
+fi
+if [[ -n "$SENTRY_PROFILES_SAMPLE_RATE" ]]; then
+  ENV_PARAMS="$ENV_PARAMS -e SENTRY_PROFILES_SAMPLE_RATE=$SENTRY_PROFILES_SAMPLE_RATE"
+fi
 
 docker run -d \
   --name "$CONTAINER_NAME" \
