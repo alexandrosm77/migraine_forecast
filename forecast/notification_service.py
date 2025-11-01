@@ -24,8 +24,6 @@ class NotificationService:
         self.sinusitis_prediction_service = SinusitisPredictionService()
         self.weather_service = WeatherService()
 
-
-
     def send_migraine_alert(self, prediction):
         """
         Send migraine alert email for a specific prediction.
@@ -486,8 +484,6 @@ class NotificationService:
             "total_score": round(total_score, 2),
             "contributing_factors_count": len(detailed_factors),
         }
-
-
 
     def send_sinusitis_alert(self, prediction):
         """
