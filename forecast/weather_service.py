@@ -45,6 +45,53 @@ class WeatherService:
         logger.info(f"Created {len(created_forecasts)} forecast entries for {location}")
         return created_forecasts
 
+    def update_forecast_for_location_upsert(self, location):
+        """
+        Update weather forecast for a specific location using upsert pattern.
+        This prevents duplicate forecasts by updating existing ones instead of always creating new.
+
+        Args:
+            location (Location): The location model instance
+
+        Returns:
+            tuple: (created_count, updated_count)
+        """
+        logger.info(f"Starting update_forecast_for_location_upsert for location: {location}")
+
+        # Fetch forecast data from the API
+        forecast_data = self.api_client.get_forecast(latitude=location.latitude, longitude=location.longitude, days=3)
+
+        if not forecast_data:
+            logger.error(f"Failed to fetch forecast data for location: {location}")
+            return 0, 0
+
+        # Parse the forecast data
+        parsed_data = self.api_client.parse_forecast_data(forecast_data, location)
+
+        # Store the forecast data in the database using update_or_create
+        created_count = 0
+        updated_count = 0
+
+        for entry in parsed_data:
+            # Extract the unique key fields
+            location_obj = entry.pop('location')
+            target_time = entry.pop('target_time')
+
+            # Use update_or_create to avoid duplicates
+            forecast, created = WeatherForecast.objects.update_or_create(
+                location=location_obj,
+                target_time=target_time,
+                defaults=entry
+            )
+
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        logger.info(f"Created {created_count} and updated {updated_count} forecast entries for {location}")
+        return created_count, updated_count
+
     def update_all_forecasts(self):
         """
         Update weather forecasts for all locations in the database.

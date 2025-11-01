@@ -74,6 +74,26 @@
                                         {{ form.daily_notification_limit }}
                                         <div class="form-text">Maximum health alert emails per day (0 = disabled)</div>
                                     </div>
+                                    <div class="col-md-6">
+                                        <label for="id_notification_frequency_hours" class="form-label">Notification Frequency</label>
+                                        {{ form.notification_frequency_hours }}
+                                        <div class="form-text">Minimum hours between notifications (1-24)</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <hr class="my-3">
+                                        <h6 class="mb-3">Prediction Time Window</h6>
+                                        <div class="form-text mb-3">Configure how far ahead to check weather conditions for predictions</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_prediction_window_start_hours" class="form-label">Window Start (hours ahead)</label>
+                                        {{ form.prediction_window_start_hours }}
+                                        <div class="form-text">Start checking from this many hours ahead</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_prediction_window_end_hours" class="form-label">Window End (hours ahead)</label>
+                                        {{ form.prediction_window_end_hours }}
+                                        <div class="form-text">Stop checking at this many hours ahead (max 72)</div>
+                                    </div>
                                     <div class="col-12">
                                         <hr class="my-3">
                                         <h6 class="mb-3">Prediction Services</h6>

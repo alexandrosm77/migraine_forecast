@@ -34,6 +34,18 @@ class UserHealthProfile(models.Model):
     daily_notification_limit = models.IntegerField(
         default=1, help_text="Maximum health alert emails per day for this user (0 = disabled)"
     )
+    notification_frequency_hours = models.IntegerField(
+        default=3,
+        help_text="Minimum hours between notifications (default: 3 hours). Prevents notification spam."
+    )
+    prediction_window_start_hours = models.IntegerField(
+        default=3,
+        help_text="Start of prediction time window in hours ahead (default: 3 hours)"
+    )
+    prediction_window_end_hours = models.IntegerField(
+        default=6,
+        help_text="End of prediction time window in hours ahead (default: 6 hours)"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

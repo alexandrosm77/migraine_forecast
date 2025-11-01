@@ -181,3 +181,309 @@ class ViewsIntegrationTest(TestCase):
     def tearDown(self):
         """Stop LLM mocking patches"""
         self.llm_patcher.stop()
+
+
+class EndToEndWorkflowTest(TestCase):
+    """
+    Comprehensive end-to-end test that simulates the full application workflow.
+    This test verifies the entire pipeline from user registration to receiving notifications.
+    """
+
+    def setUp(self):
+        """Set up test environment with mocked external dependencies"""
+        # Mock LLM to prevent API calls
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        self.llm_patcher = patch("forecast.models.LLMConfiguration.get_config", return_value=mock_config)
+        self.llm_patcher.start()
+
+        # Mock weather API to prevent external API calls
+        # We need to mock both get_forecast and parse_forecast_data
+        self.weather_api_get_patcher = patch("forecast.weather_api.OpenMeteoClient.get_forecast")
+        self.weather_api_parse_patcher = patch("forecast.weather_api.OpenMeteoClient.parse_forecast_data")
+        self.mock_weather_get = self.weather_api_get_patcher.start()
+        self.mock_weather_parse = self.weather_api_parse_patcher.start()
+
+        # Mock email sending
+        self.email_patcher = patch("forecast.notification_service.send_mail")
+        self.mock_send_mail = self.email_patcher.start()
+
+        self.client = Client()
+
+    def tearDown(self):
+        """Clean up mocking patches"""
+        self.llm_patcher.stop()
+        self.weather_api_get_patcher.stop()
+        self.weather_api_parse_patcher.stop()
+        self.email_patcher.stop()
+
+    def test_complete_user_journey(self):
+        """
+        Test the complete user journey from registration to receiving notifications.
+
+        This test covers:
+        1. User registration
+        2. User login
+        3. Profile configuration with custom notification preferences
+        4. Location creation
+        5. Weather data collection
+        6. Prediction generation
+        7. Notification processing
+        """
+
+        # ============================================================
+        # STEP 1: User Registration
+        # ============================================================
+        registration_data = {
+            "username": "e2e_testuser",
+            "password1": "SecureTestPass123!",
+            "password2": "SecureTestPass123!",
+        }
+
+        response = self.client.post(reverse("forecast:register"), registration_data)
+        self.assertEqual(response.status_code, 302)  # Redirect after successful registration
+
+        # Verify user was created and add email
+        user = User.objects.get(username="e2e_testuser")
+        self.assertIsNotNone(user)
+        user.email = "e2e_test@example.com"
+        user.save()
+
+        # ============================================================
+        # STEP 2: User Login
+        # ============================================================
+        login_successful = self.client.login(username="e2e_testuser", password="SecureTestPass123!")
+        self.assertTrue(login_successful)
+
+        # Verify dashboard is accessible
+        response = self.client.get(reverse("forecast:dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+        # ============================================================
+        # STEP 3: Configure User Health Profile with Custom Preferences
+        # ============================================================
+        profile_data = {
+            "age": 35,
+            "prior_conditions": "Occasional migraines, sensitive to weather changes",
+            "email_notifications_enabled": True,
+            "daily_notification_limit": 3,
+            "notification_frequency_hours": 4,  # Custom: 4 hours between notifications
+            "prediction_window_start_hours": 2,  # Custom: Check 2-8 hours ahead
+            "prediction_window_end_hours": 8,
+            "migraine_predictions_enabled": True,
+            "sinusitis_predictions_enabled": True,
+            "sensitivity_overall": 1.5,
+            "sensitivity_temperature": 1.8,
+            "sensitivity_humidity": 1.2,
+            "sensitivity_pressure": 2.0,
+            "sensitivity_cloud_cover": 1.0,
+            "sensitivity_precipitation": 1.3,
+        }
+
+        response = self.client.post(reverse("forecast:profile"), profile_data)
+        self.assertEqual(response.status_code, 302)  # Redirect after successful save
+
+        # Verify profile was created with custom preferences
+        user.refresh_from_db()
+        profile = user.health_profile
+        self.assertEqual(profile.notification_frequency_hours, 4)
+        self.assertEqual(profile.prediction_window_start_hours, 2)
+        self.assertEqual(profile.prediction_window_end_hours, 8)
+        self.assertEqual(profile.sensitivity_pressure, 2.0)
+
+        # ============================================================
+        # STEP 4: Add Location
+        # ============================================================
+        # Mock weather API response
+        now = timezone.now()
+
+        # Mock get_forecast to return raw API data
+        self.mock_weather_get.return_value = {
+            "hourly": {
+                "time": [(now + timedelta(hours=i)).isoformat() for i in range(1, 10)],
+                "temperature_2m": [20.0 + i for i in range(9)],
+                "relative_humidity_2m": [65.0 - i for i in range(9)],
+                "surface_pressure": [1013.0 - i * 0.5 for i in range(9)],
+                "wind_speed_10m": [10.0 + i * 0.5 for i in range(9)],
+                "precipitation": [0.0] * 9,
+                "cloud_cover": [30.0 + i * 5 for i in range(9)],
+            }
+        }
+
+        location_data = {
+            "city": "San Francisco",
+            "country": "USA",
+            "latitude": "37.7749",
+            "longitude": "-122.4194",
+        }
+
+        response = self.client.post(reverse("forecast:location_add"), location_data)
+        self.assertEqual(response.status_code, 302)  # Redirect after successful creation
+
+        # Verify location was created
+        location = Location.objects.get(city="San Francisco", user=user)
+        self.assertIsNotNone(location)
+        self.assertEqual(location.latitude, 37.7749)
+
+        # Mock parse_forecast_data to return parsed forecast entries
+        # This will be used by the collect_weather_data command
+        def mock_parse_data(forecast_data, location_obj):
+            """Mock parser that returns forecast entries"""
+            parsed = []
+            for i in range(1, 10):
+                parsed.append({
+                    'location': location_obj,
+                    'target_time': now + timedelta(hours=i),
+                    'forecast_time': now,
+                    'temperature': 20.0 + i,
+                    'humidity': 65.0 - i,
+                    'pressure': 1013.0 - i * 0.5,
+                    'wind_speed': 10.0 + i * 0.5,
+                    'precipitation': 0.0,
+                    'cloud_cover': 30.0 + i * 5,
+                })
+            return parsed
+
+        self.mock_weather_parse.side_effect = mock_parse_data
+
+        # ============================================================
+        # STEP 5: Simulate Weather Data Collection (Cron Job Task 1)
+        # ============================================================
+        from .weather_service import WeatherService
+        from .management.commands.collect_weather_data import Command as CollectWeatherCommand
+
+        # Run the collect_weather_data command with options
+        collect_cmd = CollectWeatherCommand()
+        collect_cmd.handle(cleanup_hours=48, skip_cleanup=False)
+
+        # Verify weather forecasts were created
+        forecasts = WeatherForecast.objects.filter(location=location)
+        self.assertGreater(forecasts.count(), 0)
+
+        # Verify forecasts are in the user's custom time window (2-8 hours ahead)
+        forecast_in_window = forecasts.filter(
+            target_time__gte=now + timedelta(hours=2),
+            target_time__lte=now + timedelta(hours=8)
+        )
+        self.assertGreater(forecast_in_window.count(), 0)
+
+        # ============================================================
+        # STEP 6: Simulate Prediction Generation (Cron Job Task 2)
+        # ============================================================
+        from .management.commands.generate_predictions import Command as GeneratePredictionsCommand
+
+        # Run the generate_predictions command with options
+        predict_cmd = GeneratePredictionsCommand()
+        predict_cmd.handle(cleanup_days=7, skip_cleanup=False, location=None)
+
+        # Verify predictions were created
+        migraine_predictions = MigrainePrediction.objects.filter(user=user, location=location)
+        self.assertGreater(migraine_predictions.count(), 0)
+
+        # Verify prediction uses custom time window
+        prediction = migraine_predictions.first()
+        self.assertIsNotNone(prediction)
+
+        # Check that prediction window matches user preferences (2-8 hours)
+        time_diff_start = (prediction.target_time_start - now).total_seconds() / 3600
+        time_diff_end = (prediction.target_time_end - now).total_seconds() / 3600
+        self.assertGreaterEqual(time_diff_start, 1.5)  # Allow some tolerance
+        self.assertLessEqual(time_diff_end, 8.5)
+
+        # ============================================================
+        # STEP 7: Simulate Notification Processing (Cron Job Task 3)
+        # ============================================================
+        from .management.commands.process_notifications import Command as ProcessNotificationsCommand
+
+        # Manually set a prediction to HIGH to trigger notification
+        prediction.probability = "HIGH"
+        prediction.notification_sent = False
+        prediction.weather_factors = {"total_score": 0.85, "pressure_score": 0.9}
+        prediction.save()
+
+        # Run the process_notifications command with options
+        notify_cmd = ProcessNotificationsCommand()
+        notify_cmd.handle(dry_run=False, force=False)
+
+        # Verify notification was sent
+        self.mock_send_mail.assert_called()
+
+        # Verify prediction was marked as sent
+        prediction.refresh_from_db()
+        self.assertTrue(prediction.notification_sent)
+
+        # ============================================================
+        # STEP 8: Test Notification Frequency Enforcement
+        # ============================================================
+        # Create another HIGH prediction immediately
+        forecast = forecasts.first()
+        new_prediction = MigrainePrediction.objects.create(
+            user=user,
+            location=location,
+            forecast=forecast,
+            target_time_start=now + timedelta(hours=2),
+            target_time_end=now + timedelta(hours=8),
+            probability="HIGH",
+            weather_factors={"total_score": 0.90},
+            notification_sent=False,
+        )
+
+        # Reset mock to track new calls
+        self.mock_send_mail.reset_mock()
+
+        # Try to send notification again
+        notify_cmd.handle(dry_run=False, force=False)
+
+        # Should NOT send because last notification was sent less than 4 hours ago
+        # (user's notification_frequency_hours is 4)
+        new_prediction.refresh_from_db()
+        self.assertFalse(new_prediction.notification_sent)
+
+        # ============================================================
+        # STEP 9: Verify Dashboard Shows Predictions
+        # ============================================================
+        response = self.client.get(reverse("forecast:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("recent_predictions", response.context)
+        self.assertGreater(len(response.context["recent_predictions"]), 0)
+
+        # ============================================================
+        # STEP 10: Verify Location Detail Page
+        # ============================================================
+        response = self.client.get(reverse("forecast:location_detail", args=[location.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("forecasts", response.context)
+        self.assertIn("predictions", response.context)
+        self.assertGreater(len(response.context["forecasts"]), 0)
+        self.assertGreater(len(response.context["predictions"]), 0)
+
+        # ============================================================
+        # STEP 11: Verify Prediction Detail Page
+        # ============================================================
+        response = self.client.get(reverse("forecast:prediction_detail", args=[prediction.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["prediction"], prediction)
+
+        # ============================================================
+        # STEP 12: Test Profile Update
+        # ============================================================
+        # Update notification frequency
+        profile_data["notification_frequency_hours"] = 6
+        response = self.client.post(reverse("forecast:profile"), profile_data)
+        self.assertEqual(response.status_code, 302)
+
+        user.refresh_from_db()
+        self.assertEqual(user.health_profile.notification_frequency_hours, 6)
+
+        # ============================================================
+        # STEP 13: Test Location Deletion
+        # ============================================================
+        response = self.client.post(reverse("forecast:location_delete", args=[location.id]))
+        self.assertEqual(response.status_code, 302)
+
+        # Verify location and associated data were deleted
+        self.assertFalse(Location.objects.filter(id=location.id).exists())
+
+        # ============================================================
+        # SUCCESS: Complete workflow executed successfully!
+        # ============================================================

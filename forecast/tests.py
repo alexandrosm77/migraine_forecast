@@ -241,6 +241,52 @@ class MigrainePredictionServiceTest(TestCase):
         self.assertIsNone(probability)
         self.assertIsNone(prediction)
 
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_predict_migraine_probability_custom_time_window(self, mock_get_config):
+        """Test migraine prediction with custom time window"""
+        # Mock LLM configuration as inactive
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        # Create user profile with custom time window
+        UserHealthProfile.objects.create(
+            user=self.user,
+            prediction_window_start_hours=2,
+            prediction_window_end_hours=8,
+        )
+
+        service = MigrainePredictionService()
+        probability, prediction = service.predict_migraine_probability(self.location, self.user)
+
+        # Should use custom window from user profile
+        self.assertIsNotNone(prediction)
+        # Verify the prediction uses the custom time window
+        time_diff_start = (prediction.target_time_start - timezone.now()).total_seconds() / 3600
+        time_diff_end = (prediction.target_time_end - timezone.now()).total_seconds() / 3600
+        self.assertAlmostEqual(time_diff_start, 2, delta=0.1)
+        self.assertAlmostEqual(time_diff_end, 8, delta=0.1)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_predict_migraine_probability_explicit_time_window(self, mock_get_config):
+        """Test migraine prediction with explicitly provided time window"""
+        # Mock LLM configuration as inactive
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        service = MigrainePredictionService()
+        probability, prediction = service.predict_migraine_probability(
+            self.location, self.user, window_start_hours=1, window_end_hours=4
+        )
+
+        # Should use explicitly provided window
+        self.assertIsNotNone(prediction)
+        time_diff_start = (prediction.target_time_start - timezone.now()).total_seconds() / 3600
+        time_diff_end = (prediction.target_time_end - timezone.now()).total_seconds() / 3600
+        self.assertAlmostEqual(time_diff_start, 1, delta=0.1)
+        self.assertAlmostEqual(time_diff_end, 4, delta=0.1)
+
 
 class LLMClientTest(TestCase):
     """Test cases for LLMClient"""
@@ -546,6 +592,10 @@ class UserHealthProfileTest(TestCase):
         self.assertTrue(profile.email_notifications_enabled)
         self.assertTrue(profile.migraine_predictions_enabled)
         self.assertTrue(profile.sinusitis_predictions_enabled)
+        # Test new notification preference defaults
+        self.assertEqual(profile.notification_frequency_hours, 3)
+        self.assertEqual(profile.prediction_window_start_hours, 3)
+        self.assertEqual(profile.prediction_window_end_hours, 6)
 
     def test_user_health_profile_string_representation(self):
         """Test string representation of user health profile"""
@@ -558,6 +608,19 @@ class UserHealthProfileTest(TestCase):
 
         # Access profile through user
         self.assertEqual(self.user.health_profile, profile)
+
+    def test_user_health_profile_custom_notification_preferences(self):
+        """Test creating profile with custom notification preferences"""
+        profile = UserHealthProfile.objects.create(
+            user=self.user,
+            notification_frequency_hours=6,
+            prediction_window_start_hours=2,
+            prediction_window_end_hours=12,
+        )
+
+        self.assertEqual(profile.notification_frequency_hours, 6)
+        self.assertEqual(profile.prediction_window_start_hours, 2)
+        self.assertEqual(profile.prediction_window_end_hours, 12)
 
 
 class SinusitisPredictionTest(TestCase):
@@ -730,6 +793,31 @@ class SinusitisPredictionServiceTest(TestCase):
         self.assertIsNone(probability)
         self.assertIsNone(prediction)
 
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_predict_sinusitis_probability_custom_time_window(self, mock_get_config):
+        """Test sinusitis prediction with custom time window"""
+        # Mock LLM configuration as inactive
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        # Create user profile with custom time window
+        UserHealthProfile.objects.create(
+            user=self.user,
+            prediction_window_start_hours=2,
+            prediction_window_end_hours=10,
+        )
+
+        service = SinusitisPredictionService()
+        probability, prediction = service.predict_sinusitis_probability(self.location, self.user)
+
+        # Should use custom window from user profile
+        self.assertIsNotNone(prediction)
+        time_diff_start = (prediction.target_time_start - timezone.now()).total_seconds() / 3600
+        time_diff_end = (prediction.target_time_end - timezone.now()).total_seconds() / 3600
+        self.assertAlmostEqual(time_diff_start, 2, delta=0.1)
+        self.assertAlmostEqual(time_diff_end, 10, delta=0.1)
+
 
 class UserHealthProfileFormTest(TestCase):
     """Test cases for UserHealthProfileForm"""
@@ -740,6 +828,10 @@ class UserHealthProfileFormTest(TestCase):
             "age": 30,
             "prior_conditions": "Aura, hypertension",
             "email_notifications_enabled": True,
+            "daily_notification_limit": 2,
+            "notification_frequency_hours": 4,
+            "prediction_window_start_hours": 2,
+            "prediction_window_end_hours": 8,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": False,
             "sensitivity_overall": 1.5,
@@ -756,6 +848,10 @@ class UserHealthProfileFormTest(TestCase):
         """Test that form clamps sensitivity values to valid range"""
         form_data = {
             "email_notifications_enabled": True,
+            "daily_notification_limit": 1,
+            "notification_frequency_hours": 3,
+            "prediction_window_start_hours": 3,
+            "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
             "sensitivity_overall": 5.0,  # Too high
@@ -777,6 +873,10 @@ class UserHealthProfileFormTest(TestCase):
         """Test that optional fields can be omitted"""
         form_data = {
             "email_notifications_enabled": True,
+            "daily_notification_limit": 1,
+            "notification_frequency_hours": 3,
+            "prediction_window_start_hours": 3,
+            "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
             "sensitivity_overall": 1.0,
@@ -788,6 +888,76 @@ class UserHealthProfileFormTest(TestCase):
         }
         form = UserHealthProfileForm(data=form_data)
         self.assertTrue(form.is_valid())
+
+    def test_form_notification_frequency_validation(self):
+        """Test notification frequency validation"""
+        # Test too low
+        form_data = {
+            "email_notifications_enabled": True,
+            "daily_notification_limit": 1,
+            "notification_frequency_hours": 0,  # Too low
+            "prediction_window_start_hours": 3,
+            "prediction_window_end_hours": 6,
+            "migraine_predictions_enabled": True,
+            "sinusitis_predictions_enabled": True,
+            "sensitivity_overall": 1.0,
+            "sensitivity_temperature": 1.0,
+            "sensitivity_humidity": 1.0,
+            "sensitivity_pressure": 1.0,
+            "sensitivity_cloud_cover": 1.0,
+            "sensitivity_precipitation": 1.0,
+        }
+        form = UserHealthProfileForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Notification frequency must be at least 1 hour", str(form.errors))
+
+        # Test too high
+        form_data["notification_frequency_hours"] = 25  # Too high
+        form = UserHealthProfileForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Notification frequency cannot exceed 24 hours", str(form.errors))
+
+    def test_form_prediction_window_validation(self):
+        """Test prediction window validation"""
+        # Test window start too low
+        form_data = {
+            "email_notifications_enabled": True,
+            "daily_notification_limit": 1,
+            "notification_frequency_hours": 3,
+            "prediction_window_start_hours": 0,  # Too low
+            "prediction_window_end_hours": 6,
+            "migraine_predictions_enabled": True,
+            "sinusitis_predictions_enabled": True,
+            "sensitivity_overall": 1.0,
+            "sensitivity_temperature": 1.0,
+            "sensitivity_humidity": 1.0,
+            "sensitivity_pressure": 1.0,
+            "sensitivity_cloud_cover": 1.0,
+            "sensitivity_precipitation": 1.0,
+        }
+        form = UserHealthProfileForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Prediction window start must be at least 1 hour ahead", str(form.errors))
+
+        # Test window end too high
+        form_data["prediction_window_start_hours"] = 3
+        form_data["prediction_window_end_hours"] = 80  # Too high
+        form = UserHealthProfileForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Prediction window end cannot exceed 72 hours ahead", str(form.errors))
+
+        # Test start >= end
+        form_data["prediction_window_start_hours"] = 6
+        form_data["prediction_window_end_hours"] = 6  # Same as start
+        form = UserHealthProfileForm(data=form_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Prediction window start must be before window end", str(form.errors))
+
+        # Test window too narrow
+        form_data["prediction_window_start_hours"] = 5
+        form_data["prediction_window_end_hours"] = 5  # Less than 1 hour wide
+        form = UserHealthProfileForm(data=form_data)
+        self.assertFalse(form.is_valid())
 
 
 class ToolsTest(TestCase):
@@ -1008,3 +1178,143 @@ class NotificationServiceTest(TestCase):
 
         self.assertIsNotNone(detailed)
         self.assertIn("factors", detailed)
+
+    @patch("forecast.notification_service.send_mail")
+    def test_notification_frequency_respected(self, mock_send_mail):
+        """Test that notification frequency preference is respected"""
+        # Create user profile with 4-hour notification frequency
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_frequency_hours=4,
+            email_notifications_enabled=True,
+        )
+
+        now = timezone.now()
+        forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            temperature=25.0,
+            humidity=70.0,
+            pressure=1010.0,
+            wind_speed=15.0,
+            precipitation=2.0,
+            cloud_cover=80.0,
+        )
+
+        # Create a prediction that was sent 2 hours ago (within 4-hour window)
+        old_prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now - timedelta(hours=2) + timedelta(hours=3),
+            target_time_end=now - timedelta(hours=2) + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.8},
+            notification_sent=True,
+        )
+        # Manually set prediction_time to 2 hours ago
+        old_prediction.prediction_time = now - timedelta(hours=2)
+        old_prediction.save()
+
+        # Create a new HIGH prediction
+        new_prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.9},
+            notification_sent=False,
+        )
+
+        # Try to send notifications
+        migraine_predictions = {
+            self.location.id: {
+                "probability": "HIGH",
+                "prediction": new_prediction,
+            }
+        }
+        sinusitis_predictions = {}
+
+        result = self.service.check_and_send_combined_notifications(
+            migraine_predictions, sinusitis_predictions
+        )
+
+        # Should NOT send because last notification was only 2 hours ago (< 4 hour minimum)
+        self.assertEqual(result, 0)
+        mock_send_mail.assert_not_called()
+
+    @patch("forecast.notification_service.send_mail")
+    def test_notification_sent_after_frequency_window(self, mock_send_mail):
+        """Test that notification is sent after frequency window has passed"""
+        # Create user profile with 3-hour notification frequency
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_frequency_hours=3,
+            email_notifications_enabled=True,
+            daily_notification_limit=5,  # Allow multiple notifications
+        )
+
+        now = timezone.now()
+
+        # Create forecasts for the prediction window
+        for i in range(3, 7):
+            WeatherForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=now + timedelta(hours=i),
+                temperature=25.0,
+                humidity=70.0,
+                pressure=1010.0,
+                wind_speed=15.0,
+                precipitation=2.0,
+                cloud_cover=80.0,
+            )
+
+        forecast = WeatherForecast.objects.filter(location=self.location).first()
+
+        # Create a prediction that was sent 4 hours ago (outside 3-hour window)
+        old_prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now - timedelta(hours=4) + timedelta(hours=3),
+            target_time_end=now - timedelta(hours=4) + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.8, "total_score": 0.8},
+            notification_sent=True,
+        )
+        # Manually set prediction_time to 4 hours ago
+        old_prediction.prediction_time = now - timedelta(hours=4)
+        old_prediction.save()
+
+        # Create a new HIGH prediction
+        new_prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.9, "total_score": 0.9},
+            notification_sent=False,
+        )
+
+        # Try to send notifications
+        migraine_predictions = {
+            self.location.id: {
+                "probability": "HIGH",
+                "prediction": new_prediction,
+            }
+        }
+        sinusitis_predictions = {}
+
+        result = self.service.check_and_send_combined_notifications(
+            migraine_predictions, sinusitis_predictions
+        )
+
+        # Should send because last notification was 4 hours ago (> 3 hour minimum)
+        self.assertEqual(result, 1)
+        mock_send_mail.assert_called_once()

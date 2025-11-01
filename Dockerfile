@@ -13,10 +13,16 @@ RUN apt-get update && \
 # Copy project files
 COPY . .
 
-# Set up cron job for migraine probability check
-RUN echo "0 */3 * * * cd /app && /usr/local/bin/python manage.py check_migraine_probability >> /var/log/cron.log 2>&1" > /etc/cron.d/migraine_check
-RUN chmod 0644 /etc/cron.d/migraine_check && \
-    crontab /etc/cron.d/migraine_check && \
+# Set up cron jobs for decoupled pipeline architecture (Optimized for Raspberry Pi 5)
+# Task 1: Collect weather data every 2 hours
+# Task 2: Generate predictions every 2 hours (offset by 30 min)
+# Task 3: Process notifications every 2 hours (offset by 1 hour)
+# This reduces CPU load by 75% compared to 30-minute intervals, important for LLM inference on Pi
+RUN echo "0 */2 * * * cd /app && /usr/local/bin/python manage.py collect_weather_data >> /var/log/cron.log 2>&1" > /etc/cron.d/migraine_pipeline && \
+    echo "30 */2 * * * cd /app && /usr/local/bin/python manage.py generate_predictions >> /var/log/cron.log 2>&1" >> /etc/cron.d/migraine_pipeline && \
+    echo "0 1-23/2 * * * cd /app && /usr/local/bin/python manage.py process_notifications >> /var/log/cron.log 2>&1" >> /etc/cron.d/migraine_pipeline
+RUN chmod 0644 /etc/cron.d/migraine_pipeline && \
+    crontab /etc/cron.d/migraine_pipeline && \
     touch /var/log/cron.log && \
     chmod +x /app/start_django.sh && \
     echo "[supervisord]\nnodaemon=true\n\n[program:django]\ncommand=/app/start_django.sh\ndirectory=/app\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n\n[program:cron]\ncommand=cron -f\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0" > /etc/supervisor/conf.d/supervisord.conf

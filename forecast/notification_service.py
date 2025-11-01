@@ -607,12 +607,14 @@ class NotificationService:
             # Mark this user as processed
             processed_users.add(user.id)
 
-            # Check user-level daily notification limit
+            # Check user-level daily notification limit and frequency preference
             try:
                 user_profile = user.health_profile
                 limit = int(user_profile.daily_notification_limit)
+                notification_frequency_hours = int(user_profile.notification_frequency_hours)
             except Exception:
                 limit = 1  # Default to 1 if no profile exists
+                notification_frequency_hours = 3  # Default to 3 hours
 
             if limit <= 0:
                 # Notifications disabled for this user
@@ -646,6 +648,38 @@ class NotificationService:
             if emails_sent_today >= limit:
                 # Already reached today's limit for this user
                 logger.debug(f"User {user.username} has reached daily limit ({limit})")
+                continue
+
+            # Check notification frequency - find the most recent notification sent
+            frequency_cutoff = now - timedelta(hours=notification_frequency_hours)
+
+            recent_migraine = MigrainePrediction.objects.filter(
+                user=user,
+                notification_sent=True,
+                prediction_time__gte=frequency_cutoff,
+            ).order_by('-prediction_time').first()
+
+            recent_sinusitis = SinusitisPrediction.objects.filter(
+                user=user,
+                notification_sent=True,
+                prediction_time__gte=frequency_cutoff,
+            ).order_by('-prediction_time').first()
+
+            # If either type was sent within the frequency window, skip
+            if recent_migraine or recent_sinusitis:
+                most_recent_time = None
+                if recent_migraine and recent_sinusitis:
+                    most_recent_time = max(recent_migraine.prediction_time, recent_sinusitis.prediction_time)
+                elif recent_migraine:
+                    most_recent_time = recent_migraine.prediction_time
+                else:
+                    most_recent_time = recent_sinusitis.prediction_time
+
+                hours_since = (now - most_recent_time).total_seconds() / 3600
+                logger.debug(
+                    f"User {user.username} was notified {hours_since:.1f} hours ago, "
+                    f"minimum frequency is {notification_frequency_hours} hours"
+                )
                 continue
 
             # Collect predictions for ALL locations for this user

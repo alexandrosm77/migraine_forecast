@@ -48,7 +48,7 @@ class SinusitisPredictionService:
         """Initialize the sinusitis prediction service."""
         pass
 
-    def predict_sinusitis_probability(self, location, user=None, store_prediction=True):
+    def predict_sinusitis_probability(self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None):
         """
         Predict sinusitis probability for a specific location and user.
 
@@ -56,20 +56,36 @@ class SinusitisPredictionService:
             location (Location): The location model instance
             user (User, optional): The user model instance
             store_prediction (bool): Whether to save the prediction to database
+            window_start_hours (int, optional): Start of prediction window in hours ahead (default: 3)
+            window_end_hours (int, optional): End of prediction window in hours ahead (default: 6)
 
         Returns:
             tuple: (probability_level, prediction_instance)
         """
-        # Get recent forecasts for the next 3-6 hours
-        start_time = timezone.now()
-        end_time = start_time + timedelta(hours=6)
+        # Get user preferences for time window if not specified
+        if window_start_hours is None or window_end_hours is None:
+            try:
+                if user and hasattr(user, 'health_profile'):
+                    profile = user.health_profile
+                    window_start_hours = window_start_hours or profile.prediction_window_start_hours
+                    window_end_hours = window_end_hours or profile.prediction_window_end_hours
+                else:
+                    window_start_hours = window_start_hours or 3
+                    window_end_hours = window_end_hours or 6
+            except Exception:
+                window_start_hours = window_start_hours or 3
+                window_end_hours = window_end_hours or 6
+
+        # Get recent forecasts for the user's preferred time window
+        start_time = timezone.now() + timedelta(hours=window_start_hours)
+        end_time = timezone.now() + timedelta(hours=window_end_hours)
 
         forecasts = WeatherForecast.objects.filter(
             location=location, target_time__gte=start_time, target_time__lte=end_time
         ).order_by("target_time")
 
         if not forecasts:
-            logger.warning(f"No forecasts available for location {location} in the 3-6 hour window")
+            logger.warning(f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window")
             return None, None
 
         # Get previous forecasts for comparison

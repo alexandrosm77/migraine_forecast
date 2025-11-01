@@ -10,6 +10,9 @@ class UserHealthProfileForm(forms.ModelForm):
             "prior_conditions",
             "email_notifications_enabled",
             "daily_notification_limit",
+            "notification_frequency_hours",
+            "prediction_window_start_hours",
+            "prediction_window_end_hours",
             "migraine_predictions_enabled",
             "sinusitis_predictions_enabled",
             "sensitivity_overall",
@@ -45,6 +48,7 @@ class UserHealthProfileForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+
         # Clamp sensitivities to reasonable bounds
         for key in [
             "sensitivity_overall",
@@ -62,4 +66,29 @@ class UserHealthProfileForm(forms.ModelForm):
                 cleaned[key] = 0.0
             elif val > 3.0:
                 cleaned[key] = 3.0
+
+        # Validate notification frequency (1-24 hours)
+        notification_freq = cleaned.get("notification_frequency_hours")
+        if notification_freq is not None:
+            if notification_freq < 1:
+                raise forms.ValidationError("Notification frequency must be at least 1 hour")
+            elif notification_freq > 24:
+                raise forms.ValidationError("Notification frequency cannot exceed 24 hours")
+
+        # Validate prediction window
+        window_start = cleaned.get("prediction_window_start_hours")
+        window_end = cleaned.get("prediction_window_end_hours")
+
+        if window_start is not None and window_start < 1:
+            raise forms.ValidationError("Prediction window start must be at least 1 hour ahead")
+
+        if window_end is not None and window_end > 72:
+            raise forms.ValidationError("Prediction window end cannot exceed 72 hours ahead")
+
+        if window_start is not None and window_end is not None:
+            if window_start >= window_end:
+                raise forms.ValidationError("Prediction window start must be before window end")
+            if (window_end - window_start) < 1:
+                raise forms.ValidationError("Prediction window must be at least 1 hour wide")
+
         return cleaned
