@@ -29,7 +29,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         """
         Collect weather forecast data for all locations.
-        
+
         This command:
         1. Fetches weather forecasts from the API for all locations
         2. Stores/updates forecast data in the database
@@ -96,7 +96,7 @@ class Command(BaseCommand):
                     self.style.SUCCESS(f"  ✓ Deleted {count} forecast(s) older than {cleanup_hours} hours")
                 )
             else:
-                self.stdout.write(f"  No old forecasts to delete")
+                self.stdout.write("  No old forecasts to delete")
 
         # Summary
         end_time = timezone.now()
@@ -118,4 +118,3 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"  - {error}"))
         
         self.stdout.write("=" * 60)
-

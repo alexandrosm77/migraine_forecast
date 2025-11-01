@@ -236,3 +236,6 @@ if SENTRY_ENABLED and SENTRY_DSN:
         # Before send hook to filter/modify events before sending
         # before_send=lambda event, hint: event if not DEBUG else None,
     )
+
+SESSION_COOKIE_NAME = "forecast_sessionid"
+CSRF_COOKIE_NAME = "forecast_csrftoken"

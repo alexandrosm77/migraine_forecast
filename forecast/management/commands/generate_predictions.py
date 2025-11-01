@@ -114,7 +114,7 @@ class Command(BaseCommand):
                                 medium_risk_count += 1
                         else:
                             self.stdout.write(
-                                self.style.WARNING(f"  ⚠ Migraine: No forecast data available")
+                                self.style.WARNING("  ⚠ Migraine: No forecast data available")
                             )
                     except Exception as e:
                         error_msg = f"Error generating migraine prediction for {location}: {str(e)}"
@@ -122,7 +122,7 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.ERROR(f"  ✗ {error_msg}"))
                         logger.error(error_msg, exc_info=True)
                 else:
-                    self.stdout.write(f"  - Migraine predictions disabled for user")
+                    self.stdout.write("  - Migraine predictions disabled for user")
 
                 # Generate sinusitis prediction if enabled
                 if sinusitis_enabled:
@@ -143,7 +143,7 @@ class Command(BaseCommand):
                                 medium_risk_count += 1
                         else:
                             self.stdout.write(
-                                self.style.WARNING(f"  ⚠ Sinusitis: No forecast data available")
+                                self.style.WARNING("  ⚠ Sinusitis: No forecast data available")
                             )
                     except Exception as e:
                         error_msg = f"Error generating sinusitis prediction for {location}: {str(e)}"
@@ -151,7 +151,7 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.ERROR(f"  ✗ {error_msg}"))
                         logger.error(error_msg, exc_info=True)
                 else:
-                    self.stdout.write(f"  - Sinusitis predictions disabled for user")
+                    self.stdout.write("  - Sinusitis predictions disabled for user")
 
             except Exception as e:
                 error_msg = f"Error processing location {location}: {str(e)}"
@@ -184,7 +184,7 @@ class Command(BaseCommand):
                     )
                 )
             else:
-                self.stdout.write(f"  No old predictions to delete")
+                self.stdout.write("  No old predictions to delete")
 
         # Summary
         end_time = timezone.now()
@@ -208,4 +208,3 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"  - {error}"))
         
         self.stdout.write("=" * 60)
-

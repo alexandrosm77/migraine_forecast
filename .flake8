@@ -13,7 +13,7 @@ exclude =
     *.egg-info
 # E203: whitespace before ':' (conflicts with Black)
 # W503: line break before binary operator (conflicts with Black)
-extend-ignore = E203, W503
+extend-ignore = E203, W503, W293
 statistics = True
 count = True
 # Per-file ignores for common patterns

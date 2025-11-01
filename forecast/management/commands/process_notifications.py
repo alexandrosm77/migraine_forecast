@@ -170,4 +170,3 @@ class Command(BaseCommand):
         self.stdout.write(f"Duration: {duration:.2f} seconds")
         self.stdout.write(f"Completed at: {end_time}")
         self.stdout.write("=" * 60)
-
