@@ -194,16 +194,7 @@
         <div style="background-color: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 5px; border: 2px solid #86efac;">
             <h3 style="margin: 0 0 15px 0; color: #166534;">💡 Recommended Actions</h3>
 
-            {% comment %}Collect all unique prevention tips from all locations{% endcomment %}
-            {% with has_migraine=False has_sinusitis=False %}
-                {% for loc in locations %}
-                    {% if loc.migraine_prediction %}{% with has_migraine=True %}{% endwith %}{% endif %}
-                    {% if loc.sinusitis_prediction %}{% with has_sinusitis=True %}{% endwith %}{% endif %}
-                {% endfor %}
-            {% endwith %}
-
-            {% comment %}Check if any location has migraine predictions{% endcomment %}
-            {% for loc in locations %}{% if loc.migraine_prediction %}
+            {% if has_migraine %}
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #3498db; margin: 0 0 10px 0;">For Migraine Prevention:</h4>
                 <ul style="margin: 0 0 10px 0;">
@@ -213,20 +204,18 @@
                     <li>Avoid known personal triggers (certain foods, stress, etc.)</li>
                     <li>Have your rescue medication readily available</li>
                 </ul>
-                {% comment %}Show personalized tips from first location with migraine prediction{% endcomment %}
-                {% if loc.migraine_llm_prevention_tips and loc.migraine_llm_prevention_tips|length > 0 %}
+                {% if first_migraine_tips and first_migraine_tips|length > 0 %}
                 <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
                 <ul style="margin: 0;">
-                    {% for tip in loc.migraine_llm_prevention_tips %}
+                    {% for tip in first_migraine_tips %}
                     <li>{{ tip }}</li>
                     {% endfor %}
                 </ul>
                 {% endif %}
             </div>
-            {% break %}{% endif %}{% endfor %}
+            {% endif %}
 
-            {% comment %}Check if any location has sinusitis predictions{% endcomment %}
-            {% for loc in locations %}{% if loc.sinusitis_prediction %}
+            {% if has_sinusitis %}
             <div>
                 <h4 style="color: #f59e0b; margin: 0 0 10px 0;">For Sinusitis Prevention:</h4>
                 <ul style="margin: 0 0 10px 0;">
@@ -236,17 +225,16 @@
                     <li>Avoid allergens and irritants (smoke, strong odors)</li>
                     <li>Apply warm compresses to sinus areas if needed</li>
                 </ul>
-                {% comment %}Show personalized tips from first location with sinusitis prediction{% endcomment %}
-                {% if loc.sinusitis_llm_prevention_tips and loc.sinusitis_llm_prevention_tips|length > 0 %}
+                {% if first_sinusitis_tips and first_sinusitis_tips|length > 0 %}
                 <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
                 <ul style="margin: 0;">
-                    {% for tip in loc.sinusitis_llm_prevention_tips %}
+                    {% for tip in first_sinusitis_tips %}
                     <li>{{ tip }}</li>
                     {% endfor %}
                 </ul>
                 {% endif %}
             </div>
-            {% break %}{% endif %}{% endfor %}
+            {% endif %}
 
             <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
                 <strong>Remember:</strong> If symptoms persist or worsen, consult with your healthcare provider.

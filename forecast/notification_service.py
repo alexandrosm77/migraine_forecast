@@ -295,10 +295,28 @@ class NotificationService:
             location_data.append(loc_data)
 
         # Prepare context for email
+        # Determine if we have any migraine or sinusitis predictions
+        has_migraine = any(loc.get("migraine_prediction") for loc in location_data)
+        has_sinusitis = any(loc.get("sinusitis_prediction") for loc in location_data)
+
+        # Get first location with tips for each type
+        first_migraine_tips = None
+        first_sinusitis_tips = None
+
+        for loc in location_data:
+            if not first_migraine_tips and loc.get("migraine_llm_prevention_tips"):
+                first_migraine_tips = loc.get("migraine_llm_prevention_tips")
+            if not first_sinusitis_tips and loc.get("sinusitis_llm_prevention_tips"):
+                first_sinusitis_tips = loc.get("sinusitis_llm_prevention_tips")
+
         context = {
             "user": user,
             "locations": location_data,
             "location_count": len(location_data),
+            "has_migraine": has_migraine,
+            "has_sinusitis": has_sinusitis,
+            "first_migraine_tips": first_migraine_tips,
+            "first_sinusitis_tips": first_sinusitis_tips,
         }
 
         # Build subject line
