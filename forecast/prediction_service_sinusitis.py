@@ -128,6 +128,7 @@ class SinusitisPredictionService:
         llm_used = False
         llm_detail = None
         probability_level = None
+        total_score = None  # Will store the actual score used for classification
 
         # Get LLM configuration from database (with fallback to settings)
         from forecast.models import LLMConfiguration
@@ -266,6 +267,10 @@ class SinusitisPredictionService:
                 probability_level = "MEDIUM"
             else:
                 probability_level = "LOW"
+
+        # Store the total score used for classification (if calculated manually)
+        if total_score is not None:
+            factors_payload["total_score"] = round(total_score, 2)
 
         # Add LLM details to factors payload if available
         if llm_detail is not None:
