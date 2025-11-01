@@ -9,13 +9,19 @@
     
     <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #007bff;">
         <h3 style="margin-top: 0;">About This Tool</h3>
-        <p>This tool allows you to manually trigger the migraine and sinusitis prediction check process. You can:</p>
+        <p>This tool allows you to manually trigger the migraine and sinusitis prediction check process using the <strong>decoupled pipeline architecture</strong>. You can:</p>
         <ul>
-            <li>Run a full prediction check (update forecasts + generate predictions + send notifications)</li>
-            <li>Run notifications only (skip forecast updates)</li>
-            <li>Send test notifications with fake predictions for testing purposes</li>
+            <li><strong>Run full pipeline:</strong> Executes all 3 tasks sequentially:
+                <ol style="margin-top: 5px;">
+                    <li>Collect weather data (with upsert to prevent duplicates)</li>
+                    <li>Generate predictions from stored forecasts</li>
+                    <li>Process and send notifications</li>
+                </ol>
+            </li>
+            <li><strong>Notify only:</strong> Skip tasks 1 & 2, only process notifications from existing predictions</li>
+            <li><strong>Test mode:</strong> Send test notifications with fake predictions for testing purposes</li>
         </ul>
-        <p><strong>Note:</strong> The output will be displayed in real-time as the command executes.</p>
+        <p><strong>Note:</strong> The output will be displayed in real-time as each task executes.</p>
     </div>
 
     <form method="get" action="{% url 'admin:execute_prediction_check' %}" target="_blank" style="background-color: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -86,11 +92,18 @@
 
     <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
         <h4 style="margin-top: 0;">⚠️ Command Line Equivalent</h4>
-        <p style="margin-bottom: 5px;"><strong>Normal mode:</strong></p>
+        <p style="margin-bottom: 5px;"><strong>Normal mode (decoupled pipeline):</strong></p>
         <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
-            python manage.py check_migraine_probability
+            python manage.py collect_weather_data<br>
+            python manage.py generate_predictions<br>
+            python manage.py process_notifications
         </code>
-        
+
+        <p style="margin-bottom: 5px;"><strong>Notify only mode:</strong></p>
+        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
+            python manage.py process_notifications
+        </code>
+
         <p style="margin-bottom: 5px;"><strong>Test mode (high risk):</strong></p>
         <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
             python manage.py check_migraine_probability --test-notification high --test-type both

@@ -260,17 +260,37 @@ class MigraineAdminSite(admin.AdminSite):
 
         def stream_output():
             """Generator function to stream command output."""
-            # Build command
-            cmd = [sys.executable, "manage.py", "check_migraine_probability"]
-
-            if notify_only:
-                cmd.append("--notify-only")
+            # Build commands using the new decoupled pipeline
+            commands = []
 
             if test_notification:
+                # Test mode: use legacy command for test notifications
+                cmd = [sys.executable, "manage.py", "check_migraine_probability"]
                 cmd.extend(["--test-notification", test_notification])
                 cmd.extend(["--test-type", test_type])
+                commands.append(("Test Notification", cmd))
+            else:
+                # Normal mode: use decoupled pipeline
+                if not notify_only:
+                    # Task 1: Collect weather data
+                    commands.append((
+                        "Task 1: Collect Weather Data",
+                        [sys.executable, "manage.py", "collect_weather_data"]
+                    ))
+                    # Task 2: Generate predictions
+                    commands.append((
+                        "Task 2: Generate Predictions",
+                        [sys.executable, "manage.py", "generate_predictions"]
+                    ))
 
-            # Yield initial HTML
+                # Task 3: Process notifications (always run in normal mode)
+                commands.append((
+                    "Task 3: Process Notifications",
+                    [sys.executable, "manage.py", "process_notifications"]
+                ))
+
+            # Yield initial HTML with updated title
+            total_commands = len(commands)
             yield """<!DOCTYPE html>
 <html>
 <head>
@@ -282,6 +302,22 @@ class MigraineAdminSite(admin.AdminSite):
             color: #d4d4d4;
             padding: 20px;
             margin: 0;
+        }
+        .task-header {
+            background-color: #2d2d30;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 20px 0 10px 0;
+            border-radius: 4px;
+        }
+        .task-header h2 {
+            margin: 0;
+            color: #4ec9b0;
+            font-size: 18px;
+        }
+        .task-number {
+            color: #007acc;
+            font-weight: bold;
         }
         .header {
             background-color: #2d2d30;
@@ -363,58 +399,82 @@ class MigraineAdminSite(admin.AdminSite):
 <body>
     <div class="header">
         <h1><span class="spinner"></span>Running Prediction Check <span class="status running">RUNNING</span></h1>
-        <div class="command">Command: """ + " ".join(
-                cmd
-            ) + """</div>
+        <div class="command">Executing """ + str(total_commands) + """ task(s) in decoupled pipeline</div>
+    </div>"""
+
+            # Run all commands sequentially and stream output
+            all_successful = True
+            try:
+                for idx, (task_name, cmd) in enumerate(commands, 1):
+                    # Task header
+                    yield f"""
+    <div class="task-header">
+        <h2><span class="task-number">Task {idx}/{total_commands}:</span> {task_name}</h2>
+        <div style="color: #858585; font-size: 12px; margin-top: 5px;">Command: {" ".join(cmd)}</div>
     </div>
     <div class="output">"""
 
-            # Run the command and stream output
-            try:
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    universal_newlines=True,
-                    bufsize=1,
-                    cwd=settings.BASE_DIR,
-                )
+                    # Run the command
+                    process = subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        universal_newlines=True,
+                        bufsize=1,
+                        cwd=settings.BASE_DIR,
+                    )
 
-                for line in iter(process.stdout.readline, ""):
-                    if line:
-                        # Color code the output based on content
-                        line_html = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    for line in iter(process.stdout.readline, ""):
+                        if line:
+                            # Color code the output based on content
+                            line_html = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-                        if "SUCCESS" in line or "✓" in line:
-                            line_html = f'<span class="success">{line_html}</span>'
-                        elif "WARNING" in line or "TEST MODE" in line:
-                            line_html = f'<span class="warning">{line_html}</span>'
-                        elif "ERROR" in line or "✗" in line or "Failed" in line:
-                            line_html = f'<span class="error">{line_html}</span>'
-                        elif "[" in line and "]" in line:
-                            # Highlight timestamps
-                            import re
+                            if "SUCCESS" in line or "✓" in line:
+                                line_html = f'<span class="success">{line_html}</span>'
+                            elif "WARNING" in line or "TEST MODE" in line:
+                                line_html = f'<span class="warning">{line_html}</span>'
+                            elif "ERROR" in line or "✗" in line or "Failed" in line:
+                                line_html = f'<span class="error">{line_html}</span>'
+                            elif "[" in line and "]" in line:
+                                # Highlight timestamps
+                                import re
 
-                            line_html = re.sub(r"\[(.*?)\]", r'<span class="timestamp">[\1]</span>', line_html)
+                                line_html = re.sub(r"\[(.*?)\]", r'<span class="timestamp">[\1]</span>', line_html)
 
-                        yield line_html
-                        time.sleep(0.01)  # Small delay to ensure smooth streaming
+                            yield line_html
+                            time.sleep(0.01)  # Small delay to ensure smooth streaming
 
-                process.wait()
+                    process.wait()
 
-                if process.returncode == 0:
-                    yield """</div>
+                    yield "</div>"  # Close output div
+
+                    if process.returncode == 0:
+                        yield f"""
+    <div style="padding: 10px; margin: 10px 0; background-color: #1a472a; border-left: 4px solid #4ec9b0; border-radius: 4px;">
+        <span style="color: #4ec9b0; font-weight: bold;">✓ {task_name} completed successfully</span>
+    </div>"""
+                    else:
+                        all_successful = False
+                        yield f"""
+    <div style="padding: 10px; margin: 10px 0; background-color: #5a1a1a; border-left: 4px solid #f48771; border-radius: 4px;">
+        <span style="color: #f48771; font-weight: bold;">✗ {task_name} failed (Exit Code: {process.returncode})</span>
+    </div>"""
+                        # Don't stop on error, continue with remaining tasks
+
+                # Final summary
+                if all_successful:
+                    yield """
     <div class="header" style="border-left-color: #4ec9b0; margin-top: 20px;">
-        <h1 style="color: #4ec9b0;">✓ Command Completed Successfully <span class="status complete">COMPLETE</span></h1>
+        <h1 style="color: #4ec9b0;">✓ All Tasks Completed Successfully <span class="status complete">COMPLETE</span></h1>
     </div>"""
                 else:
-                    yield f"""</div>
+                    yield """
     <div class="header" style="border-left-color: #f48771; margin-top: 20px;">
-        <h1 style="color: #f48771;">✗ Command Failed (Exit Code: {process.returncode})</h1>
+        <h1 style="color: #f48771;">⚠ Some Tasks Failed</h1>
     </div>"""
 
             except Exception as e:
-                yield f"""<span class="error">Error executing command: {str(e)}</span></div>
+                yield f"""<span class="error">Error executing commands: {str(e)}</span>
     <div class="header" style="border-left-color: #f48771; margin-top: 20px;">
         <h1 style="color: #f48771;">✗ Execution Error</h1>
     </div>"""

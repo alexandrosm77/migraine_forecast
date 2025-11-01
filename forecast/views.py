@@ -118,8 +118,8 @@ def location_add(request):
                     longitude=float(longitude),
                 )
 
-                # Fetch initial forecast for the new location
-                weather_service.update_forecast_for_location(location)
+                # Fetch initial forecast for the new location (using upsert to prevent duplicates)
+                weather_service.update_forecast_for_location_upsert(location)
 
                 messages.success(request, f"Location {city}, {country} added successfully!")
                 return redirect("forecast:location_list")
