@@ -34,14 +34,16 @@ class Command(BaseCommand):
         1. Fetches weather forecasts from the API for all locations
         2. Stores/updates forecast data in the database
         3. Cleans up old forecast data to prevent database bloat
-        
+
         This is Task 1 of the decoupled pipeline architecture.
         Recommended schedule: Every 1-2 hours
         """
         start_time = timezone.now()
-        self.stdout.write(
-            self.style.SUCCESS(f"[{start_time}] Starting weather data collection...")
-        )
+
+        # Log to both stdout and logger for consistent ordering
+        start_msg = f"Starting weather data collection..."
+        self.stdout.write(self.style.SUCCESS(f"[{start_time}] {start_msg}"))
+        logger.info(start_msg)
 
         # Initialize weather service
         weather_service = WeatherService()

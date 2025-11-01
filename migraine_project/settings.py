@@ -227,7 +227,7 @@ if SENTRY_ENABLED and SENTRY_DSN:
         # Release tracking (optional - useful for tracking which version caused issues)
         # release=f"migraine-forecast@{os.getenv('APP_VERSION', 'dev')}",
         # Additional options
-        debug=DEBUG,  # Enable debug mode in development
+        debug=False,  # Disable debug mode to reduce console noise
         attach_stacktrace=True,  # Attach stacktraces to all messages
         # Request bodies
         max_request_body_size="medium",  # Capture request bodies (small/medium/always)
