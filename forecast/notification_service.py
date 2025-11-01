@@ -184,27 +184,35 @@ class NotificationService:
             logger.error(f"Failed to send migraine alert email: {e}")
             return False
 
-    def send_combined_alert(self, migraine_prediction=None, sinusitis_prediction=None):
+    def send_combined_alert(self, migraine_predictions=None, sinusitis_predictions=None):
         """
-        Send a combined alert email for both migraine and sinusitis predictions.
+        Send a combined alert email for migraine and/or sinusitis predictions across multiple locations.
 
         Args:
-            migraine_prediction (MigrainePrediction, optional): The migraine prediction instance
-            sinusitis_prediction (SinusitisPrediction, optional): The sinusitis prediction instance
+            migraine_predictions (list, optional): List of MigrainePrediction instances
+            sinusitis_predictions (list, optional): List of SinusitisPrediction instances
 
         Returns:
             bool: True if email was sent successfully, False otherwise
         """
+        # Convert single predictions to lists for backward compatibility
+        if migraine_predictions is not None and not isinstance(migraine_predictions, list):
+            migraine_predictions = [migraine_predictions]
+        if sinusitis_predictions is not None and not isinstance(sinusitis_predictions, list):
+            sinusitis_predictions = [sinusitis_predictions]
+
         # At least one prediction must be provided
-        if not migraine_prediction and not sinusitis_prediction:
+        if not migraine_predictions and not sinusitis_predictions:
             logger.error("send_combined_alert called with no predictions")
             return False
 
-        # Get user and location from whichever prediction is available
-        prediction = migraine_prediction or sinusitis_prediction
-        user = prediction.user
-        location = prediction.location
-        forecast = prediction.forecast
+        # Get user from whichever prediction list is available
+        all_predictions = (migraine_predictions or []) + (sinusitis_predictions or [])
+        if not all_predictions:
+            logger.error("send_combined_alert called with empty prediction lists")
+            return False
+
+        user = all_predictions[0].user
 
         # Skip if user has no email
         if not user.email:
@@ -220,53 +228,89 @@ class NotificationService:
             logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
             # Continue with sending email if we can't determine preference
 
+        # Prepare location-based predictions
+        location_data = []
+
+        # Group predictions by location
+        from collections import defaultdict
+
+        location_predictions = defaultdict(lambda: {"migraine": None, "sinusitis": None})
+
+        if migraine_predictions:
+            for pred in migraine_predictions:
+                location_predictions[pred.location.id]["migraine"] = pred
+                location_predictions[pred.location.id]["location"] = pred.location
+
+        if sinusitis_predictions:
+            for pred in sinusitis_predictions:
+                location_predictions[pred.location.id]["sinusitis"] = pred
+                location_predictions[pred.location.id]["location"] = pred.location
+
+        # Build location data for template
+        for loc_id, preds in location_predictions.items():
+            location = preds["location"]
+            migraine_pred = preds["migraine"]
+            sinusitis_pred = preds["sinusitis"]
+
+            # Get forecast from whichever prediction is available
+            forecast = (migraine_pred or sinusitis_pred).forecast
+
+            loc_data = {
+                "location": location,
+                "forecast": forecast,
+                "start_time": (migraine_pred or sinusitis_pred).target_time_start,
+                "end_time": (migraine_pred or sinusitis_pred).target_time_end,
+            }
+
+            # Add migraine data if available
+            if migraine_pred:
+                migraine_detailed_factors = self._get_detailed_weather_factors(migraine_pred)
+                migraine_weather_factors = migraine_pred.weather_factors or {}
+
+                loc_data.update(
+                    {
+                        "migraine_prediction": migraine_pred,
+                        "migraine_probability_level": migraine_pred.probability,
+                        "migraine_detailed_factors": migraine_detailed_factors,
+                        "migraine_llm_analysis_text": migraine_weather_factors.get("llm_analysis_text"),
+                        "migraine_llm_prevention_tips": migraine_weather_factors.get("llm_prevention_tips") or [],
+                    }
+                )
+
+            # Add sinusitis data if available
+            if sinusitis_pred:
+                sinusitis_detailed_factors = self._get_detailed_sinusitis_factors(sinusitis_pred)
+                sinusitis_weather_factors = sinusitis_pred.weather_factors or {}
+
+                loc_data.update(
+                    {
+                        "sinusitis_prediction": sinusitis_pred,
+                        "sinusitis_probability_level": sinusitis_pred.probability,
+                        "sinusitis_detailed_factors": sinusitis_detailed_factors,
+                        "sinusitis_llm_analysis_text": sinusitis_weather_factors.get("llm_analysis_text"),
+                        "sinusitis_llm_prevention_tips": sinusitis_weather_factors.get("llm_prevention_tips") or [],
+                    }
+                )
+
+            location_data.append(loc_data)
+
         # Prepare context for email
         context = {
             "user": user,
-            "location": location,
-            "forecast": forecast,
-            "start_time": prediction.target_time_start,
-            "end_time": prediction.target_time_end,
+            "locations": location_data,
+            "location_count": len(location_data),
         }
 
-        # Add migraine-specific data if available
-        if migraine_prediction:
-            migraine_detailed_factors = self._get_detailed_weather_factors(migraine_prediction)
-            migraine_weather_factors = migraine_prediction.weather_factors or {}
-
-            context.update(
-                {
-                    "migraine_prediction": migraine_prediction,
-                    "migraine_probability_level": migraine_prediction.probability,
-                    "migraine_detailed_factors": migraine_detailed_factors,
-                    "migraine_llm_analysis_text": migraine_weather_factors.get("llm_analysis_text"),
-                    "migraine_llm_prevention_tips": migraine_weather_factors.get("llm_prevention_tips") or [],
-                }
-            )
-
-        # Add sinusitis-specific data if available
-        if sinusitis_prediction:
-            sinusitis_detailed_factors = self._get_detailed_sinusitis_factors(sinusitis_prediction)
-            sinusitis_weather_factors = sinusitis_prediction.weather_factors or {}
-
-            context.update(
-                {
-                    "sinusitis_prediction": sinusitis_prediction,
-                    "sinusitis_probability_level": sinusitis_prediction.probability,
-                    "sinusitis_detailed_factors": sinusitis_detailed_factors,
-                    "sinusitis_llm_analysis_text": sinusitis_weather_factors.get("llm_analysis_text"),
-                    "sinusitis_llm_prevention_tips": sinusitis_weather_factors.get("llm_prevention_tips") or [],
-                }
-            )
-
         # Build subject line
-        subject_parts = []
-        if migraine_prediction:
-            subject_parts.append(f"{migraine_prediction.probability} Migraine")
-        if sinusitis_prediction:
-            subject_parts.append(f"{sinusitis_prediction.probability} Sinusitis")
+        location_names = [loc["location"].city for loc in location_data]
+        if len(location_names) == 1:
+            location_str = location_names[0]
+        elif len(location_names) == 2:
+            location_str = f"{location_names[0]} & {location_names[1]}"
+        else:
+            location_str = f"{len(location_names)} locations"
 
-        subject = f"Health Alert: {' & '.join(subject_parts)} for {location.city}"
+        subject = f"Health Alert for {location_str}"
 
         # Render email content
         html_message = render_to_string("forecast/email/combined_alert.html", context)
@@ -284,8 +328,8 @@ class NotificationService:
             )
             logger.info(
                 f"Sent combined alert email to {user.email} "
-                f"(migraine: {bool(migraine_prediction)}, "
-                f"sinusitis: {bool(sinusitis_prediction)})"
+                f"({len(migraine_predictions or [])} migraine, {len(sinusitis_predictions or [])} sinusitis "
+                f"across {len(location_data)} location(s))"
             )
             return True
         except Exception as e:
@@ -667,23 +711,27 @@ class NotificationService:
 
     def check_and_send_combined_notifications(self, migraine_predictions: dict, sinusitis_predictions: dict):
         """
-        Check both migraine and sinusitis predictions and send combined notifications when both exist.
+        Check both migraine and sinusitis predictions and send combined notifications.
 
-        This method groups predictions by user/location and sends:
-        - A single combined email if both migraine and sinusitis predictions exist for the same location
-        - Individual emails if only one type of prediction exists
+        This method groups predictions by user across ALL locations and sends:
+        - A single email per user containing all their predictions from all locations
+        - Combines both migraine and sinusitis predictions in the same email
 
         Args:
             migraine_predictions (dict): Dictionary mapping location IDs to migraine prediction data
             sinusitis_predictions (dict): Dictionary mapping location IDs to sinusitis prediction data
 
         Returns:
-            int: Number of notifications sent
+            int: Number of notifications sent (one per user)
         """
+        from django.utils import timezone
+        from collections import defaultdict
+
+        # Group predictions by user
+        user_predictions = defaultdict(lambda: {"migraine": [], "sinusitis": []})
+
         # Get all locations with associated users
         locations = Location.objects.select_related("user").all()
-
-        notifications_sent = 0
 
         for location in locations:
             # Skip if no user associated
@@ -692,16 +740,7 @@ class NotificationService:
 
             user = location.user
 
-            # Check if user has email notifications enabled
-            try:
-                if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
-                    logger.info(f"Skipping notifications for user {user.username}: Email notifications disabled")
-                    continue
-            except Exception as e:
-                logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
-                # Continue with sending email if we can't determine preference
-
-            # Enforce per-location daily notification limit
+            # Check per-location daily notification limit
             try:
                 limit = int(getattr(location, "daily_notification_limit", 1))
             except (TypeError, ValueError):
@@ -712,13 +751,11 @@ class NotificationService:
                 # Notifications disabled for this location
                 continue
 
-            from django.utils import timezone
-
             now = timezone.now()
             start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = start_of_day + timedelta(days=1)
 
-            # Count notifications sent today (both types combined)
+            # Count notifications sent today for this location
             migraine_sent_today = MigrainePrediction.objects.filter(
                 user=user,
                 location=location,
@@ -735,7 +772,6 @@ class NotificationService:
                 prediction_time__lt=end_of_day,
             ).count()
 
-            # Use the max of both counts (in case they were sent separately before)
             sent_today = max(migraine_sent_today, sinusitis_sent_today)
 
             if sent_today >= limit:
@@ -745,10 +781,6 @@ class NotificationService:
             # Get predictions for this location
             migraine_data = migraine_predictions.get(location.id)
             sinusitis_data = sinusitis_predictions.get(location.id)
-
-            # Extract prediction objects and check if they should trigger notifications
-            migraine_pred = None
-            sinusitis_pred = None
 
             # Check migraine prediction
             if migraine_data:
@@ -763,7 +795,7 @@ class NotificationService:
                     prob_level = migraine_data.get("probability")
                     pred = migraine_data.get("prediction")
                     if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
-                        migraine_pred = pred
+                        user_predictions[user.id]["migraine"].append(pred)
 
             # Check sinusitis prediction
             if sinusitis_data:
@@ -778,28 +810,52 @@ class NotificationService:
                     prob_level = sinusitis_data.get("probability")
                     pred = sinusitis_data.get("prediction")
                     if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
-                        sinusitis_pred = pred
+                        user_predictions[user.id]["sinusitis"].append(pred)
 
-            # Send notification if we have at least one prediction to send
-            if migraine_pred or sinusitis_pred:
-                # Send combined notification
-                if self.send_combined_alert(migraine_prediction=migraine_pred, sinusitis_prediction=sinusitis_pred):
-                    # Mark both predictions as sent
-                    if migraine_pred:
-                        migraine_pred.notification_sent = True
-                        migraine_pred.save()
-                    if sinusitis_pred:
-                        sinusitis_pred.notification_sent = True
-                        sinusitis_pred.save()
+        # Now send one email per user with all their predictions
+        notifications_sent = 0
 
-                    notifications_sent += 1
+        for user_id, predictions in user_predictions.items():
+            migraine_preds = predictions["migraine"]
+            sinusitis_preds = predictions["sinusitis"]
 
-                    if migraine_pred and sinusitis_pred:
-                        logger.info(f"Sent combined migraine & sinusitis alert to {user.email}")
-                    elif migraine_pred:
-                        logger.info(f"Sent migraine alert to {user.email}")
-                    else:
-                        logger.info(f"Sent sinusitis alert to {user.email}")
+            # Skip if no predictions to send
+            if not migraine_preds and not sinusitis_preds:
+                continue
+
+            # Get user object
+            from django.contrib.auth.models import User
+
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                continue
+
+            # Check if user has email notifications enabled
+            try:
+                if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
+                    logger.info(f"Skipping notifications for user {user.username}: Email notifications disabled")
+                    continue
+            except Exception as e:
+                logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
+
+            # Send combined notification for all locations
+            if self.send_combined_alert(migraine_predictions=migraine_preds, sinusitis_predictions=sinusitis_preds):
+                # Mark all predictions as sent
+                for pred in migraine_preds:
+                    pred.notification_sent = True
+                    pred.save()
+                for pred in sinusitis_preds:
+                    pred.notification_sent = True
+                    pred.save()
+
+                notifications_sent += 1
+
+                location_count = len(set([p.location for p in migraine_preds + sinusitis_preds]))
+                logger.info(
+                    f"Sent combined alert to {user.email} covering {location_count} location(s) "
+                    f"({len(migraine_preds)} migraine, {len(sinusitis_preds)} sinusitis)"
+                )
 
         logger.info(f"Sent {notifications_sent} combined alert notifications")
         return notifications_sent

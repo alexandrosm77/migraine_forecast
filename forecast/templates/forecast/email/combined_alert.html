@@ -82,25 +82,39 @@
     </div>
     <div class="content">
         <p>Hello {{ user.first_name|default:user.username }},</p>
-        
-        <p>Our system has detected weather conditions that may affect your health in <strong>{{ location.city }}, {{ location.country }}</strong> during the time window:
-        <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} to {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
 
-        {% if migraine_prediction %}
+        {% if location_count == 1 %}
+        <p>Our system has detected weather conditions that may affect your health in <strong>{{ locations.0.location.city }}, {{ locations.0.location.country }}</strong> during the time window:
+        <span class="time-window">{{ locations.0.start_time|date:"F j, Y, g:i a" }} to {{ locations.0.end_time|date:"F j, Y, g:i a" }}</span>.</p>
+        {% else %}
+        <p>Our system has detected weather conditions that may affect your health across <strong>{{ location_count }} locations</strong>:</p>
+        {% endif %}
+
+        {% for loc in locations %}
+        {% if location_count > 1 %}
+        <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 8px; border: 2px solid #dee2e6;">
+            <h3 style="margin: 0 0 10px 0; color: #495057;">📍 {{ loc.location.city }}, {{ loc.location.country }}</h3>
+            <p style="margin: 0; font-size: 14px; color: #666;">
+                <span class="time-window">{{ loc.start_time|date:"F j, Y, g:i a" }} to {{ loc.end_time|date:"F j, Y, g:i a" }}</span>
+            </p>
+        </div>
+        {% endif %}
+
+        {% if loc.migraine_prediction %}
         <div class="section migraine-section">
-            <h2 class="section-header">🧠 Migraine Alert - {{ migraine_probability_level }} Probability</h2>
-            
-            {% if migraine_llm_analysis_text %}
+            <h2 class="section-header">🧠 Migraine Alert - {{ loc.migraine_probability_level }} Probability</h2>
+
+            {% if loc.migraine_llm_analysis_text %}
             <div style="background-color: #eefcf4; padding: 15px; border: 1px solid #c6f6d5; border-radius: 6px; margin: 15px 0;">
                 <h3 style="margin-top: 0; color: #276749;">Model Analysis</h3>
-                <p style="margin: 0;">{{ migraine_llm_analysis_text }}</p>
+                <p style="margin: 0;">{{ loc.migraine_llm_analysis_text }}</p>
             </div>
             {% endif %}
 
-            {% if migraine_detailed_factors.contributing_factors_count > 0 %}
-            <p><strong>{{ migraine_detailed_factors.contributing_factors_count }} weather factor{{ migraine_detailed_factors.contributing_factors_count|pluralize }} {{ migraine_detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to migraine risk:</strong></p>
+            {% if loc.migraine_detailed_factors.contributing_factors_count > 0 %}
+            <p><strong>{{ loc.migraine_detailed_factors.contributing_factors_count }} weather factor{{ loc.migraine_detailed_factors.contributing_factors_count|pluralize }} {{ loc.migraine_detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to migraine risk:</strong></p>
 
-            {% for factor in migraine_detailed_factors.factors %}
+            {% for factor in loc.migraine_detailed_factors.factors %}
             <div class="weather-factor-detail" style="background-color: {% if factor.severity == 'high' %}#fff5f5{% else %}#fffbf0{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %}; padding: 15px; margin: 10px 0; border-radius: 5px;">
                 <h4 style="margin: 0 0 8px 0; color: {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %};">
                     {{ factor.name }}
@@ -113,33 +127,33 @@
             {% endfor %}
 
             <div style="background-color: #e6f2ff; padding: 15px; margin: 15px 0; border-radius: 5px; border: 1px solid #bee3f8;">
-                {% if migraine_prediction.weather_factors.total_score %}
-                <p style="margin: 0; font-size: 14px;"><strong>Overall Migraine Risk Score:</strong> {{ migraine_prediction.weather_factors.total_score }}/1.0
-                {% if migraine_probability_level == 'HIGH' %}(High risk - score ≥ 0.7){% elif migraine_probability_level == 'MEDIUM' %}(Medium risk - score 0.4-0.69){% else %}(Low risk - score < 0.4){% endif %}</p>
+                {% if loc.migraine_prediction.weather_factors.total_score %}
+                <p style="margin: 0; font-size: 14px;"><strong>Overall Migraine Risk Score:</strong> {{ loc.migraine_prediction.weather_factors.total_score }}/1.0
+                {% if loc.migraine_probability_level == 'HIGH' %}(High risk - score ≥ 0.7){% elif loc.migraine_probability_level == 'MEDIUM' %}(Medium risk - score 0.4-0.69){% else %}(Low risk - score < 0.4){% endif %}</p>
                 {% else %}
-                <p style="margin: 0; font-size: 14px;"><strong>Migraine Risk Level:</strong> {{ migraine_probability_level }}
-                {% if migraine_llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">(Determined by AI analysis)</span>{% endif %}</p>
+                <p style="margin: 0; font-size: 14px;"><strong>Migraine Risk Level:</strong> {{ loc.migraine_probability_level }}
+                {% if loc.migraine_llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">(Determined by AI analysis)</span>{% endif %}</p>
                 {% endif %}
             </div>
             {% endif %}
         </div>
         {% endif %}
 
-        {% if sinusitis_prediction %}
+        {% if loc.sinusitis_prediction %}
         <div class="section sinusitis-section">
-            <h2 class="section-header">👃 Sinusitis Alert - {{ sinusitis_probability_level }} Probability</h2>
-            
-            {% if sinusitis_llm_analysis_text %}
+            <h2 class="section-header">👃 Sinusitis Alert - {{ loc.sinusitis_probability_level }} Probability</h2>
+
+            {% if loc.sinusitis_llm_analysis_text %}
             <div style="background-color: #fef3c7; padding: 15px; border: 1px solid #fde68a; border-radius: 6px; margin: 15px 0;">
                 <h3 style="margin-top: 0; color: #92400e;">Model Analysis</h3>
-                <p style="margin: 0;">{{ sinusitis_llm_analysis_text }}</p>
+                <p style="margin: 0;">{{ loc.sinusitis_llm_analysis_text }}</p>
             </div>
             {% endif %}
 
-            {% if sinusitis_detailed_factors.contributing_factors_count > 0 %}
-            <p><strong>{{ sinusitis_detailed_factors.contributing_factors_count }} weather factor{{ sinusitis_detailed_factors.contributing_factors_count|pluralize }} {{ sinusitis_detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to sinusitis risk:</strong></p>
+            {% if loc.sinusitis_detailed_factors.contributing_factors_count > 0 %}
+            <p><strong>{{ loc.sinusitis_detailed_factors.contributing_factors_count }} weather factor{{ loc.sinusitis_detailed_factors.contributing_factors_count|pluralize }} {{ loc.sinusitis_detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to sinusitis risk:</strong></p>
 
-            {% for factor in sinusitis_detailed_factors.factors %}
+            {% for factor in loc.sinusitis_detailed_factors.factors %}
             <div class="weather-factor-detail" style="background-color: {% if factor.severity == 'high' %}#fef2f2{% else %}#fffbeb{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#dc2626{% else %}#f59e0b{% endif %}; padding: 15px; margin: 10px 0; border-radius: 5px;">
                 <h4 style="margin: 0 0 8px 0; color: {% if factor.severity == 'high' %}#dc2626{% else %}#f59e0b{% endif %};">
                     {{ factor.name }}
@@ -152,22 +166,44 @@
             {% endfor %}
 
             <div style="background-color: #fef3c7; padding: 15px; margin: 15px 0; border-radius: 5px; border: 1px solid #fde68a;">
-                {% if sinusitis_prediction.weather_factors.total_score %}
-                <p style="margin: 0; font-size: 14px;"><strong>Overall Sinusitis Risk Score:</strong> {{ sinusitis_prediction.weather_factors.total_score }}/1.0
-                {% if sinusitis_probability_level == 'HIGH' %}(High risk - score ≥ 0.65){% elif sinusitis_probability_level == 'MEDIUM' %}(Medium risk - score 0.35-0.64){% else %}(Low risk - score < 0.35){% endif %}</p>
+                {% if loc.sinusitis_prediction.weather_factors.total_score %}
+                <p style="margin: 0; font-size: 14px;"><strong>Overall Sinusitis Risk Score:</strong> {{ loc.sinusitis_prediction.weather_factors.total_score }}/1.0
+                {% if loc.sinusitis_probability_level == 'HIGH' %}(High risk - score ≥ 0.65){% elif loc.sinusitis_probability_level == 'MEDIUM' %}(Medium risk - score 0.35-0.64){% else %}(Low risk - score < 0.35){% endif %}</p>
                 {% else %}
-                <p style="margin: 0; font-size: 14px;"><strong>Sinusitis Risk Level:</strong> {{ sinusitis_probability_level }}
-                {% if sinusitis_llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">(Determined by AI analysis)</span>{% endif %}</p>
+                <p style="margin: 0; font-size: 14px;"><strong>Sinusitis Risk Level:</strong> {{ loc.sinusitis_probability_level }}
+                {% if loc.sinusitis_llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">(Determined by AI analysis)</span>{% endif %}</p>
                 {% endif %}
             </div>
             {% endif %}
         </div>
         {% endif %}
 
+        {% if loc.forecast %}
+        <div class="weather-data">
+            <h4 style="margin-top: 0;">Weather Forecast{% if location_count > 1 %} for {{ loc.location.city }}{% endif %}:</h4>
+            <div class="weather-item"><strong>Temperature:</strong> {{ loc.forecast.temperature }}°C</div>
+            <div class="weather-item"><strong>Humidity:</strong> {{ loc.forecast.humidity }}%</div>
+            <div class="weather-item"><strong>Barometric Pressure:</strong> {{ loc.forecast.pressure }} hPa</div>
+            <div class="weather-item"><strong>Precipitation:</strong> {{ loc.forecast.precipitation }} mm</div>
+            <div class="weather-item"><strong>Cloud Cover:</strong> {{ loc.forecast.cloud_cover }}%</div>
+        </div>
+        {% endif %}
+
+        {% endfor %}
+
         <div style="background-color: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 5px; border: 2px solid #86efac;">
             <h3 style="margin: 0 0 15px 0; color: #166534;">💡 Recommended Actions</h3>
-            
-            {% if migraine_prediction %}
+
+            {% comment %}Collect all unique prevention tips from all locations{% endcomment %}
+            {% with has_migraine=False has_sinusitis=False %}
+                {% for loc in locations %}
+                    {% if loc.migraine_prediction %}{% with has_migraine=True %}{% endwith %}{% endif %}
+                    {% if loc.sinusitis_prediction %}{% with has_sinusitis=True %}{% endwith %}{% endif %}
+                {% endfor %}
+            {% endwith %}
+
+            {% comment %}Check if any location has migraine predictions{% endcomment %}
+            {% for loc in locations %}{% if loc.migraine_prediction %}
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #3498db; margin: 0 0 10px 0;">For Migraine Prevention:</h4>
                 <ul style="margin: 0 0 10px 0;">
@@ -177,18 +213,20 @@
                     <li>Avoid known personal triggers (certain foods, stress, etc.)</li>
                     <li>Have your rescue medication readily available</li>
                 </ul>
-                {% if migraine_llm_prevention_tips and migraine_llm_prevention_tips|length > 0 %}
+                {% comment %}Show personalized tips from first location with migraine prediction{% endcomment %}
+                {% if loc.migraine_llm_prevention_tips and loc.migraine_llm_prevention_tips|length > 0 %}
                 <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
                 <ul style="margin: 0;">
-                    {% for tip in migraine_llm_prevention_tips %}
+                    {% for tip in loc.migraine_llm_prevention_tips %}
                     <li>{{ tip }}</li>
                     {% endfor %}
                 </ul>
                 {% endif %}
             </div>
-            {% endif %}
+            {% break %}{% endif %}{% endfor %}
 
-            {% if sinusitis_prediction %}
+            {% comment %}Check if any location has sinusitis predictions{% endcomment %}
+            {% for loc in locations %}{% if loc.sinusitis_prediction %}
             <div>
                 <h4 style="color: #f59e0b; margin: 0 0 10px 0;">For Sinusitis Prevention:</h4>
                 <ul style="margin: 0 0 10px 0;">
@@ -198,32 +236,22 @@
                     <li>Avoid allergens and irritants (smoke, strong odors)</li>
                     <li>Apply warm compresses to sinus areas if needed</li>
                 </ul>
-                {% if sinusitis_llm_prevention_tips and sinusitis_llm_prevention_tips|length > 0 %}
+                {% comment %}Show personalized tips from first location with sinusitis prediction{% endcomment %}
+                {% if loc.sinusitis_llm_prevention_tips and loc.sinusitis_llm_prevention_tips|length > 0 %}
                 <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
                 <ul style="margin: 0;">
-                    {% for tip in sinusitis_llm_prevention_tips %}
+                    {% for tip in loc.sinusitis_llm_prevention_tips %}
                     <li>{{ tip }}</li>
                     {% endfor %}
                 </ul>
                 {% endif %}
             </div>
-            {% endif %}
+            {% break %}{% endif %}{% endfor %}
 
             <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
                 <strong>Remember:</strong> If symptoms persist or worsen, consult with your healthcare provider.
             </p>
         </div>
-
-        {% if forecast %}
-        <div class="weather-data">
-            <h4 style="margin-top: 0;">Current Weather Forecast:</h4>
-            <div class="weather-item"><strong>Temperature:</strong> {{ forecast.temperature }}°C</div>
-            <div class="weather-item"><strong>Humidity:</strong> {{ forecast.humidity }}%</div>
-            <div class="weather-item"><strong>Barometric Pressure:</strong> {{ forecast.pressure }} hPa</div>
-            <div class="weather-item"><strong>Precipitation:</strong> {{ forecast.precipitation }} mm</div>
-            <div class="weather-item"><strong>Cloud Cover:</strong> {{ forecast.cloud_cover }}%</div>
-        </div>
-        {% endif %}
         
         <p>Stay well,<br>
         The Health Forecast Team</p>
