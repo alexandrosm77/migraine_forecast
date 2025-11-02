@@ -9,6 +9,7 @@ from .models import MigrainePrediction, SinusitisPrediction, Location
 from .prediction_service import MigrainePredictionService
 from .prediction_service_sinusitis import SinusitisPredictionService
 from .weather_service import WeatherService
+from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, set_tag
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +41,28 @@ class NotificationService:
         probability_level = prediction.probability
         weather_factors = prediction.weather_factors
 
+        # Add breadcrumb for email sending
+        add_breadcrumb(
+            category="email",
+            message="Sending migraine alert email",
+            level="info",
+            data={
+                "user": user.username,
+                "location": str(location),
+                "probability": probability_level
+            }
+        )
+
+        set_tag("email_type", "migraine_alert")
+        set_tag("risk_level", probability_level)
+
         # Skip if user has no email
         if not user.email:
             logger.warning(f"Cannot send migraine alert to user {user.username}: No email address")
+            capture_message(
+                f"Cannot send migraine alert: User {user.username} has no email address",
+                level="warning"
+            )
             return False
 
         # Check if user has email notifications enabled
@@ -100,9 +120,31 @@ class NotificationService:
                 fail_silently=False,
             )
             logger.info(f"Sent migraine alert email to {user.email}")
+
+            add_breadcrumb(
+                category="email",
+                message="Migraine alert email sent successfully",
+                level="info",
+                data={"recipient": user.email}
+            )
+
             return True
         except Exception as e:
             logger.error(f"Failed to send migraine alert email: {e}")
+
+            # Capture exception with context
+            set_context("email_send_error", {
+                "email_type": "migraine_alert",
+                "recipient": user.email,
+                "user": user.username,
+                "location": str(location),
+                "probability": probability_level,
+                "subject": subject,
+                "smtp_host": settings.EMAIL_HOST,
+                "smtp_port": settings.EMAIL_PORT
+            })
+            capture_exception(e)
+
             return False
 
     def send_combined_alert(self, migraine_predictions=None, sinusitis_predictions=None):
@@ -125,19 +167,39 @@ class NotificationService:
         # At least one prediction must be provided
         if not migraine_predictions and not sinusitis_predictions:
             logger.error("send_combined_alert called with no predictions")
+            capture_message("send_combined_alert called with no predictions", level="error")
             return False
 
         # Get user from whichever prediction list is available
         all_predictions = (migraine_predictions or []) + (sinusitis_predictions or [])
         if not all_predictions:
             logger.error("send_combined_alert called with empty prediction lists")
+            capture_message("send_combined_alert called with empty prediction lists", level="error")
             return False
 
         user = all_predictions[0].user
 
+        # Add breadcrumb for combined email
+        add_breadcrumb(
+            category="email",
+            message="Sending combined alert email",
+            level="info",
+            data={
+                "user": user.username,
+                "migraine_count": len(migraine_predictions) if migraine_predictions else 0,
+                "sinusitis_count": len(sinusitis_predictions) if sinusitis_predictions else 0
+            }
+        )
+
+        set_tag("email_type", "combined_alert")
+
         # Skip if user has no email
         if not user.email:
             logger.warning(f"Cannot send combined alert to user {user.username}: No email address")
+            capture_message(
+                f"Cannot send combined alert: User {user.username} has no email address",
+                level="warning"
+            )
             return False
 
         # Check if user has email notifications enabled
@@ -270,9 +332,35 @@ class NotificationService:
                 f"({len(migraine_predictions or [])} migraine, {len(sinusitis_predictions or [])} sinusitis "
                 f"across {len(location_data)} location(s))"
             )
+
+            add_breadcrumb(
+                category="email",
+                message="Combined alert email sent successfully",
+                level="info",
+                data={
+                    "recipient": user.email,
+                    "location_count": len(location_data)
+                }
+            )
+
             return True
         except Exception as e:
             logger.error(f"Failed to send combined alert email: {e}")
+
+            # Capture exception with context
+            set_context("email_send_error", {
+                "email_type": "combined_alert",
+                "recipient": user.email,
+                "user": user.username,
+                "migraine_count": len(migraine_predictions or []),
+                "sinusitis_count": len(sinusitis_predictions or []),
+                "location_count": len(location_data),
+                "subject": subject,
+                "smtp_host": settings.EMAIL_HOST,
+                "smtp_port": settings.EMAIL_PORT
+            })
+            capture_exception(e)
+
             return False
 
     def send_test_email(self, user_email):

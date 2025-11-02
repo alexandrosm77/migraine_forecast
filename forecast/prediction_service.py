@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from .models import WeatherForecast, MigrainePrediction, UserHealthProfile, LLMResponse
 from .llm_client import LLMClient
+from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, start_transaction, set_tag
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,21 @@ class MigrainePredictionService:
         llm_config = LLMConfiguration.get_config()
 
         if llm_config.is_active:
+            # Add breadcrumb for LLM prediction attempt
+            add_breadcrumb(
+                category="prediction",
+                message="Attempting LLM prediction",
+                level="info",
+                data={
+                    "location": f"{location.city}, {location.country}",
+                    "model": llm_config.model,
+                    "user_id": user.id if user else None
+                }
+            )
+
+            set_tag("llm_model", llm_config.model)
+            set_tag("prediction_type", "migraine")
+
             try:
                 client = LLMClient(
                     base_url=llm_config.base_url,
@@ -266,10 +282,36 @@ class MigrainePredictionService:
                     llm_used = True
                     probability_level = llm_level
                     logger.info(f"LLM prediction successful: {probability_level}")
+
+                    add_breadcrumb(
+                        category="prediction",
+                        message="LLM prediction successful",
+                        level="info",
+                        data={"probability_level": probability_level}
+                    )
                 else:
                     logger.warning("LLM returned invalid probability level, will fall back to manual calculation")
-            except Exception:
+
+                    set_context("llm_invalid_response", {
+                        "location": loc_label,
+                        "llm_level": llm_level,
+                        "llm_detail": llm_detail
+                    })
+                    capture_message(
+                        f"LLM returned invalid probability level: {llm_level}",
+                        level="warning"
+                    )
+
+            except Exception as e:
                 logger.exception("LLM prediction failed; falling back to manual calculation")
+
+                set_context("llm_prediction_failure", {
+                    "location": loc_label,
+                    "model": llm_config.model,
+                    "user_id": user.id if user else None,
+                    "error_type": type(e).__name__
+                })
+                capture_exception(e)
 
         # Fallback to manual calculation if LLM is disabled or failed
         if probability_level is None:

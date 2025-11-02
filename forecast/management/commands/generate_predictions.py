@@ -7,6 +7,7 @@ from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
 
 import logging
+from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, start_transaction, set_tag
 
 logger = logging.getLogger(__name__)
 
@@ -35,20 +36,32 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         """
         Generate predictions from existing forecast data.
-        
+
         This command:
         1. Reads weather forecasts from the database
         2. Generates migraine and sinusitis predictions
         3. Stores predictions in the database
         4. Cleans up old prediction data
-        
+
         This is Task 2 of the decoupled pipeline architecture.
         Recommended schedule: Every 30 minutes
         """
-        start_time = timezone.now()
-        self.stdout.write(
-            self.style.SUCCESS(f"[{start_time}] Starting prediction generation...")
-        )
+        # Start transaction for cron job monitoring
+        with start_transaction(op="cron.job", name="generate_predictions"):
+            set_tag("cron_job", "generate_predictions")
+            set_tag("task", "prediction_generation")
+
+            start_time = timezone.now()
+            self.stdout.write(
+                self.style.SUCCESS(f"[{start_time}] Starting prediction generation...")
+            )
+
+            add_breadcrumb(
+                category="cron",
+                message="Prediction generation started",
+                level="info",
+                data={"start_time": str(start_time)}
+            )
 
         # Initialize prediction services
         migraine_service = MigrainePredictionService()
@@ -65,18 +78,26 @@ class Command(BaseCommand):
         else:
             locations = Location.objects.all()
 
-        if not locations:
-            self.stdout.write(self.style.WARNING("No locations found in database"))
-            return
+            if not locations:
+                self.stdout.write(self.style.WARNING("No locations found in database"))
+                capture_message("No locations found for prediction generation", level="warning")
+                return
 
-        self.stdout.write(f"Found {len(locations)} location(s) to process")
+            self.stdout.write(f"Found {len(locations)} location(s) to process")
 
-        # Generate predictions for each location
-        total_migraine_predictions = 0
-        total_sinusitis_predictions = 0
-        high_risk_count = 0
-        medium_risk_count = 0
-        errors = []
+            add_breadcrumb(
+                category="cron",
+                message=f"Processing {len(locations)} locations",
+                level="info",
+                data={"location_count": len(locations)}
+            )
+
+            # Generate predictions for each location
+            total_migraine_predictions = 0
+            total_sinusitis_predictions = 0
+            high_risk_count = 0
+            medium_risk_count = 0
+            errors = []
 
         for location in locations:
             try:
@@ -121,6 +142,14 @@ class Command(BaseCommand):
                         errors.append(error_msg)
                         self.stdout.write(self.style.ERROR(f"  ✗ {error_msg}"))
                         logger.error(error_msg, exc_info=True)
+
+                        # Capture exception with context
+                        set_context("migraine_prediction_error", {
+                            "location": str(location),
+                            "location_id": location.id,
+                            "user": user.username
+                        })
+                        capture_exception(e)
                 else:
                     self.stdout.write("  - Migraine predictions disabled for user")
 
@@ -150,6 +179,14 @@ class Command(BaseCommand):
                         errors.append(error_msg)
                         self.stdout.write(self.style.ERROR(f"  ✗ {error_msg}"))
                         logger.error(error_msg, exc_info=True)
+
+                        # Capture exception with context
+                        set_context("sinusitis_prediction_error", {
+                            "location": str(location),
+                            "location_id": location.id,
+                            "user": user.username
+                        })
+                        capture_exception(e)
                 else:
                     self.stdout.write("  - Sinusitis predictions disabled for user")
 
@@ -158,6 +195,13 @@ class Command(BaseCommand):
                 errors.append(error_msg)
                 self.stdout.write(self.style.ERROR(f"  ✗ {error_msg}"))
                 logger.error(error_msg, exc_info=True)
+
+                # Capture exception with context
+                set_context("prediction_location_error", {
+                    "location": str(location),
+                    "location_id": location.id
+                })
+                capture_exception(e)
 
         # Cleanup old predictions
         if not options["skip_cleanup"]:
@@ -186,25 +230,64 @@ class Command(BaseCommand):
             else:
                 self.stdout.write("  No old predictions to delete")
 
-        # Summary
-        end_time = timezone.now()
-        duration = (end_time - start_time).total_seconds()
-        
-        self.stdout.write("\n" + "=" * 60)
-        self.stdout.write(self.style.SUCCESS("PREDICTION GENERATION SUMMARY"))
-        self.stdout.write("=" * 60)
-        self.stdout.write(f"Locations processed: {len(locations)}")
-        self.stdout.write(f"Migraine predictions: {total_migraine_predictions}")
-        self.stdout.write(f"Sinusitis predictions: {total_sinusitis_predictions}")
-        self.stdout.write(f"HIGH risk predictions: {high_risk_count}")
-        self.stdout.write(f"MEDIUM risk predictions: {medium_risk_count}")
-        self.stdout.write(f"Errors: {len(errors)}")
-        self.stdout.write(f"Duration: {duration:.2f} seconds")
-        self.stdout.write(f"Completed at: {end_time}")
-        
-        if errors:
-            self.stdout.write("\nErrors encountered:")
-            for error in errors:
-                self.stdout.write(self.style.ERROR(f"  - {error}"))
-        
-        self.stdout.write("=" * 60)
+            # Summary
+            end_time = timezone.now()
+            duration = (end_time - start_time).total_seconds()
+
+            self.stdout.write("\n" + "=" * 60)
+            self.stdout.write(self.style.SUCCESS("PREDICTION GENERATION SUMMARY"))
+            self.stdout.write("=" * 60)
+            self.stdout.write(f"Locations processed: {len(locations)}")
+            self.stdout.write(f"Migraine predictions: {total_migraine_predictions}")
+            self.stdout.write(f"Sinusitis predictions: {total_sinusitis_predictions}")
+            self.stdout.write(f"HIGH risk predictions: {high_risk_count}")
+            self.stdout.write(f"MEDIUM risk predictions: {medium_risk_count}")
+            self.stdout.write(f"Errors: {len(errors)}")
+            self.stdout.write(f"Duration: {duration:.2f} seconds")
+            self.stdout.write(f"Completed at: {end_time}")
+
+            # Send summary to Sentry
+            summary_data = {
+                "locations_processed": len(locations),
+                "migraine_predictions": total_migraine_predictions,
+                "sinusitis_predictions": total_sinusitis_predictions,
+                "high_risk_count": high_risk_count,
+                "medium_risk_count": medium_risk_count,
+                "errors": len(errors),
+                "duration_seconds": duration,
+                "completed_at": str(end_time)
+            }
+
+            add_breadcrumb(
+                category="cron",
+                message="Prediction generation completed",
+                level="info",
+                data=summary_data
+            )
+
+            # Alert on high-risk predictions
+            if high_risk_count > 0:
+                set_tag("high_risk_predictions", high_risk_count)
+                capture_message(
+                    f"Generated {high_risk_count} HIGH risk prediction(s)",
+                    level="info"
+                )
+
+            if errors:
+                self.stdout.write("\nErrors encountered:")
+                for error in errors:
+                    self.stdout.write(self.style.ERROR(f"  - {error}"))
+
+                # Capture summary message with errors
+                capture_message(
+                    f"Prediction generation completed with {len(errors)} error(s)",
+                    level="error" if len(errors) > len(locations) / 2 else "warning"
+                )
+            else:
+                # Capture successful completion
+                capture_message(
+                    f"Prediction generation completed: {total_migraine_predictions} migraine, {total_sinusitis_predictions} sinusitis",
+                    level="info"
+                )
+
+            self.stdout.write("=" * 60)

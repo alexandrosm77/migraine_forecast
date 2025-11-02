@@ -2,6 +2,7 @@ import requests
 import logging
 from datetime import datetime
 from django.utils import timezone
+from sentry_sdk import capture_exception, set_context, add_breadcrumb, start_span
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +52,67 @@ class OpenMeteoClient:
             "timezone": "UTC",
         }
 
+        # Add breadcrumb for API call
+        add_breadcrumb(
+            category="weather_api",
+            message="Fetching weather forecast from Open-Meteo",
+            level="info",
+            data={
+                "latitude": latitude,
+                "longitude": longitude,
+                "days": days,
+                "api_url": self.BASE_URL
+            }
+        )
+
         try:
-            response = requests.get(self.BASE_URL, params=params)
-            response.raise_for_status()
-            return response.json()
+            with start_span(op="http.client", description="Open-Meteo API request"):
+                response = requests.get(self.BASE_URL, params=params, timeout=30)
+                response.raise_for_status()
+
+                add_breadcrumb(
+                    category="weather_api",
+                    message="Weather forecast fetched successfully",
+                    level="info",
+                    data={"status_code": response.status_code}
+                )
+
+                return response.json()
+
+        except requests.exceptions.Timeout as e:
+            set_context("weather_api_timeout", {
+                "latitude": latitude,
+                "longitude": longitude,
+                "days": days,
+                "api_url": self.BASE_URL,
+                "timeout": 30
+            })
+            capture_exception(e)
+            logger.error(f"Timeout fetching weather forecast: {e}")
+            return None
+
+        except requests.exceptions.HTTPError as e:
+            set_context("weather_api_http_error", {
+                "latitude": latitude,
+                "longitude": longitude,
+                "days": days,
+                "api_url": self.BASE_URL,
+                "status_code": e.response.status_code if e.response else None,
+                "response_text": e.response.text if e.response else None
+            })
+            capture_exception(e)
+            logger.error(f"HTTP error fetching weather forecast: {e}")
+            return None
+
         except requests.exceptions.RequestException as e:
+            set_context("weather_api_error", {
+                "latitude": latitude,
+                "longitude": longitude,
+                "days": days,
+                "api_url": self.BASE_URL,
+                "error_type": type(e).__name__
+            })
+            capture_exception(e)
             logger.error(f"Error fetching weather forecast: {e}")
             return None
 

@@ -195,7 +195,13 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "240.0"))
 
 # Sentry/GlitchTip configuration
-SENTRY_DSN = os.getenv("SENTRY_DSN", "http://da3f96ceb002454e85ac49a5f1916cd0@192.168.0.11:8001/1")
+
+# DSN for GlitchTip
+# SENTRY_DSN = os.getenv("SENTRY_DSN", "http://da3f96ceb002454e85ac49a5f1916cd0@192.168.0.11:8001/1")
+
+# DSN for Sentry
+SENTRY_DSN="https://f29cf4ee8caca3113b2c205d277cfb9c@o4510297010733056.ingest.de.sentry.io/4510297165070417"
+
 SENTRY_ENABLED = os.getenv("SENTRY_ENABLED", "true").lower() in ("1", "true", "yes", "on")
 SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "development" if DEBUG else "production")
 SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0"))  # 1.0 = 100% of transactions
