@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, Optional, Tuple
 
 import requests
-from sentry_sdk import capture_exception, set_context, add_breadcrumb, start_span, set_tag
+from sentry_sdk import capture_exception, set_context, add_breadcrumb, start_span
 
 logger = logging.getLogger(__name__)
 

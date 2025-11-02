@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from .models import WeatherForecast, MigrainePrediction, UserHealthProfile, LLMResponse
 from .llm_client import LLMClient
-from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, start_transaction, set_tag
+from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, set_tag
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class MigrainePredictionService:
         """Initialize the migraine prediction service."""
         pass
 
-    def predict_migraine_probability(self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None):
+    def predict_migraine_probability(self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None):  # noqa: E501
         """
         Predict migraine probability for a specific location and user.
 
@@ -78,7 +78,7 @@ class MigrainePredictionService:
         ).order_by("target_time")
 
         if not forecasts:
-            logger.warning(f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window")
+            logger.warning(f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window")  # noqa: E501
             return None, None
 
         # Get previous forecasts for comparison

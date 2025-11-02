@@ -47,7 +47,7 @@ class Command(BaseCommand):
             start_time = timezone.now()
 
             # Log to both stdout and logger for consistent ordering
-            start_msg = f"Starting weather data collection..."
+            start_msg = "Starting weather data collection..."
             self.stdout.write(self.style.SUCCESS(f"[{start_time}] {start_msg}"))
             logger.info(start_msg)
 
@@ -173,7 +173,7 @@ class Command(BaseCommand):
             else:
                 # Capture successful completion
                 capture_message(
-                    f"Weather data collection completed successfully: {total_forecasts_created} created, {total_forecasts_updated} updated",
+                    f"Weather data collection completed successfully: {total_forecasts_created} created, {total_forecasts_updated} updated",  # noqa: E501
                     level="info"
                 )
 

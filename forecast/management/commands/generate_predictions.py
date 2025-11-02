@@ -286,7 +286,7 @@ class Command(BaseCommand):
             else:
                 # Capture successful completion
                 capture_message(
-                    f"Prediction generation completed: {total_migraine_predictions} migraine, {total_sinusitis_predictions} sinusitis",
+                    f"Prediction generation completed: {total_migraine_predictions} migraine, {total_sinusitis_predictions} sinusitis",  # noqa: E501
                     level="info"
                 )
 

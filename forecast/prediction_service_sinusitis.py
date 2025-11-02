@@ -48,7 +48,7 @@ class SinusitisPredictionService:
         """Initialize the sinusitis prediction service."""
         pass
 
-    def predict_sinusitis_probability(self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None):
+    def predict_sinusitis_probability(self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None):  # noqa: E501
         """
         Predict sinusitis probability for a specific location and user.
 
@@ -85,7 +85,7 @@ class SinusitisPredictionService:
         ).order_by("target_time")
 
         if not forecasts:
-            logger.warning(f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window")
+            logger.warning(f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window")  # noqa: E501
             return None, None
 
         # Get previous forecasts for comparison
