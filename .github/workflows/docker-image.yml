@@ -4,11 +4,6 @@ on:
   push:
     branches: [ "main" ]
 
-# Ensure only one pipeline runs at a time
-concurrency:
-  group: deployment
-  cancel-in-progress: false
-
 jobs:
   build:
     runs-on: self-hosted
@@ -107,6 +102,10 @@ jobs:
     needs: [test-linting, test-unittest, test-integration]
     runs-on: self-hosted
     environment: latest
+    # Ensure only one deployment runs at a time
+    concurrency:
+      group: deployment
+      cancel-in-progress: false
     steps:
       -
         name: Deploy to Raspberry Pi
