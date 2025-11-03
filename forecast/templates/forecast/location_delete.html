@@ -1,6 +1,7 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}Delete Location - Migraine Forecast{% endblock %}
+{% block title %}{% trans "Delete Location" %} - Migraine Forecast{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,17 +9,17 @@
         <div class="col-md-8 offset-md-2">
             <div class="card mt-4">
                 <div class="card-header bg-danger text-white">
-                    <h2>Delete Location</h2>
+                    <h2>{% trans "Delete Location" %}</h2>
                 </div>
                 <div class="card-body">
-                    <p class="lead">Are you sure you want to delete the location <strong>{{ location.city }}, {{ location.country }}</strong>?</p>
-                    <p>This will also delete all associated forecasts, predictions, and comparison data for this location. This action cannot be undone.</p>
-                    
+                    <p class="lead">{% blocktrans with city=location.city country=location.country %}Are you sure you want to delete the location <strong>{{ city }}, {{ country }}</strong>?{% endblocktrans %}</p>
+                    <p>{% trans "This will also delete all associated forecasts, predictions, and comparison data for this location. This action cannot be undone." %}</p>
+
                     <form method="post">
                         {% csrf_token %}
                         <div class="d-flex justify-content-between mt-4">
-                            <a href="{% url 'forecast:location_detail' location.id %}" class="btn btn-outline-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-danger">Delete Location</button>
+                            <a href="{% url 'forecast:location_detail' location.id %}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                            <button type="submit" class="btn btn-danger">{% trans "Delete Location" %}</button>
                         </div>
                     </form>
                 </div>

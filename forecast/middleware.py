@@ -1,5 +1,6 @@
 from django.utils import translation
 from django.utils.deprecation import MiddlewareMixin
+from django.conf import settings
 
 
 class UserLanguageMiddleware(MiddlewareMixin):
@@ -16,6 +17,8 @@ class UserLanguageMiddleware(MiddlewareMixin):
                 if language:
                     translation.activate(language)
                     request.LANGUAGE_CODE = language
+                    # Also set it in the session so LocaleMiddleware picks it up
+                    request.session[settings.LANGUAGE_COOKIE_NAME] = language
             except Exception:
                 # If the user doesn't have a health profile yet, use default language
                 pass

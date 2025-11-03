@@ -62,7 +62,7 @@
     <!-- Locations Summary -->
     <div class="card mb-4">
         <div class="card-header">
-            <h5 class="mb-0">Your Locations</h5>
+            <h5 class="mb-0">{% trans "Your Locations" %}</h5>
         </div>
         <div class="card-body">
             <div class="row">
@@ -73,9 +73,9 @@
                             <h5 class="card-title">{{ location.city }}</h5>
                             <h6 class="card-subtitle mb-2 text-muted">{{ location.country }}</h6>
                             <p class="card-text">
-                                <small>Lat: {{ location.latitude|floatformat:2 }}, Long: {{ location.longitude|floatformat:2 }}</small>
+                                <small>{% trans "Lat" %}: {{ location.latitude|floatformat:2 }}, {% trans "Long" %}: {{ location.longitude|floatformat:2 }}</small>
                             </p>
-                            <a href="{% url 'forecast:location_detail' location.id %}" class="btn btn-sm btn-primary">View Details</a>
+                            <a href="{% url 'forecast:location_detail' location.id %}" class="btn btn-sm btn-primary">{% trans "View Details" %}</a>
                         </div>
                     </div>
                 </div>
@@ -84,7 +84,7 @@
                     <div class="card h-100 border-dashed">
                         <div class="card-body d-flex justify-content-center align-items-center">
                             <a href="{% url 'forecast:location_add' %}" class="btn btn-outline-primary">
-                                <i class="bi bi-plus-lg"></i> Add New Location
+                                <i class="bi bi-plus-lg"></i> {% trans "Add New Location" %}
                             </a>
                         </div>
                     </div>
@@ -96,7 +96,7 @@
     <!-- Recent Migraine Predictions -->
     <div class="card mb-4">
         <div class="card-header">
-            <h5 class="mb-0">Recent Migraine Predictions</h5>
+            <h5 class="mb-0">{% trans "Recent Migraine Predictions" %}</h5>
         </div>
         <div class="card-body">
             {% if recent_predictions %}
@@ -104,10 +104,10 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Location</th>
-                            <th>Time Window</th>
-                            <th>Probability</th>
-                            <th>Actions</th>
+                            <th>{% trans "Location" %}</th>
+                            <th>{% trans "Time Window" %}</th>
+                            <th>{% trans "Probability" %}</th>
+                            <th>{% trans "Actions" %}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -117,15 +117,15 @@
                             <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
                             <td>
                                 {% if prediction.probability == 'HIGH' %}
-                                <span class="badge bg-danger">High</span>
+                                <span class="badge bg-danger">{% trans "High" %}</span>
                                 {% elif prediction.probability == 'MEDIUM' %}
-                                <span class="badge bg-warning text-dark">Medium</span>
+                                <span class="badge bg-warning text-dark">{% trans "Medium" %}</span>
                                 {% else %}
-                                <span class="badge bg-success">Low</span>
+                                <span class="badge bg-success">{% trans "Low" %}</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-secondary">Details</a>
+                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-secondary">{% trans "Details" %}</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -133,10 +133,10 @@
                 </table>
             </div>
             <div class="text-end">
-                <a href="{% url 'forecast:prediction_list' %}" class="btn btn-link">View All Migraine Predictions</a>
+                <a href="{% url 'forecast:prediction_list' %}" class="btn btn-link">{% trans "View All Migraine Predictions" %}</a>
             </div>
             {% else %}
-            <p class="text-muted">No recent migraine predictions available.</p>
+            <p class="text-muted">{% trans "No recent migraine predictions available." %}</p>
             {% endif %}
         </div>
     </div>
@@ -144,7 +144,7 @@
     <!-- Recent Sinusitis Predictions -->
     <div class="card mb-4">
         <div class="card-header">
-            <h5 class="mb-0">Recent Sinusitis Predictions</h5>
+            <h5 class="mb-0">{% trans "Recent Sinusitis Predictions" %}</h5>
         </div>
         <div class="card-body">
             {% if recent_sinusitis_predictions %}
@@ -152,10 +152,10 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Location</th>
-                            <th>Time Window</th>
-                            <th>Probability</th>
-                            <th>Actions</th>
+                            <th>{% trans "Location" %}</th>
+                            <th>{% trans "Time Window" %}</th>
+                            <th>{% trans "Probability" %}</th>
+                            <th>{% trans "Actions" %}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -165,15 +165,15 @@
                             <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
                             <td>
                                 {% if prediction.probability == 'HIGH' %}
-                                <span class="badge bg-danger">High</span>
+                                <span class="badge bg-danger">{% trans "High" %}</span>
                                 {% elif prediction.probability == 'MEDIUM' %}
-                                <span class="badge bg-warning text-dark">Medium</span>
+                                <span class="badge bg-warning text-dark">{% trans "Medium" %}</span>
                                 {% else %}
-                                <span class="badge bg-success">Low</span>
+                                <span class="badge bg-success">{% trans "Low" %}</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'forecast:sinusitis_prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-secondary">Details</a>
+                                <a href="{% url 'forecast:sinusitis_prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-secondary">{% trans "Details" %}</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -181,10 +181,10 @@
                 </table>
             </div>
             <div class="text-end">
-                <a href="{% url 'forecast:sinusitis_prediction_list' %}" class="btn btn-link">View All Sinusitis Predictions</a>
+                <a href="{% url 'forecast:sinusitis_prediction_list' %}" class="btn btn-link">{% trans "View All Sinusitis Predictions" %}</a>
             </div>
             {% else %}
-            <p class="text-muted">No recent sinusitis predictions available.</p>
+            <p class="text-muted">{% trans "No recent sinusitis predictions available." %}</p>
             {% endif %}
         </div>
     </div>

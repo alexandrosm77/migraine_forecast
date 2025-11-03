@@ -1,14 +1,15 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}Locations - Migraine Forecast{% endblock %}
+{% block title %}{% trans "Locations" %} - Migraine Forecast{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Your Locations</h1>
-        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">Add Location</a>
+        <h1>{% trans "Your Locations" %}</h1>
+        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">{% trans "Add Location" %}</a>
     </div>
-    
+
     {% if locations %}
     <div class="row">
         {% for location in locations %}
@@ -18,14 +19,14 @@
                     <h5 class="card-title">{{ location.city }}</h5>
                     <h6 class="card-subtitle mb-2 text-muted">{{ location.country }}</h6>
                     <p class="card-text">
-                        <small>Latitude: {{ location.latitude|floatformat:4 }}</small><br>
-                        <small>Longitude: {{ location.longitude|floatformat:4 }}</small><br>
-                        <small>Added: {{ location.created_at|date:"F j, Y" }}</small>
+                        <small>{% trans "Latitude" %}: {{ location.latitude|floatformat:4 }}</small><br>
+                        <small>{% trans "Longitude" %}: {{ location.longitude|floatformat:4 }}</small><br>
+                        <small>{% trans "Added" %}: {{ location.created_at|date:"F j, Y" }}</small>
                     </p>
                 </div>
                 <div class="card-footer bg-transparent d-flex justify-content-between">
-                    <a href="{% url 'forecast:location_detail' location.id %}" class="btn btn-sm btn-outline-primary">View Details</a>
-                    <a href="{% url 'forecast:location_delete' location.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    <a href="{% url 'forecast:location_detail' location.id %}" class="btn btn-sm btn-outline-primary">{% trans "View Details" %}</a>
+                    <a href="{% url 'forecast:location_delete' location.id %}" class="btn btn-sm btn-outline-danger">{% trans "Delete" %}</a>
                 </div>
             </div>
         </div>
@@ -33,7 +34,7 @@
     </div>
     {% else %}
     <div class="alert alert-info">
-        <p>You haven't added any locations yet. Add a location to start receiving migraine forecasts.</p>
+        <p>{% trans "You haven't added any locations yet. Add a location to start receiving migraine forecasts." %}</p>
     </div>
     {% endif %}
 </div>

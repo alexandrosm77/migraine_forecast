@@ -1,41 +1,42 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}Location Details - {{ location.city }} - Migraine Forecast{% endblock %}
+{% block title %}{% trans "Location Details" %} - {{ location.city }} - Migraine Forecast{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>{{ location.city }}, {{ location.country }}</h1>
         <div>
-            <a href="{% url 'forecast:location_list' %}" class="btn btn-outline-secondary">Back to Locations</a>
-            <a href="{% url 'forecast:location_delete' location.id %}" class="btn btn-outline-danger">Delete Location</a>
+            <a href="{% url 'forecast:location_list' %}" class="btn btn-outline-secondary">{% trans "Back to Locations" %}</a>
+            <a href="{% url 'forecast:location_delete' location.id %}" class="btn btn-outline-danger">{% trans "Delete Location" %}</a>
         </div>
     </div>
-    
+
     <div class="row">
         <!-- Location Info -->
         <div class="col-md-4 mb-4">
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Location Information</h5>
+                    <h5 class="mb-0">{% trans "Location Information" %}</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>City:</strong> {{ location.city }}</p>
-                    <p><strong>Country:</strong> {{ location.country }}</p>
-                    <p><strong>Latitude:</strong> {{ location.latitude|floatformat:4 }}</p>
-                    <p><strong>Longitude:</strong> {{ location.longitude|floatformat:4 }}</p>
-                    <p><strong>Added:</strong> {{ location.created_at|date:"F j, Y" }}</p>
+                    <p><strong>{% trans "City" %}:</strong> {{ location.city }}</p>
+                    <p><strong>{% trans "Country" %}:</strong> {{ location.country }}</p>
+                    <p><strong>{% trans "Latitude" %}:</strong> {{ location.latitude|floatformat:4 }}</p>
+                    <p><strong>{% trans "Longitude" %}:</strong> {{ location.longitude|floatformat:4 }}</p>
+                    <p><strong>{% trans "Added" %}:</strong> {{ location.created_at|date:"F j, Y" }}</p>
                 </div>
             </div>
 
 
         </div>
-        
+
         <!-- Current Forecast -->
         <div class="col-md-8 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Current Weather Forecast</h5>
+                    <h5 class="mb-0">{% trans "Current Weather Forecast" %}</h5>
                 </div>
                 <div class="card-body">
                     {% if forecasts %}
@@ -43,12 +44,12 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Time</th>
-                                    <th>Temp (°C)</th>
-                                    <th>Humidity (%)</th>
-                                    <th>Pressure (hPa)</th>
-                                    <th>Precipitation (mm)</th>
-                                    <th>Cloud Cover (%)</th>
+                                    <th>{% trans "Time" %}</th>
+                                    <th>{% trans "Temp (°C)" %}</th>
+                                    <th>{% trans "Humidity (%)" %}</th>
+                                    <th>{% trans "Pressure (hPa)" %}</th>
+                                    <th>{% trans "Precipitation (mm)" %}</th>
+                                    <th>{% trans "Cloud Cover (%)" %}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -66,17 +67,17 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted">No forecast data available for this location.</p>
+                    <p class="text-muted">{% trans "No forecast data available for this location." %}</p>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Migraine Predictions -->
     <div class="card mb-4">
         <div class="card-header">
-            <h5 class="mb-0">Recent Migraine Predictions</h5>
+            <h5 class="mb-0">{% trans "Recent Migraine Predictions" %}</h5>
         </div>
         <div class="card-body">
             {% if predictions %}
@@ -84,10 +85,10 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Prediction Time</th>
-                            <th>Target Window</th>
-                            <th>Probability</th>
-                            <th>Actions</th>
+                            <th>{% trans "Prediction Time" %}</th>
+                            <th>{% trans "Target Window" %}</th>
+                            <th>{% trans "Probability" %}</th>
+                            <th>{% trans "Actions" %}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -97,15 +98,15 @@
                             <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
                             <td>
                                 {% if prediction.probability == 'HIGH' %}
-                                <span class="badge bg-danger">High</span>
+                                <span class="badge bg-danger">{% trans "High" %}</span>
                                 {% elif prediction.probability == 'MEDIUM' %}
-                                <span class="badge bg-warning text-dark">Medium</span>
+                                <span class="badge bg-warning text-dark">{% trans "Medium" %}</span>
                                 {% else %}
-                                <span class="badge bg-success">Low</span>
+                                <span class="badge bg-success">{% trans "Low" %}</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-secondary">Details</a>
+                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-secondary">{% trans "Details" %}</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -113,10 +114,10 @@
                 </table>
             </div>
             {% else %}
-            <p class="text-muted">No prediction data available for this location.</p>
+            <p class="text-muted">{% trans "No prediction data available for this location." %}</p>
             {% endif %}
         </div>
     </div>
-    
+
 </div>
 {% endblock %}

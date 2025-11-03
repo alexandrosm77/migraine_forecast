@@ -1,28 +1,29 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}Predictions - Migraine Forecast{% endblock %}
+{% block title %}{% trans "Predictions" %} - Migraine Forecast{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1 class="mb-4">Migraine Predictions</h1>
+    <h1 class="mb-4">{% trans "Migraine Predictions" %}</h1>
     
     {% if predictions %}
     <div class="card">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <p class="mb-0 text-muted">
-                    Showing {{ predictions.start_index }} - {{ predictions.end_index }} of {{ predictions.paginator.count }} predictions
+                    {% blocktrans with start=predictions.start_index end=predictions.end_index count=predictions.paginator.count %}Showing {{ start }} - {{ end }} of {{ count }} predictions{% endblocktrans %}
                 </p>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th>Location</th>
-                            <th>Prediction Time</th>
-                            <th>Target Window</th>
-                            <th>Probability</th>
-                            <th>Actions</th>
+                            <th>{% trans "Location" %}</th>
+                            <th>{% trans "Prediction Time" %}</th>
+                            <th>{% trans "Target Window" %}</th>
+                            <th>{% trans "Probability" %}</th>
+                            <th>{% trans "Actions" %}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -33,15 +34,15 @@
                             <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
                             <td>
                                 {% if prediction.probability == 'HIGH' %}
-                                <span class="badge bg-danger">High</span>
+                                <span class="badge bg-danger">{% trans "High" %}</span>
                                 {% elif prediction.probability == 'MEDIUM' %}
-                                <span class="badge bg-warning text-dark">Medium</span>
+                                <span class="badge bg-warning text-dark">{% trans "Medium" %}</span>
                                 {% else %}
-                                <span class="badge bg-success">Low</span>
+                                <span class="badge bg-success">{% trans "Low" %}</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-primary">Details</a>
+                                <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-primary">{% trans "Details" %}</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -111,32 +112,32 @@
     {% endif %}
     {% else %}
     <div class="alert alert-info">
-        <p>No prediction data available yet. Predictions will appear here once they are generated for your locations.</p>
+        <p>{% trans "No prediction data available yet. Predictions will appear here once they are generated for your locations." %}</p>
         {% if not locations %}
-        <p>You need to add locations first to receive migraine predictions.</p>
-        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">Add Location</a>
+        <p>{% trans "You need to add locations first to receive migraine predictions." %}</p>
+        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">{% trans "Add Location" %}</a>
         {% endif %}
     </div>
     {% endif %}
-    
+
     <div class="card mt-4">
         <div class="card-header">
-            <h5 class="mb-0">About Migraine Predictions</h5>
+            <h5 class="mb-0">{% trans "About Migraine Predictions" %}</h5>
         </div>
         <div class="card-body">
-            <p>Our prediction algorithm analyzes several weather parameters known to trigger migraines:</p>
+            <p>{% trans "Our prediction algorithm analyzes several weather parameters known to trigger migraines:" %}</p>
             <ul>
-                <li><strong>Barometric Pressure Changes:</strong> Sudden drops in pressure can trigger migraines</li>
-                <li><strong>Temperature Fluctuations:</strong> Rapid changes in temperature</li>
-                <li><strong>Humidity Levels:</strong> Both very high and very low humidity</li>
-                <li><strong>Precipitation:</strong> Incoming storms and rainfall</li>
-                <li><strong>Cloud Cover:</strong> Changes in light intensity due to cloud cover</li>
+                <li><strong>{% trans "Barometric Pressure Changes" %}:</strong> {% trans "Sudden drops in pressure can trigger migraines" %}</li>
+                <li><strong>{% trans "Temperature Fluctuations" %}:</strong> {% trans "Rapid changes in temperature" %}</li>
+                <li><strong>{% trans "Humidity Levels" %}:</strong> {% trans "Both very high and very low humidity" %}</li>
+                <li><strong>{% trans "Precipitation" %}:</strong> {% trans "Incoming storms and rainfall" %}</li>
+                <li><strong>{% trans "Cloud Cover" %}:</strong> {% trans "Changes in light intensity due to cloud cover" %}</li>
             </ul>
-            <p>Predictions are classified as:</p>
+            <p>{% trans "Predictions are classified as:" %}</p>
             <ul>
-                <li><span class="badge bg-danger">High</span> - Strong likelihood of migraine triggers present</li>
-                <li><span class="badge bg-warning text-dark">Medium</span> - Some migraine triggers present</li>
-                <li><span class="badge bg-success">Low</span> - Few or no migraine triggers detected</li>
+                <li><span class="badge bg-danger">{% trans "High" %}</span> - {% trans "Strong likelihood of migraine triggers present" %}</li>
+                <li><span class="badge bg-warning text-dark">{% trans "Medium" %}</span> - {% trans "Some migraine triggers present" %}</li>
+                <li><span class="badge bg-success">{% trans "Low" %}</span> - {% trans "Few or no migraine triggers detected" %}</li>
             </ul>
         </div>
     </div>

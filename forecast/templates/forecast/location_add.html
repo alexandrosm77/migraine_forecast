@@ -1,51 +1,52 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}Add Location - Migraine Forecast{% endblock %}
+{% block title %}{% trans "Add Location" %} - Migraine Forecast{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1 class="mb-4">Add New Location</h1>
-    
+    <h1 class="mb-4">{% trans "Add New Location" %}</h1>
+
     <div class="card">
         <div class="card-body">
             <form method="post">
                 {% csrf_token %}
                 <div class="mb-3">
-                    <label for="city" class="form-label">City</label>
+                    <label for="city" class="form-label">{% trans "City" %}</label>
                     <input type="text" class="form-control" id="city" name="city" required>
                 </div>
                 <div class="mb-3">
-                    <label for="country" class="form-label">Country</label>
+                    <label for="country" class="form-label">{% trans "Country" %}</label>
                     <input type="text" class="form-control" id="country" name="country" required>
                 </div>
                 <div class="mb-3">
-                    <label for="latitude" class="form-label">Latitude</label>
+                    <label for="latitude" class="form-label">{% trans "Latitude" %}</label>
                     <input type="number" class="form-control" id="latitude" name="latitude" step="0.0001" required>
-                    <div class="form-text">Enter a decimal value (e.g., 40.7128 for New York)</div>
+                    <div class="form-text">{% trans "Enter a decimal value (e.g., 40.7128 for New York)" %}</div>
                 </div>
                 <div class="mb-3">
-                    <label for="longitude" class="form-label">Longitude</label>
+                    <label for="longitude" class="form-label">{% trans "Longitude" %}</label>
                     <input type="number" class="form-control" id="longitude" name="longitude" step="0.0001" required>
-                    <div class="form-text">Enter a decimal value (e.g., -74.0060 for New York)</div>
+                    <div class="form-text">{% trans "Enter a decimal value (e.g., -74.0060 for New York)" %}</div>
                 </div>
                 <div class="d-flex justify-content-between">
-                    <a href="{% url 'forecast:location_list' %}" class="btn btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-primary">Add Location</button>
+                    <a href="{% url 'forecast:location_list' %}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                    <button type="submit" class="btn btn-primary">{% trans "Add Location" %}</button>
                 </div>
             </form>
         </div>
     </div>
-    
+
     <div class="card mt-4">
         <div class="card-header">
-            <h5 class="mb-0">Find Coordinates</h5>
+            <h5 class="mb-0">{% trans "Find Coordinates" %}</h5>
         </div>
         <div class="card-body">
-            <p>You can find the latitude and longitude coordinates for your location using these methods:</p>
+            <p>{% trans "You can find the latitude and longitude coordinates for your location using these methods:" %}</p>
             <ul>
-                <li>Search for your city on <a href="https://www.latlong.net/" target="_blank">LatLong.net</a></li>
-                <li>Use Google Maps: right-click on a location and select "What's here?" to see coordinates</li>
-                <li>Use your device's GPS to get your current location coordinates</li>
+                <li>{% trans "Search for your city on" %} <a href="https://www.latlong.net/" target="_blank">LatLong.net</a></li>
+                <li>{% trans "Use Google Maps: right-click on a location and select \"What's here?\" to see coordinates" %}</li>
+                <li>{% trans "Use your device's GPS to get your current location coordinates" %}</li>
             </ul>
         </div>
     </div>
