@@ -3,6 +3,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils import timezone
+from django.utils import translation
 import logging
 from datetime import timedelta
 
@@ -25,6 +26,21 @@ class NotificationService:
         self.prediction_service = MigrainePredictionService()
         self.sinusitis_prediction_service = SinusitisPredictionService()
         self.weather_service = WeatherService()
+
+    def _get_user_language(self, user):
+        """
+        Get the user's preferred language.
+
+        Args:
+            user: User object
+
+        Returns:
+            str: Language code (e.g., 'en', 'el') or None
+        """
+        try:
+            return user.health_profile.language
+        except Exception:
+            return None
 
     def _should_send_notification(self, user, severity_level, notification_type="general"):
         """
@@ -250,17 +266,26 @@ class NotificationService:
             "llm_prevention_tips": (weather_factors or {}).get("llm_prevention_tips") or [],
         }
 
-        # Render email content
-        factor_count = detailed_factors.get("contributing_factors_count", 0)
-        if factor_count > 0:
-            factor_word = "Factor" if factor_count == 1 else "Factors"
-            subject = (
-                f"{probability_level} Migraine Alert for {location.city} - " f"{factor_count} Weather {factor_word}"
-            )
-        else:
-            subject = f"{probability_level} Migraine Alert for {location.city}"
-        html_message = render_to_string("forecast/email/migraine_alert.html", context)
-        plain_message = strip_tags(html_message)
+        # Activate user's language for email rendering
+        user_language = self._get_user_language(user)
+        if user_language:
+            translation.activate(user_language)
+
+        try:
+            # Render email content
+            factor_count = detailed_factors.get("contributing_factors_count", 0)
+            if factor_count > 0:
+                factor_word = "Factor" if factor_count == 1 else "Factors"
+                subject = (
+                    f"{probability_level} Migraine Alert for {location.city} - " f"{factor_count} Weather {factor_word}"
+                )
+            else:
+                subject = f"{probability_level} Migraine Alert for {location.city}"
+            html_message = render_to_string("forecast/email/migraine_alert.html", context)
+            plain_message = strip_tags(html_message)
+        finally:
+            # Deactivate translation to avoid affecting other parts of the system
+            translation.deactivate()
 
         # Update notification log with subject
         notification_log.subject = subject
@@ -475,20 +500,29 @@ class NotificationService:
             "first_sinusitis_tips": first_sinusitis_tips,
         }
 
-        # Build subject line
-        location_names = [loc["location"].city for loc in location_data]
-        if len(location_names) == 1:
-            location_str = location_names[0]
-        elif len(location_names) == 2:
-            location_str = f"{location_names[0]} & {location_names[1]}"
-        else:
-            location_str = f"{len(location_names)} locations"
+        # Activate user's language for email rendering
+        user_language = self._get_user_language(user)
+        if user_language:
+            translation.activate(user_language)
 
-        subject = f"Health Alert for {location_str}"
+        try:
+            # Build subject line
+            location_names = [loc["location"].city for loc in location_data]
+            if len(location_names) == 1:
+                location_str = location_names[0]
+            elif len(location_names) == 2:
+                location_str = f"{location_names[0]} & {location_names[1]}"
+            else:
+                location_str = f"{len(location_names)} locations"
 
-        # Render email content
-        html_message = render_to_string("forecast/email/combined_alert.html", context)
-        plain_message = strip_tags(html_message)
+            subject = f"Health Alert for {location_str}"
+
+            # Render email content
+            html_message = render_to_string("forecast/email/combined_alert.html", context)
+            plain_message = strip_tags(html_message)
+        finally:
+            # Deactivate translation to avoid affecting other parts of the system
+            translation.deactivate()
 
         # Update notification log with subject
         notification_log.subject = subject
@@ -810,17 +844,26 @@ class NotificationService:
             "llm_prevention_tips": (weather_factors or {}).get("llm_prevention_tips") or [],
         }
 
-        # Render email content
-        factor_count = detailed_factors.get("contributing_factors_count", 0)
-        if factor_count > 0:
-            factor_word = "Factor" if factor_count == 1 else "Factors"
-            subject = (
-                f"{probability_level} Sinusitis Alert for {location.city} - " f"{factor_count} Weather {factor_word}"
-            )
-        else:
-            subject = f"{probability_level} Sinusitis Alert for {location.city}"
-        html_message = render_to_string("forecast/email/sinusitis_alert.html", context)
-        plain_message = strip_tags(html_message)
+        # Activate user's language for email rendering
+        user_language = self._get_user_language(user)
+        if user_language:
+            translation.activate(user_language)
+
+        try:
+            # Render email content
+            factor_count = detailed_factors.get("contributing_factors_count", 0)
+            if factor_count > 0:
+                factor_word = "Factor" if factor_count == 1 else "Factors"
+                subject = (
+                    f"{probability_level} Sinusitis Alert for {location.city} - " f"{factor_count} Weather {factor_word}"
+                )
+            else:
+                subject = f"{probability_level} Sinusitis Alert for {location.city}"
+            html_message = render_to_string("forecast/email/sinusitis_alert.html", context)
+            plain_message = strip_tags(html_message)
+        finally:
+            # Deactivate translation to avoid affecting other parts of the system
+            translation.deactivate()
 
         try:
             # Send email

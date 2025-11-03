@@ -68,14 +68,14 @@
         {% endif %}
 
         {% if detailed_factors.contributing_factors_count > 0 %}
-        <p><strong>{{ detailed_factors.contributing_factors_count }} weather factor{{ detailed_factors.contributing_factors_count|pluralize }} {{ detailed_factors.contributing_factors_count|pluralize:"is,are" }} contributing to this alert:</strong></p>
+        <p><strong>{% blocktrans count counter=detailed_factors.contributing_factors_count %}{{ counter }} weather factor is contributing to this alert:{% plural %}{{ counter }} weather factors are contributing to this alert:{% endblocktrans %}</strong></p>
 
         {% for factor in detailed_factors.factors %}
         <div class="weather-factor-detail" style="background-color: {% if factor.severity == 'high' %}#fff5f5{% else %}#fffbf0{% endif %}; border-left: 4px solid {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %}; padding: 15px; margin: 10px 0; border-radius: 5px;">
             <h4 style="margin: 0 0 8px 0; color: {% if factor.severity == 'high' %}#e53e3e{% else %}#dd6b20{% endif %};">
                 {{ factor.name }}
                 <span style="font-size: 12px; font-weight: normal; color: #666;">
-                    (Impact: {{ factor.score|floatformat:1 }}/1.0)
+                    ({% trans "Impact" %}: {{ factor.score|floatformat:1 }}/1.0)
                 </span>
             </h4>
             <p style="margin: 0; line-height: 1.4;">{{ factor.explanation }}</p>
@@ -84,22 +84,22 @@
 
         <div style="background-color: #f0f8ff; padding: 15px; margin: 15px 0; border-radius: 5px; border: 1px solid #bee3f8;">
             {% if weather_factors.total_score %}
-            <p style="margin: 0; font-size: 14px;"><strong>Overall Risk Score:</strong> {{ weather_factors.total_score }}/1.0
-            {% if probability_level == 'HIGH' %}(High risk - score ≥ 0.7){% elif probability_level == 'MEDIUM' %}(Medium risk - score 0.4-0.69){% else %}(Low risk - score < 0.4){% endif %}</p>
+            <p style="margin: 0; font-size: 14px;"><strong>{% trans "Overall Risk Score" %}:</strong> {{ weather_factors.total_score }}/1.0
+            {% if probability_level == 'HIGH' %}({% trans "High risk - score ≥ 0.7" %}){% elif probability_level == 'MEDIUM' %}({% trans "Medium risk - score 0.4-0.69" %}){% else %}({% trans "Low risk - score < 0.4" %}){% endif %}</p>
             {% else %}
-            <p style="margin: 0; font-size: 14px;"><strong>Risk Level:</strong> {{ probability_level }}
-            {% if llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">(Determined by AI analysis)</span>{% endif %}</p>
+            <p style="margin: 0; font-size: 14px;"><strong>{% trans "Risk Level" %}:</strong> {{ probability_level }}
+            {% if llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">({% trans "Determined by AI analysis" %})</span>{% endif %}</p>
             {% endif %}
         </div>
         {% else %}
-        <p>This prediction is based on weather conditions known to trigger migraines:</p>
+        <p>{% trans "This prediction is based on weather conditions known to trigger migraines:" %}</p>
 
         <div class="weather-data">
-            <div class="weather-item"><strong>Temperature:</strong> {{ temperature }}°C</div>
-            <div class="weather-item"><strong>Humidity:</strong> {{ humidity }}%</div>
-            <div class="weather-item"><strong>Barometric Pressure:</strong> {{ pressure }} hPa</div>
-            <div class="weather-item"><strong>Precipitation:</strong> {{ precipitation }} mm</div>
-            <div class="weather-item"><strong>Cloud Cover:</strong> {{ cloud_cover }}%</div>
+            <div class="weather-item"><strong>{% trans "Temperature" %}:</strong> {{ temperature }}°C</div>
+            <div class="weather-item"><strong>{% trans "Humidity" %}:</strong> {{ humidity }}%</div>
+            <div class="weather-item"><strong>{% trans "Barometric Pressure" %}:</strong> {{ pressure }} hPa</div>
+            <div class="weather-item"><strong>{% trans "Precipitation" %}:</strong> {{ precipitation }} mm</div>
+            <div class="weather-item"><strong>{% trans "Cloud Cover" %}:</strong> {{ cloud_cover }}%</div>
         </div>
         {% endif %}
 
@@ -125,27 +125,27 @@
             {% endif %}
 
             {% if detailed_factors.factors %}
-            <p style="margin: 0 0 10px 0;"><strong>Specific to today's weather conditions:</strong></p>
+            <p style="margin: 0 0 10px 0;"><strong>{% trans "Specific to today's weather conditions:" %}</strong></p>
             <ul style="margin: 0;">
                 {% for factor in detailed_factors.factors %}
                     {% if factor.name == 'Temperature Change' %}
-                        <li>Dress in layers to adapt to temperature changes</li>
+                        <li>{% trans "Dress in layers to adapt to temperature changes" %}</li>
                     {% elif factor.name == 'High Humidity' or factor.name == 'Low Humidity' %}
-                        <li>Use a humidifier or dehumidifier to maintain comfortable indoor humidity</li>
+                        <li>{% trans "Use a humidifier or dehumidifier to maintain comfortable indoor humidity" %}</li>
                     {% elif factor.name == 'Barometric Pressure Change' or factor.name == 'Low Barometric Pressure' %}
-                        <li>Consider staying indoors during the worst pressure changes</li>
-                        <li>Some people find relief with pressure-equalizing techniques</li>
+                        <li>{% trans "Consider staying indoors during the worst pressure changes" %}</li>
+                        <li>{% trans "Some people find relief with pressure-equalizing techniques" %}</li>
                     {% elif factor.name == 'Heavy Precipitation' %}
-                        <li>Limit outdoor activities during heavy rain or storms</li>
+                        <li>{% trans "Limit outdoor activities during heavy rain or storms" %}</li>
                     {% elif factor.name == 'Heavy Cloud Cover' %}
-                        <li>Use bright indoor lighting to compensate for reduced natural light</li>
+                        <li>{% trans "Use bright indoor lighting to compensate for reduced natural light" %}</li>
                     {% endif %}
                 {% endfor %}
             </ul>
             {% endif %}
 
             <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
-                <strong>Remember:</strong> Have your rescue medication readily available and know your early warning signs.
+                <strong>{% trans "Remember:" %}</strong> {% trans "Have your rescue medication readily available and know your early warning signs." %}
             </p>
         </div>
         
