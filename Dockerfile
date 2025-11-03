@@ -26,8 +26,7 @@ RUN echo "0 */2 * * * cd /app && /usr/local/bin/python manage.py collect_weather
 RUN chmod 0644 /etc/cron.d/migraine_pipeline && \
     crontab /etc/cron.d/migraine_pipeline && \
     touch /var/log/cron.log && \
-    chmod +x /app/start_django.sh && \
-    echo "[supervisord]\nnodaemon=true\n\n[program:django]\ncommand=/app/start_django.sh\ndirectory=/app\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n\n[program:cron]\ncommand=cron -f\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0" > /etc/supervisor/conf.d/supervisord.conf
+    echo "[supervisord]\nnodaemon=true\n\n[program:django]\ncommand=/bin/bash -c 'python manage.py migrate && gunicorn migraine_project.wsgi:application -c gunicorn.conf.py'\ndirectory=/app\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n\n[program:cron]\ncommand=cron -f\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0" > /etc/supervisor/conf.d/supervisord.conf
 
 # Expose port
 EXPOSE 8889

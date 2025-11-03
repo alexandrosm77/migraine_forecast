@@ -140,12 +140,12 @@ jobs:
               --restart unless-stopped \
               -p 8889:8889 \
               -v /home/alexandros/migraine/db.sqlite3:/app/db.sqlite3 \
-              -e DJANGO_DEBUG=True \
-              -e SENTRY_DSN="${{ secrets.SENTRY_DSN }}" \
-              -e SENTRY_ENABLED="${{ vars.SENTRY_ENABLED }}" \
-              -e SENTRY_ENVIRONMENT="${{ vars.SENTRY_ENVIRONMENT }}" \
-              -e SENTRY_TRACES_SAMPLE_RATE="${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
-              -e SENTRY_PROFILES_SAMPLE_RATE="${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}" \
+              -e DJANGO_DEBUG=False \
+              -e "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" \
+              -e "SENTRY_ENABLED=${{ vars.SENTRY_ENABLED }}" \
+              -e "SENTRY_ENVIRONMENT=${{ vars.SENTRY_ENVIRONMENT }}" \
+              -e "SENTRY_TRACES_SAMPLE_RATE=${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
+              -e "SENTRY_PROFILES_SAMPLE_RATE=${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}" \
               alexandrosm77/migraine_forecast:latest
 
             # Check if the container started successfully
