@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-03 14:30+0000\n"
+"POT-Creation-Date: 2025-11-03 15:06+0000\n"
 "PO-Revision-Date: 2025-11-03 12:00+0000\n"
 "Last-Translator: \n"
 "Language-Team: Greek\n"
@@ -262,6 +262,69 @@ msgstr "έως"
 msgid "Model Analysis"
 msgstr "Ανάλυση Μοντέλου"
 
+#: forecast/templates/forecast/email/migraine_alert.html:71
+#, python-format
+msgid "%(counter)s weather factor is contributing to this alert:"
+msgid_plural "%(counter)s weather factors are contributing to this alert:"
+msgstr[0] ""
+msgstr[1] ""
+
+#: forecast/templates/forecast/email/migraine_alert.html:78
+msgid "Impact"
+msgstr "Επίδραση"
+
+#: forecast/templates/forecast/email/migraine_alert.html:87
+msgid "Overall Risk Score"
+msgstr "Συνολική Βαθμολογία Κινδύνου"
+
+#: forecast/templates/forecast/email/migraine_alert.html:88
+msgid "High risk - score ≥ 0.7"
+msgstr "Υψηλός κίνδυνος - βαθμολογία ≥ 0.7"
+
+#: forecast/templates/forecast/email/migraine_alert.html:88
+msgid "Medium risk - score 0.4-0.69"
+msgstr "Μέτριος κίνδυνος - βαθμολογία 0.4-0.69"
+
+#: forecast/templates/forecast/email/migraine_alert.html:88
+msgid "Low risk - score < 0.4"
+msgstr "Χαμηλός κίνδυνος - βαθμολογία < 0.4"
+
+#: forecast/templates/forecast/email/migraine_alert.html:90
+msgid "Risk Level"
+msgstr "Επίπεδο Κινδύνου"
+
+#: forecast/templates/forecast/email/migraine_alert.html:91
+msgid "Determined by AI analysis"
+msgstr "Καθορίστηκε από ανάλυση AI"
+
+#: forecast/templates/forecast/email/migraine_alert.html:95
+msgid ""
+"This prediction is based on weather conditions known to trigger migraines:"
+msgstr ""
+"Αυτή η πρόβλεψη βασίζεται σε καιρικές συνθήκες που είναι γνωστό ότι προκαλούν ημικρανίες:"
+
+#: forecast/templates/forecast/email/migraine_alert.html:98
+msgid "Temperature"
+msgstr "Θερμοκρασία"
+
+#: forecast/templates/forecast/email/migraine_alert.html:99
+msgid "Humidity"
+msgstr "Υγρασία"
+
+#: forecast/templates/forecast/email/migraine_alert.html:100
+msgid "Barometric Pressure"
+msgstr "Βαρομετρική Πίεση"
+
+#: forecast/templates/forecast/email/migraine_alert.html:101
+#: forecast/templates/forecast/prediction_list.html:133
+msgid "Precipitation"
+msgstr "Βροχόπτωση"
+
+#: forecast/templates/forecast/email/migraine_alert.html:102
+#: forecast/templates/forecast/prediction_list.html:134
+msgid "Cloud Cover"
+msgstr "Νεφοκάλυψη"
+
 #: forecast/templates/forecast/email/migraine_alert.html:109
 msgid "Recommended Actions"
 msgstr "Προτεινόμενες Ενέργειες"
@@ -290,6 +353,47 @@ msgstr ""
 #: forecast/templates/forecast/email/migraine_alert.html:119
 msgid "Personalized tips based on current factors:"
 msgstr "Εξατομικευμένες συμβουλές βασισμένες στους τρέχοντες παράγοντες:"
+
+#: forecast/templates/forecast/email/migraine_alert.html:128
+msgid "Specific to today's weather conditions:"
+msgstr "Ειδικά για τις σημερινές καιρικές συνθήκες:"
+
+#: forecast/templates/forecast/email/migraine_alert.html:132
+msgid "Dress in layers to adapt to temperature changes"
+msgstr "Φορέστε ρούχα σε στρώσεις για να προσαρμοστείτε στις αλλαγές θερμοκρασίας"
+
+#: forecast/templates/forecast/email/migraine_alert.html:134
+msgid ""
+"Use a humidifier or dehumidifier to maintain comfortable indoor humidity"
+msgstr "Χρησιμοποιήστε υγραντήρα ή αφυγραντήρα για να διατηρήσετε άνετη εσωτερική υγρασία"
+
+#: forecast/templates/forecast/email/migraine_alert.html:136
+msgid "Consider staying indoors during the worst pressure changes"
+msgstr "Σκεφτείτε να μείνετε σε εσωτερικούς χώρους κατά τις χειρότερες αλλαγές πίεσης"
+
+#: forecast/templates/forecast/email/migraine_alert.html:137
+msgid "Some people find relief with pressure-equalizing techniques"
+msgstr "Μερικοί άνθρωποι βρίσκουν ανακούφιση με τεχνικές εξισορρόπησης πίεσης"
+
+#: forecast/templates/forecast/email/migraine_alert.html:139
+msgid "Limit outdoor activities during heavy rain or storms"
+msgstr "Περιορίστε τις υπαίθριες δραστηριότητες κατά τη διάρκεια έντονης βροχής ή καταιγίδων"
+
+#: forecast/templates/forecast/email/migraine_alert.html:141
+msgid "Use bright indoor lighting to compensate for reduced natural light"
+msgstr "Χρησιμοποιήστε έντονο εσωτερικό φωτισμό για να αντισταθμίσετε το μειωμένο φυσικό φως"
+
+#: forecast/templates/forecast/email/migraine_alert.html:148
+msgid "Remember:"
+msgstr "Θυμηθείτε:"
+
+#: forecast/templates/forecast/email/migraine_alert.html:148
+msgid ""
+"Have your rescue medication readily available and know your early warning "
+"signs."
+msgstr ""
+"Έχετε τα φάρμακα έκτακτης ανάγκης εύκολα διαθέσιμα και γνωρίζετε τα πρώιμα "
+"προειδοποιητικά σημάδια σας."
 
 #: forecast/templates/forecast/email/migraine_alert.html:152
 msgid "Stay well,"
@@ -394,8 +498,8 @@ msgid ""
 "You can find the latitude and longitude coordinates for your location using "
 "these methods:"
 msgstr ""
-"Μπορείτε να βρείτε τις συντεταγμένες γεωγραφικού πλάτους και μήκους για την τοποθεσία σας χρησιμοποιώντας "
-"αυτές τις μεθόδους:"
+"Μπορείτε να βρείτε τις συντεταγμένες γεωγραφικού πλάτους και μήκους για την "
+"τοποθεσία σας χρησιμοποιώντας αυτές τις μεθόδους:"
 
 #: forecast/templates/forecast/location_add.html:47
 msgid "Search for your city on"
@@ -403,11 +507,15 @@ msgstr "Αναζητήστε την πόλη σας στο"
 
 #: forecast/templates/forecast/location_add.html:48
 msgid "Use Google Maps: right-click on a location and select \\"
-msgstr "Χρησιμοποιήστε το Google Maps: κάντε δεξί κλικ σε μια τοποθεσία και επιλέξτε \\"
+msgstr ""
+"Χρησιμοποιήστε το Google Maps: κάντε δεξί κλικ σε μια τοποθεσία και επιλέξτε "
+"\\"
 
 #: forecast/templates/forecast/location_add.html:49
 msgid "Use your device's GPS to get your current location coordinates"
-msgstr "Χρησιμοποιήστε το GPS της συσκευής σας για να λάβετε τις συντεταγμένες της τρέχουσας τοποθεσίας σας"
+msgstr ""
+"Χρησιμοποιήστε το GPS της συσκευής σας για να λάβετε τις συντεταγμένες της "
+"τρέχουσας τοποθεσίας σας"
 
 #: forecast/templates/forecast/location_delete.html:4
 #: forecast/templates/forecast/location_delete.html:12
@@ -422,16 +530,17 @@ msgid ""
 "Are you sure you want to delete the location <strong>%(city)s, %(country)s</"
 "strong>?"
 msgstr ""
-"Είστε σίγουροι ότι θέλετε να διαγράψετε την τοποθεσία <strong>%(city)s, %(country)s</"
-"strong>;"
+"Είστε σίγουροι ότι θέλετε να διαγράψετε την τοποθεσία <strong>%(city)s, "
+"%(country)s</strong>;"
 
 #: forecast/templates/forecast/location_delete.html:16
 msgid ""
 "This will also delete all associated forecasts, predictions, and comparison "
 "data for this location. This action cannot be undone."
 msgstr ""
-"Αυτό θα διαγράψει επίσης όλες τις σχετικές προβλέψεις καιρού, προβλέψεις ημικρανίας και δεδομένα σύγκρισης "
-"για αυτήν την τοποθεσία. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί."
+"Αυτό θα διαγράψει επίσης όλες τις σχετικές προβλέψεις καιρού, προβλέψεις "
+"ημικρανίας και δεδομένα σύγκρισης για αυτήν την τοποθεσία. Αυτή η ενέργεια "
+"δεν μπορεί να αναιρεθεί."
 
 #: forecast/templates/forecast/location_detail.html:4
 msgid "Location Details"
@@ -483,7 +592,8 @@ msgstr "Νεφοκάλυψη (%%)"
 
 #: forecast/templates/forecast/location_detail.html:70
 msgid "No forecast data available for this location."
-msgstr "Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης καιρού για αυτήν την τοποθεσία."
+msgstr ""
+"Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης καιρού για αυτήν την τοποθεσία."
 
 #: forecast/templates/forecast/location_detail.html:88
 #: forecast/templates/forecast/prediction_list.html:23
@@ -536,12 +646,13 @@ msgid ""
 "No prediction data available yet. Predictions will appear here once they are "
 "generated for your locations."
 msgstr ""
-"Δεν υπάρχουν ακόμα διαθέσιμα δεδομένα πρόβλεψης. Οι προβλέψεις θα εμφανιστούν εδώ μόλις "
-"δημιουργηθούν για τις τοποθεσίες σας."
+"Δεν υπάρχουν ακόμα διαθέσιμα δεδομένα πρόβλεψης. Οι προβλέψεις θα "
+"εμφανιστούν εδώ μόλις δημιουργηθούν για τις τοποθεσίες σας."
 
 #: forecast/templates/forecast/prediction_list.html:117
 msgid "You need to add locations first to receive migraine predictions."
-msgstr "Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις ημικρανίας."
+msgstr ""
+"Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις ημικρανίας."
 
 #: forecast/templates/forecast/prediction_list.html:125
 msgid "About Migraine Predictions"
@@ -552,8 +663,8 @@ msgid ""
 "Our prediction algorithm analyzes several weather parameters known to "
 "trigger migraines:"
 msgstr ""
-"Ο αλγόριθμος πρόβλεψής μας αναλύει διάφορες παραμέτρους καιρού που είναι γνωστό ότι "
-"προκαλούν ημικρανίες:"
+"Ο αλγόριθμος πρόβλεψής μας αναλύει διάφορες παραμέτρους καιρού που είναι "
+"γνωστό ότι προκαλούν ημικρανίες:"
 
 #: forecast/templates/forecast/prediction_list.html:130
 msgid "Barometric Pressure Changes"
@@ -581,16 +692,8 @@ msgid "Both very high and very low humidity"
 msgstr "Τόσο πολύ υψηλή όσο και πολύ χαμηλή υγρασία"
 
 #: forecast/templates/forecast/prediction_list.html:133
-msgid "Precipitation"
-msgstr "Βροχόπτωση"
-
-#: forecast/templates/forecast/prediction_list.html:133
 msgid "Incoming storms and rainfall"
 msgstr "Επερχόμενες καταιγίδες και βροχοπτώσεις"
-
-#: forecast/templates/forecast/prediction_list.html:134
-msgid "Cloud Cover"
-msgstr "Νεφοκάλυψη"
 
 #: forecast/templates/forecast/prediction_list.html:134
 msgid "Changes in light intensity due to cloud cover"
@@ -735,12 +838,14 @@ msgid ""
 "No sinusitis prediction data available yet. Predictions will appear here "
 "once they are generated for your locations."
 msgstr ""
-"Δεν υπάρχουν ακόμα διαθέσιμα δεδομένα πρόβλεψης ιγμορίτιδας. Οι προβλέψεις θα εμφανιστούν εδώ "
-"μόλις δημιουργηθούν για τις τοποθεσίες σας."
+"Δεν υπάρχουν ακόμα διαθέσιμα δεδομένα πρόβλεψης ιγμορίτιδας. Οι προβλέψεις "
+"θα εμφανιστούν εδώ μόλις δημιουργηθούν για τις τοποθεσίες σας."
 
 #: forecast/templates/forecast/sinusitis_prediction_list.html:117
 msgid "You need to add locations first to receive sinusitis predictions."
-msgstr "Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις ιγμορίτιδας."
+msgstr ""
+"Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις "
+"ιγμορίτιδας."
 
 #~ msgid "Not provided"
 #~ msgstr "Δεν έχει δοθεί"
@@ -807,9 +912,6 @@ msgstr "Πρέπει πρώτα να προσθέσετε τοποθεσίες �
 
 #~ msgid "Overall Sensitivity"
 #~ msgstr "Συνολική Ευαισθησία"
-
-#~ msgid "Temperature Sensitivity"
-#~ msgstr "Ευαισθησία στη Θερμοκρασία"
 
 #~ msgid "Humidity Sensitivity"
 #~ msgstr "Ευαισθησία στην Υγρασία"
