@@ -244,6 +244,7 @@ SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "1.
 if SENTRY_ENABLED and SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
+        enable_logs=True,
         integrations=[
             DjangoIntegration(
                 transaction_style="url",  # Track transactions by URL pattern

@@ -366,6 +366,7 @@ def set_language(request, language_code):
     translation.activate(language_code)
     # Use Django's standard session key for language
     from django.conf import settings as django_settings
+
     request.session[django_settings.LANGUAGE_COOKIE_NAME] = language_code
     request.LANGUAGE_CODE = language_code
 

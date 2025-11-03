@@ -855,7 +855,8 @@ class NotificationService:
             if factor_count > 0:
                 factor_word = "Factor" if factor_count == 1 else "Factors"
                 subject = (
-                    f"{probability_level} Sinusitis Alert for {location.city} - " f"{factor_count} Weather {factor_word}"
+                    f"{probability_level} Sinusitis Alert for {location.city} - "
+                    f"{factor_count} Weather {factor_word}"
                 )
             else:
                 subject = f"{probability_level} Sinusitis Alert for {location.city}"

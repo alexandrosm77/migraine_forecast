@@ -221,7 +221,6 @@ class SinusitisPredictionService:
                         "day_of_week": day_names[day_of_week],
                         "is_weekend": is_weekend,
                         "season": season,
-
                         # Prediction window information
                         "window_start_time": start_time.strftime("%Y-%m-%d %H:%M"),
                         "window_end_time": end_time.strftime("%Y-%m-%d %H:%M"),
@@ -260,13 +259,16 @@ class SinusitisPredictionService:
                         # For large windows (>6 hours), add intraday variation metrics
                         if len(fc_list) > 6:
                             # Calculate max temperature change between consecutive hours
-                            temp_deltas = [abs(fc_list[i+1].temperature - fc_list[i].temperature)
-                                          for i in range(len(fc_list)-1)]
+                            temp_deltas = [
+                                abs(fc_list[i + 1].temperature - fc_list[i].temperature)
+                                for i in range(len(fc_list) - 1)
+                            ]
                             max_hourly_temp_change = max(temp_deltas) if temp_deltas else 0
 
                             # Calculate max pressure change between consecutive hours
-                            pressure_deltas = [abs(fc_list[i+1].pressure - fc_list[i].pressure)
-                                              for i in range(len(fc_list)-1)]
+                            pressure_deltas = [
+                                abs(fc_list[i + 1].pressure - fc_list[i].pressure) for i in range(len(fc_list) - 1)
+                            ]
                             max_hourly_pressure_change = max(pressure_deltas) if pressure_deltas else 0
 
                             context_payload["intraday_variation"] = {

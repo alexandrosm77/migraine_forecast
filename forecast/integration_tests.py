@@ -231,13 +231,12 @@ class EndToEndWorkflowTest(TestCase):
         # STEP 1: Create User with Large Prediction Window
         # ============================================================
         user = User.objects.create_user(
-            username="large_window_user",
-            email="large_window@example.com",
-            password="testpass123"
+            username="large_window_user", email="large_window@example.com", password="testpass123"
         )
 
         # Create profile with 0-23 hour prediction window
         from .models import UserHealthProfile
+
         UserHealthProfile.objects.create(
             user=user,
             prediction_window_start_hours=0,
@@ -324,6 +323,7 @@ class EndToEndWorkflowTest(TestCase):
 
         # Verify prediction was created
         from .models import MigrainePrediction
+
         predictions = MigrainePrediction.objects.filter(user=user, location=location)
         self.assertGreater(predictions.count(), 0, "Should have created at least one prediction")
 

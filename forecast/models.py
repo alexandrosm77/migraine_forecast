@@ -352,8 +352,10 @@ class NotificationLog(models.Model):
         ]
 
     def __str__(self):
-        return (f"{self.get_notification_type_display()} to {self.user.username} "
-                f"- {self.status} ({self.created_at:%Y-%m-%d %H:%M})")
+        return (
+            f"{self.get_notification_type_display()} to {self.user.username} "
+            f"- {self.status} ({self.created_at:%Y-%m-%d %H:%M})"
+        )
 
     def mark_sent(self):
         """Mark notification as successfully sent."""

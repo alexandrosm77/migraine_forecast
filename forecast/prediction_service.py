@@ -186,33 +186,15 @@ class MigrainePredictionService:
                     # Only send aggregates and changes, not raw samples (reduces token count significantly)
                     context_payload = {
                         "aggregates": {
-                            "avg_forecast_temperature": (
-                                round(float(np.mean(temps)), 1) if temps else None
-                            ),
-                            "min_forecast_temperature": (
-                                round(float(min(temps)), 1) if temps else None
-                            ),
-                            "max_forecast_temperature": (
-                                round(float(max(temps)), 1) if temps else None
-                            ),
-                            "temperature_range": (
-                                round(float(max(temps) - min(temps)), 1) if temps else None
-                            ),
-                            "avg_forecast_humidity": (
-                                round(float(np.mean(humidities)), 0) if humidities else None
-                            ),
-                            "avg_forecast_pressure": (
-                                round(float(np.mean(pressures)), 1) if pressures else None
-                            ),
-                            "min_forecast_pressure": (
-                                round(float(min(pressures)), 1) if pressures else None
-                            ),
-                            "max_forecast_pressure": (
-                                round(float(max(pressures)), 1) if pressures else None
-                            ),
-                            "pressure_range": (
-                                round(float(max(pressures) - min(pressures)), 1) if pressures else None
-                            ),
+                            "avg_forecast_temperature": (round(float(np.mean(temps)), 1) if temps else None),
+                            "min_forecast_temperature": (round(float(min(temps)), 1) if temps else None),
+                            "max_forecast_temperature": (round(float(max(temps)), 1) if temps else None),
+                            "temperature_range": (round(float(max(temps) - min(temps)), 1) if temps else None),
+                            "avg_forecast_humidity": (round(float(np.mean(humidities)), 0) if humidities else None),
+                            "avg_forecast_pressure": (round(float(np.mean(pressures)), 1) if pressures else None),
+                            "min_forecast_pressure": (round(float(min(pressures)), 1) if pressures else None),
+                            "max_forecast_pressure": (round(float(max(pressures)), 1) if pressures else None),
+                            "pressure_range": (round(float(max(pressures) - min(pressures)), 1) if pressures else None),
                             "max_precipitation": round(float(max([f.precipitation for f in fc_list], default=0)), 1),
                         },
                         "changes": {
@@ -241,13 +223,15 @@ class MigrainePredictionService:
                     # This helps LLM understand temperature swings throughout the day
                     if len(fc_list) > 6:
                         # Calculate max temperature change between consecutive hours
-                        temp_deltas = [abs(fc_list[i+1].temperature - fc_list[i].temperature)
-                                      for i in range(len(fc_list)-1)]
+                        temp_deltas = [
+                            abs(fc_list[i + 1].temperature - fc_list[i].temperature) for i in range(len(fc_list) - 1)
+                        ]
                         max_hourly_temp_change = max(temp_deltas) if temp_deltas else 0
 
                         # Calculate max pressure change between consecutive hours
-                        pressure_deltas = [abs(fc_list[i+1].pressure - fc_list[i].pressure)
-                                          for i in range(len(fc_list)-1)]
+                        pressure_deltas = [
+                            abs(fc_list[i + 1].pressure - fc_list[i].pressure) for i in range(len(fc_list) - 1)
+                        ]
                         max_hourly_pressure_change = max(pressure_deltas) if pressure_deltas else 0
 
                         context_payload["intraday_variation"] = {
@@ -306,7 +290,6 @@ class MigrainePredictionService:
                         "day_of_week": day_names[day_of_week],
                         "is_weekend": is_weekend,
                         "season": season,
-
                         # Prediction window information
                         "window_start_time": start_time.strftime("%Y-%m-%d %H:%M"),
                         "window_end_time": end_time.strftime("%Y-%m-%d %H:%M"),
