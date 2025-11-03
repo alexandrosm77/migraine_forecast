@@ -19,6 +19,9 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Import version information
+from forecast.__version__ import __version__ as APP_VERSION
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -75,6 +78,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "forecast.context_processors.version_context",
             ],
         },
     },
@@ -231,8 +235,8 @@ if SENTRY_ENABLED and SENTRY_DSN:
         environment=SENTRY_ENVIRONMENT,
         # Send default PII (Personally Identifiable Information) like user IP, user ID
         send_default_pii=True,
-        # Release tracking (optional - useful for tracking which version caused issues)
-        # release=f"migraine-forecast@{os.getenv('APP_VERSION', 'dev')}",
+        # Release tracking - useful for tracking which version caused issues
+        release=f"migraine-forecast@{APP_VERSION}",
         # Additional options
         debug=False,  # Disable debug mode to reduce console noise
         attach_stacktrace=True,  # Attach stacktraces to all messages
