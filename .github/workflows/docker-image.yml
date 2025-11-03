@@ -34,8 +34,8 @@ jobs:
         name: Install bump-my-version
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.bump_version != 'none'
         run: |
-          pip3 install --user bump-my-version
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          python3 -m pip install --user bump-my-version
+          export PATH="$HOME/.local/bin:$PATH"
 
       -
         name: Configure Git
@@ -48,8 +48,9 @@ jobs:
         name: Bump version
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.bump_version != 'none'
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           echo "Bumping ${{ github.event.inputs.bump_version }} version..."
-          python3 -m bump_my_version bump ${{ github.event.inputs.bump_version }} --allow-dirty
+          $HOME/.local/bin/bump-my-version bump ${{ github.event.inputs.bump_version }} --allow-dirty
           git push --follow-tags
 
       -
