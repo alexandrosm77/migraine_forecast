@@ -62,6 +62,10 @@ jobs:
         uses: actions/checkout@v4
 
       -
+        name: Pull latest Docker image
+        run: docker pull alexandrosm77/migraine_forecast:latest
+
+      -
         name: Run linting checks
         run: |
           docker run --rm \
@@ -77,6 +81,10 @@ jobs:
         uses: actions/checkout@v4
 
       -
+        name: Pull latest Docker image
+        run: docker pull alexandrosm77/migraine_forecast:latest
+
+      -
         name: Run unit tests in Docker container
         run: |
           docker run --rm \
@@ -90,6 +98,10 @@ jobs:
       -
         name: Checkout repository
         uses: actions/checkout@v4
+
+      -
+        name: Pull latest Docker image
+        run: docker pull alexandrosm77/migraine_forecast:latest
 
       -
         name: Run integration tests in Docker container
