@@ -1,26 +1,27 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}Dashboard - Migraine Forecast{% endblock %}
+{% block title %}{% trans "Dashboard" %} - {% trans "Migraine Forecast" %}{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1 class="mb-4">Dashboard</h1>
-    
+    <h1 class="mb-4">{% trans "Dashboard" %}</h1>
+
     {% if not locations %}
     <div class="alert alert-info">
-        <p>You haven't added any locations yet. Add a location to start receiving migraine forecasts.</p>
-        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">Add Location</a>
+        <p>{% trans "You haven't added any locations yet. Add a location to start receiving migraine forecasts." %}</p>
+        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">{% trans "Add Location" %}</a>
     </div>
     {% else %}
-    
+
     <!-- High Risk Alerts -->
     {% if upcoming_high_risk %}
     <div class="card mb-4 border-danger">
         <div class="card-header bg-danger text-white">
-            <h5 class="mb-0">⚠️ High Migraine Risk Alert</h5>
+            <h5 class="mb-0">⚠️ {% trans "High Migraine Risk Alert" %}</h5>
         </div>
         <div class="card-body">
-            <p>High migraine probability detected in the next 24 hours:</p>
+            <p>{% trans "High migraine probability detected in the next 24 hours:" %}</p>
             <ul class="list-group">
                 {% for prediction in upcoming_high_risk %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -28,7 +29,7 @@
                         <strong>{{ prediction.location.city }}, {{ prediction.location.country }}</strong>
                         <span class="text-muted d-block">{{ prediction.target_time_start|date:"F j, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</span>
                     </div>
-                    <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-danger">Details</a>
+                    <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-danger">{% trans "Details" %}</a>
                 </li>
                 {% endfor %}
             </ul>
@@ -39,10 +40,10 @@
     {% if upcoming_sinusitis_high_risk %}
     <div class="card mb-4 border-warning">
         <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">⚠️ High Sinusitis Risk Alert</h5>
+            <h5 class="mb-0">⚠️ {% trans "High Sinusitis Risk Alert" %}</h5>
         </div>
         <div class="card-body">
-            <p>High sinusitis probability detected in the next 24 hours:</p>
+            <p>{% trans "High sinusitis probability detected in the next 24 hours:" %}</p>
             <ul class="list-group">
                 {% for prediction in upcoming_sinusitis_high_risk %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">

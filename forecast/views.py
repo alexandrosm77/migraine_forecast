@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
 
@@ -332,3 +332,40 @@ def profile(request):
         "locations": locations,
     }
     return render(request, "forecast/profile.html", context)
+
+
+@login_required
+def set_language(request, language_code):
+    """
+    Set the user's preferred language and save it to their profile.
+    """
+    # Validate language code
+    from django.conf import settings
+
+    valid_languages = [lang[0] for lang in settings.LANGUAGES]
+    if language_code not in valid_languages:
+        messages.error(request, f"Invalid language code: {language_code}")
+        return redirect(request.META.get("HTTP_REFERER", "forecast:index"))
+
+    # Update user's language preference in their profile
+    try:
+        profile = request.user.health_profile
+    except Exception:
+        from .models import UserHealthProfile
+
+        profile = None
+        try:
+            profile = UserHealthProfile.objects.get(user=request.user)
+        except UserHealthProfile.DoesNotExist:
+            profile = UserHealthProfile(user=request.user)
+
+    profile.language = language_code
+    profile.save()
+
+    # Activate the language for the current session
+    translation.activate(language_code)
+    from django.conf import settings as django_settings
+    request.session[django_settings.LANGUAGE_COOKIE_NAME] = language_code
+
+    messages.success(request, "Language preference updated successfully.")
+    return redirect(request.META.get("HTTP_REFERER", "forecast:index"))

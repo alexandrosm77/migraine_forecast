@@ -1,9 +1,10 @@
+{% load i18n %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Migraine Forecast{% endblock %}</title>
+    <title>{% block title %}{% trans "Migraine Forecast" %}{% endblock %}</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom CSS -->
@@ -46,44 +47,54 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'forecast:index' %}">Home</a>
+                        <a class="nav-link" href="{% url 'forecast:index' %}">{% trans "Home" %}</a>
                     </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'forecast:dashboard' %}">Dashboard</a>
+                        <a class="nav-link" href="{% url 'forecast:dashboard' %}">{% trans "Dashboard" %}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'forecast:location_list' %}">Locations</a>
+                        <a class="nav-link" href="{% url 'forecast:location_list' %}">{% trans "Locations" %}</a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="predictionsDropdown" role="button" data-bs-toggle="dropdown">
-                            Predictions
+                            {% trans "Predictions" %}
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'forecast:prediction_list' %}">Migraine Predictions</a></li>
-                            <li><a class="dropdown-item" href="{% url 'forecast:sinusitis_prediction_list' %}">Sinusitis Predictions</a></li>
+                            <li><a class="dropdown-item" href="{% url 'forecast:prediction_list' %}">{% trans "Migraine Predictions" %}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'forecast:sinusitis_prediction_list' %}">{% trans "Sinusitis Predictions" %}</a></li>
                         </ul>
                     </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
+                    <!-- Language Switcher -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown">
+                            🌐 {% if LANGUAGE_CODE == 'el' %}Ελληνικά{% else %}English{% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'forecast:set_language' 'en' %}">English</a></li>
+                            <li><a class="dropdown-item" href="{% url 'forecast:set_language' 'el' %}">Ελληνικά (Greek)</a></li>
+                        </ul>
+                    </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                             {{ user.username }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{% url 'forecast:profile' %}">Profile</a></li>
+                            <li><a class="dropdown-item" href="{% url 'forecast:profile' %}">{% trans "Profile" %}</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                            <li><a class="dropdown-item" href="{% url 'logout' %}">{% trans "Logout" %}</a></li>
                         </ul>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                        <a class="nav-link" href="{% url 'login' %}">{% trans "Login" %}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'forecast:register' %}">Register</a>
+                        <a class="nav-link" href="{% url 'forecast:register' %}">{% trans "Register" %}</a>
                     </li>
                     {% endif %}
                 </ul>

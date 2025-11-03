@@ -6,6 +6,7 @@ class UserHealthProfileForm(forms.ModelForm):
     class Meta:
         model = UserHealthProfile
         fields = [
+            "language",
             "age",
             "prior_conditions",
             "email_notifications_enabled",
@@ -31,6 +32,11 @@ class UserHealthProfileForm(forms.ModelForm):
             "sensitivity_precipitation",
         ]
         widgets = {
+            "language": forms.Select(
+                attrs={
+                    "class": "form-select",
+                }
+            ),
             "prior_conditions": forms.Textarea(
                 attrs={"rows": 3, "placeholder": "e.g., aura, sinus issues, hypertension, etc."}
             ),

@@ -99,6 +99,7 @@ class SinusitisPredictionAdmin(admin.ModelAdmin):
 class UserHealthProfileAdmin(admin.ModelAdmin):
     list_display = (
         "user",
+        "language",
         "age",
         "email_notifications_enabled",
         "notification_mode",
@@ -111,6 +112,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__username",)
     list_filter = (
+        "language",
         "email_notifications_enabled",
         "notification_mode",
         "notification_severity_threshold",
@@ -122,7 +124,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         (
             "User Information",
             {
-                "fields": ("user", "age"),
+                "fields": ("user", "language", "age"),
             },
         ),
         (

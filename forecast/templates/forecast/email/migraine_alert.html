@@ -1,8 +1,9 @@
+{% load i18n %}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Migraine Alert</title>
+    <title>{% trans "Migraine Alert" %}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -51,18 +52,17 @@
 </head>
 <body>
     <div class="header">
-        <h1>Migraine Alert</h1>
+        <h1>{% trans "Migraine Alert" %}</h1>
     </div>
     <div class="content">
-        <p>Hello {{ user.first_name|default:user.username }},</p>
-        
-        <p>Our system has detected a <span class="alert-level">{{ probability_level }} probability of migraine</span> in your area
-        (<strong>{{ location.city }}, {{ location.country }}</strong>) during the time window:
-        <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} to {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
+        <p>{% trans "Hello" %} {{ user.first_name|default:user.username }},</p>
+
+        <p>{% blocktrans with level=probability_level city=location.city country=location.country %}Our system has detected a <span class="alert-level">{{ level }} probability of migraine</span> in your area (<strong>{{ city }}, {{ country }}</strong>) during the time window:{% endblocktrans %}
+        <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} {% trans "to" %} {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
 
         {% if llm_analysis_text %}
         <div style="background-color: #eefcf4; padding: 15px; border: 1px solid #c6f6d5; border-radius: 6px; margin: 15px 0;">
-            <h3 style="margin-top: 0; color: #276749;">🧠 Model Analysis</h3>
+            <h3 style="margin-top: 0; color: #276749;">🧠 {% trans "Model Analysis" %}</h3>
             <p style="margin: 0;">{{ llm_analysis_text }}</p>
         </div>
         {% endif %}
@@ -106,17 +106,17 @@
 
 
         <div style="background-color: #f0f8ff; padding: 20px; margin: 20px 0; border-radius: 5px; border: 1px solid #bee3f8;">
-            <h3 style="margin: 0 0 15px 0; color: #2b6cb0;">💡 Recommended Actions</h3>
-            <p style="margin: 0 0 10px 0;"><strong>General preventive measures:</strong></p>
+            <h3 style="margin: 0 0 15px 0; color: #2b6cb0;">💡 {% trans "Recommended Actions" %}</h3>
+            <p style="margin: 0 0 10px 0;"><strong>{% trans "General preventive measures:" %}</strong></p>
             <ul style="margin: 0 0 15px 0;">
-                <li>Take prescribed preventive medication if you have any</li>
-                <li>Stay well hydrated throughout the day</li>
-                <li>Maintain regular sleep and meal schedules</li>
-                <li>Avoid known personal triggers (certain foods, stress, etc.)</li>
+                <li>{% trans "Take prescribed preventive medication if you have any" %}</li>
+                <li>{% trans "Stay well hydrated throughout the day" %}</li>
+                <li>{% trans "Maintain regular sleep and meal schedules" %}</li>
+                <li>{% trans "Avoid known personal triggers (certain foods, stress, etc.)" %}</li>
             </ul>
 
             {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
-            <p style="margin: 0 0 10px 0;"><strong>Personalized tips based on current factors:</strong></p>
+            <p style="margin: 0 0 10px 0;"><strong>{% trans "Personalized tips based on current factors:" %}</strong></p>
             <ul style="margin: 0 0 15px 0;">
                 {% for tip in llm_prevention_tips %}
                 <li>{{ tip }}</li>
@@ -149,12 +149,11 @@
             </p>
         </div>
         
-        <p>Stay well,<br>
-        The Migraine Forecast Team</p>
+        <p>{% trans "Stay well," %}<br>
+        {% trans "The Migraine Forecast Team" %}</p>
     </div>
     <div class="footer">
-        <p>This is an automated message from the Migraine Forecast application. 
-        The predictions are based on weather data and statistical models, and should not be considered medical advice.</p>
+        <p>{% trans "This is an automated message from the Migraine Forecast application. The predictions are based on weather data and statistical models, and should not be considered medical advice." %}</p>
     </div>
 </body>
 </html>

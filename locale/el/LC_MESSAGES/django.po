@@ -1,0 +1,404 @@
+# Greek translations for Migraine Forecast
+# Copyright (C) 2025
+# This file is distributed under the same license as the Migraine Forecast package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-03 12:00+0000\n"
+"PO-Revision-Date: 2025-11-03 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Greek\n"
+"Language: el\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# Navigation and common terms
+msgid "Home"
+msgstr "Αρχική"
+
+msgid "Dashboard"
+msgstr "Πίνακας Ελέγχου"
+
+msgid "Locations"
+msgstr "Τοποθεσίες"
+
+msgid "Predictions"
+msgstr "Προβλέψεις"
+
+msgid "Migraine Predictions"
+msgstr "Προβλέψεις Ημικρανίας"
+
+msgid "Sinusitis Predictions"
+msgstr "Προβλέψεις Ιγμορίτιδας"
+
+msgid "Profile"
+msgstr "Προφίλ"
+
+msgid "Logout"
+msgstr "Αποσύνδεση"
+
+msgid "Login"
+msgstr "Σύνδεση"
+
+msgid "Register"
+msgstr "Εγγραφή"
+
+msgid "Language"
+msgstr "Γλώσσα"
+
+msgid "Preferred language for the interface"
+msgstr "Προτιμώμενη γλώσσα για τη διεπαφή"
+
+msgid "Migraine Forecast"
+msgstr "Πρόβλεψη Ημικρανίας"
+
+# Profile page
+msgid "User Profile"
+msgstr "Προφίλ Χρήστη"
+
+msgid "Back to Dashboard"
+msgstr "Επιστροφή στον Πίνακα Ελέγχου"
+
+msgid "Account Info"
+msgstr "Πληροφορίες Λογαριασμού"
+
+msgid "Username"
+msgstr "Όνομα Χρήστη"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Not provided"
+msgstr "Δεν έχει δοθεί"
+
+msgid "Date Joined"
+msgstr "Ημερομηνία Εγγραφής"
+
+msgid "Notifications"
+msgstr "Ειδοποιήσεις"
+
+msgid "Enabled"
+msgstr "Ενεργοποιημένο"
+
+msgid "Disabled"
+msgstr "Απενεργοποιημένο"
+
+msgid "Disabled (no email provided)"
+msgstr "Απενεργοποιημένο (δεν έχει δοθεί email)"
+
+msgid "Disabled by user"
+msgstr "Απενεργοποιημένο από τον χρήστη"
+
+msgid "Health & Sensitivity"
+msgstr "Υγεία & Ευαισθησία"
+
+msgid "Age"
+msgstr "Ηλικία"
+
+msgid "Prior Health Issues"
+msgstr "Προηγούμενα Προβλήματα Υγείας"
+
+msgid "Optional: anything that influences your migraines."
+msgstr "Προαιρετικό: οτιδήποτε επηρεάζει τις ημικρανίες σας."
+
+msgid "Notification Settings"
+msgstr "Ρυθμίσεις Ειδοποιήσεων"
+
+msgid "Enable Email Notifications"
+msgstr "Ενεργοποίηση Ειδοποιήσεων Email"
+
+msgid "Master switch for all email alerts"
+msgstr "Κύριος διακόπτης για όλες τις ειδοποιήσεις email"
+
+msgid "Notification Mode"
+msgstr "Λειτουργία Ειδοποιήσεων"
+
+msgid "How to deliver notifications"
+msgstr "Πώς να παραδοθούν οι ειδοποιήσεις"
+
+msgid "Immediate - Send alerts as they occur"
+msgstr "Άμεση - Αποστολή ειδοποιήσεων όταν συμβαίνουν"
+
+msgid "Daily Digest - Send one summary email per day"
+msgstr "Ημερήσια Σύνοψη - Αποστολή ενός email σύνοψης την ημέρα"
+
+msgid "Digest Time"
+msgstr "Ώρα Σύνοψης"
+
+msgid "Time to send daily digest"
+msgstr "Ώρα αποστολής ημερήσιας σύνοψης"
+
+msgid "Severity Threshold"
+msgstr "Όριο Σοβαρότητας"
+
+msgid "Minimum severity for notifications"
+msgstr "Ελάχιστη σοβαρότητα για ειδοποιήσεις"
+
+msgid "Medium and High"
+msgstr "Μέτρια και Υψηλή"
+
+msgid "High only"
+msgstr "Μόνο Υψηλή"
+
+msgid "Daily Notification Limit"
+msgstr "Ημερήσιο Όριο Ειδοποιήσεων"
+
+msgid "Maximum alerts per day"
+msgstr "Μέγιστες ειδοποιήσεις την ημέρα"
+
+msgid "Notification Frequency"
+msgstr "Συχνότητα Ειδοποιήσεων"
+
+msgid "Minimum hours between notifications"
+msgstr "Ελάχιστες ώρες μεταξύ ειδοποιήσεων"
+
+msgid "Quiet Hours"
+msgstr "Ώρες Ησυχίας"
+
+msgid "Enable Quiet Hours"
+msgstr "Ενεργοποίηση Ωρών Ησυχίας"
+
+msgid "Prevent notifications during specific times"
+msgstr "Αποτροπή ειδοποιήσεων σε συγκεκριμένες ώρες"
+
+msgid "Quiet Hours Start"
+msgstr "Έναρξη Ωρών Ησυχίας"
+
+msgid "Quiet Hours End"
+msgstr "Λήξη Ωρών Ησυχίας"
+
+msgid "Prediction Services"
+msgstr "Υπηρεσίες Πρόβλεψης"
+
+msgid "Enable Migraine Predictions"
+msgstr "Ενεργοποίηση Προβλέψεων Ημικρανίας"
+
+msgid "Enable Sinusitis Predictions"
+msgstr "Ενεργοποίηση Προβλέψεων Ιγμορίτιδας"
+
+msgid "Prediction Window"
+msgstr "Παράθυρο Πρόβλεψης"
+
+msgid "Prediction Window Start"
+msgstr "Έναρξη Παραθύρου Πρόβλεψης"
+
+msgid "Hours ahead to start predictions"
+msgstr "Ώρες μπροστά για έναρξη προβλέψεων"
+
+msgid "Prediction Window End"
+msgstr "Λήξη Παραθύρου Πρόβλεψης"
+
+msgid "Hours ahead to end predictions"
+msgstr "Ώρες μπροστά για λήξη προβλέψεων"
+
+msgid "Weather Sensitivity"
+msgstr "Ευαισθησία στον Καιρό"
+
+msgid "Overall Sensitivity"
+msgstr "Συνολική Ευαισθησία"
+
+msgid "Temperature Sensitivity"
+msgstr "Ευαισθησία στη Θερμοκρασία"
+
+msgid "Humidity Sensitivity"
+msgstr "Ευαισθησία στην Υγρασία"
+
+msgid "Pressure Sensitivity"
+msgstr "Ευαισθησία στην Πίεση"
+
+msgid "Cloud Cover Sensitivity"
+msgstr "Ευαισθησία στη Νεφοκάλυψη"
+
+msgid "Precipitation Sensitivity"
+msgstr "Ευαισθησία στις Βροχοπτώσεις"
+
+msgid "Save Changes"
+msgstr "Αποθήκευση Αλλαγών"
+
+msgid "Cancel"
+msgstr "Ακύρωση"
+
+# Dashboard
+msgid "Recent Predictions"
+msgstr "Πρόσφατες Προβλέψεις"
+
+msgid "High Risk Alerts"
+msgstr "Ειδοποιήσεις Υψηλού Κινδύνου"
+
+msgid "Add Location"
+msgstr "Προσθήκη Τοποθεσίας"
+
+msgid "No locations added yet"
+msgstr "Δεν έχουν προστεθεί τοποθεσίες ακόμα"
+
+msgid "You haven't added any locations yet. Add a location to start receiving migraine forecasts."
+msgstr "Δεν έχετε προσθέσει τοποθεσίες ακόμα. Προσθέστε μια τοποθεσία για να αρχίσετε να λαμβάνετε προβλέψεις ημικρανίας."
+
+# Common actions
+msgid "Edit"
+msgstr "Επεξεργασία"
+
+msgid "Delete"
+msgstr "Διαγραφή"
+
+msgid "View"
+msgstr "Προβολή"
+
+msgid "Submit"
+msgstr "Υποβολή"
+
+msgid "Close"
+msgstr "Κλείσιμο"
+
+# Weather terms
+msgid "Temperature"
+msgstr "Θερμοκρασία"
+
+msgid "Humidity"
+msgstr "Υγρασία"
+
+msgid "Pressure"
+msgstr "Πίεση"
+
+msgid "Cloud Cover"
+msgstr "Νεφοκάλυψη"
+
+msgid "Precipitation"
+msgstr "Βροχόπτωση"
+
+msgid "Wind Speed"
+msgstr "Ταχύτητα Ανέμου"
+
+# Probability levels
+msgid "Low"
+msgstr "Χαμηλή"
+
+msgid "Medium"
+msgstr "Μέτρια"
+
+msgid "High"
+msgstr "Υψηλή"
+
+# Messages
+msgid "Health profile updated successfully."
+msgstr "Το προφίλ υγείας ενημερώθηκε επιτυχώς."
+
+msgid "Please correct the errors below."
+msgstr "Παρακαλώ διορθώστε τα παρακάτω λάθη."
+
+msgid "Location added successfully!"
+msgstr "Η τοποθεσία προστέθηκε επιτυχώς!"
+
+msgid "Location deleted successfully!"
+msgstr "Η τοποθεσία διαγράφηκε επιτυχώς!"
+
+msgid "Language preference updated successfully."
+msgstr "Η προτίμηση γλώσσας ενημερώθηκε επιτυχώς."
+
+# Dashboard page
+msgid "High Migraine Risk Alert"
+msgstr "Υψηλός Κίνδυνος Ημικρανίας"
+
+msgid "High migraine probability detected in the next 24 hours:"
+msgstr "Εντοπίστηκε υψηλή πιθανότητα ημικρανίας τις επόμενες 24 ώρες:"
+
+msgid "High Sinusitis Risk Alert"
+msgstr "Υψηλός Κίνδυνος Ιγμορίτιδας"
+
+msgid "High sinusitis probability detected in the next 24 hours:"
+msgstr "Εντοπίστηκε υψηλή πιθανότητα ιγμορίτιδας τις επόμενες 24 ώρες:"
+
+msgid "Details"
+msgstr "Λεπτομέρειες"
+
+# Index page
+msgid "Predict migraine probability based on weather conditions and get timely alerts."
+msgstr "Προβλέψτε την πιθανότητα ημικρανίας με βάση τις καιρικές συνθήκες και λάβετε έγκαιρες ειδοποιήσεις."
+
+msgid "Go to Dashboard"
+msgstr "Μετάβαση στον Πίνακα Ελέγχου"
+
+msgid "Log In"
+msgstr "Σύνδεση"
+
+msgid "Weather-Based Predictions"
+msgstr "Προβλέψεις Βασισμένες στον Καιρό"
+
+msgid "Our app analyzes weather forecast data to predict migraine probability over the next 3-6 hours for your specified locations."
+msgstr "Η εφαρμογή μας αναλύει δεδομένα πρόβλεψης καιρού για να προβλέψει την πιθανότητα ημικρανίας τις επόμενες 3-6 ώρες για τις τοποθεσίες σας."
+
+msgid "Email Alerts"
+msgstr "Ειδοποιήσεις Email"
+
+msgid "Receive timely email notifications when weather conditions indicate a high probability of migraines."
+msgstr "Λάβετε έγκαιρες ειδοποιήσεις email όταν οι καιρικές συνθήκες υποδεικνύουν υψηλή πιθανότητα ημικρανίας."
+
+# Login/Register pages
+msgid "Password"
+msgstr "Κωδικός Πρόσβασης"
+
+msgid "Don't have an account?"
+msgstr "Δεν έχετε λογαριασμό;"
+
+msgid "Register here"
+msgstr "Εγγραφείτε εδώ"
+
+msgid "Confirm Password"
+msgstr "Επιβεβαίωση Κωδικού"
+
+msgid "Already have an account?"
+msgstr "Έχετε ήδη λογαριασμό;"
+
+msgid "Login here"
+msgstr "Συνδεθείτε εδώ"
+
+# Email templates
+msgid "Migraine Alert"
+msgstr "Ειδοποίηση Ημικρανίας"
+
+msgid "Hello"
+msgstr "Γεια σας"
+
+msgid "to"
+msgstr "έως"
+
+msgid "Model Analysis"
+msgstr "Ανάλυση Μοντέλου"
+
+msgid "Recommended Actions"
+msgstr "Προτεινόμενες Ενέργειες"
+
+msgid "General preventive measures:"
+msgstr "Γενικά προληπτικά μέτρα:"
+
+msgid "Take prescribed preventive medication if you have any"
+msgstr "Πάρτε τα συνταγογραφημένα προληπτικά φάρμακα αν έχετε"
+
+msgid "Stay well hydrated throughout the day"
+msgstr "Παραμείνετε καλά ενυδατωμένοι όλη την ημέρα"
+
+msgid "Maintain regular sleep and meal schedules"
+msgstr "Διατηρήστε τακτικά προγράμματα ύπνου και γευμάτων"
+
+msgid "Avoid known personal triggers (certain foods, stress, etc.)"
+msgstr "Αποφύγετε γνωστούς προσωπικούς παράγοντες (συγκεκριμένα τρόφιμα, άγχος, κλπ.)"
+
+msgid "Personalized tips based on current factors:"
+msgstr "Εξατομικευμένες συμβουλές βασισμένες στους τρέχοντες παράγοντες:"
+
+msgid "Stay well,"
+msgstr "Να είστε καλά,"
+
+msgid "The Migraine Forecast Team"
+msgstr "Η Ομάδα Πρόβλεψης Ημικρανίας"
+
+msgid "This is an automated message from the Migraine Forecast application. The predictions are based on weather data and statistical models, and should not be considered medical advice."
+msgstr "Αυτό είναι ένα αυτοματοποιημένο μήνυμα από την εφαρμογή Πρόβλεψης Ημικρανίας. Οι προβλέψεις βασίζονται σε δεδομένα καιρού και στατιστικά μοντέλα, και δεν πρέπει να θεωρούνται ιατρική συμβουλή."
+
+msgid "Health Alert - Migraine & Sinusitis"
+msgstr "Ειδοποίηση Υγείας - Ημικρανία & Ιγμορίτιδα"
+

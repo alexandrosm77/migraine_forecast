@@ -97,6 +97,18 @@ class UserHealthProfile(models.Model):
         default=6, help_text="End of prediction time window in hours ahead (default: 6 hours)"
     )
 
+    # Language preference
+    LANGUAGE_CHOICES = [
+        ("en", "English"),
+        ("el", "Ελληνικά"),  # Greek
+    ]
+    language = models.CharField(
+        max_length=10,
+        choices=LANGUAGE_CHOICES,
+        default="en",
+        help_text="Preferred language for the user interface and notifications",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -1,6 +1,7 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}User Profile - Migraine Forecast{% endblock %}
+{% block title %}{% trans "User Profile" %} - {% trans "Migraine Forecast" %}{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,90 +9,95 @@
         <div class="col-md-10 offset-md-1">
             <div class="card mt-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="mb-0">User Profile</h2>
-                    <a href="{% url 'forecast:dashboard' %}" class="btn btn-sm btn-outline-secondary">Back to Dashboard</a>
+                    <h2 class="mb-0">{% trans "User Profile" %}</h2>
+                    <a href="{% url 'forecast:dashboard' %}" class="btn btn-sm btn-outline-secondary">{% trans "Back to Dashboard" %}</a>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-5 border-end">
-                            <h5 class="mb-3">Account Info</h5>
+                            <h5 class="mb-3">{% trans "Account Info" %}</h5>
                             <div class="row mb-3">
-                                <div class="col-5"><strong>Username:</strong></div>
+                                <div class="col-5"><strong>{% trans "Username" %}:</strong></div>
                                 <div class="col-7">{{ user.username }}</div>
                             </div>
                             <div class="row mb-3">
-                                <div class="col-5"><strong>Email:</strong></div>
+                                <div class="col-5"><strong>{% trans "Email" %}:</strong></div>
                                 <div class="col-7">{{ user.email|default:"Not provided" }}</div>
                             </div>
                             <div class="row mb-3">
-                                <div class="col-5"><strong>Date Joined:</strong></div>
+                                <div class="col-5"><strong>{% trans "Date Joined" %}:</strong></div>
                                 <div class="col-7">{{ user.date_joined|date:"F j, Y" }}</div>
                             </div>
                             <div class="row mb-3">
-                                <div class="col-5"><strong>Locations:</strong></div>
+                                <div class="col-5"><strong>{% trans "Locations" %}:</strong></div>
                                 <div class="col-7">{{ locations.count }}</div>
                             </div>
                             <div class="row mb-3">
-                                <div class="col-5"><strong>Notifications:</strong></div>
+                                <div class="col-5"><strong>{% trans "Notifications" %}:</strong></div>
                                 <div class="col-7">
                                     {% if not user.email %}
-                                        <span class="text-muted">Disabled (no email provided)</span>
+                                        <span class="text-muted">{% trans "Disabled (no email provided)" %}</span>
                                     {% else %}
                                         {% if form.instance.email_notifications_enabled %}
-                                            <span class="text-success">✓ Enabled</span> (sent to {{ user.email }})
+                                            <span class="text-success">✓ {% trans "Enabled" %}</span> (sent to {{ user.email }})
                                         {% else %}
-                                            <span class="text-warning">Disabled by user</span>
+                                            <span class="text-warning">{% trans "Disabled by user" %}</span>
                                         {% endif %}
                                     {% endif %}
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-7">
-                            <h5 class="mb-3">Health & Sensitivity</h5>
+                            <h5 class="mb-3">{% trans "Health & Sensitivity" %}</h5>
                             <form method="post" novalidate>
                                 {% csrf_token %}
                                 <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label for="id_age" class="form-label">Age</label>
+                                    <div class="col-md-6">
+                                        <label for="id_language" class="form-label">{% trans "Language" %}</label>
+                                        {{ form.language }}
+                                        <div class="form-text">{% trans "Preferred language for the interface" %}</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_age" class="form-label">{% trans "Age" %}</label>
                                         {{ form.age }}
                                     </div>
-                                    <div class="col-md-8">
-                                        <label for="id_prior_conditions" class="form-label">Prior Health Issues</label>
+                                    <div class="col-12">
+                                        <label for="id_prior_conditions" class="form-label">{% trans "Prior Health Issues" %}</label>
                                         {{ form.prior_conditions }}
-                                        <div class="form-text">Optional: anything that influences your migraines.</div>
+                                        <div class="form-text">{% trans "Optional: anything that influences your migraines." %}</div>
                                     </div>
                                     <div class="col-12">
                                         <hr class="my-3">
-                                        <h6 class="mb-3">📧 Notification Settings</h6>
+                                        <h6 class="mb-3">📧 {% trans "Notification Settings" %}</h6>
                                     </div>
                                     <div class="col-12">
                                         <div class="form-check form-switch">
                                             {{ form.email_notifications_enabled }}
                                             <label class="form-check-label" for="id_email_notifications_enabled">
-                                                <strong>Enable Email Notifications</strong>
+                                                <strong>{% trans "Enable Email Notifications" %}</strong>
                                             </label>
-                                            <div class="form-text">Master switch for all email alerts</div>
+                                            <div class="form-text">{% trans "Master switch for all email alerts" %}</div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="id_notification_mode" class="form-label">Notification Mode</label>
+                                        <label for="id_notification_mode" class="form-label">{% trans "Notification Mode" %}</label>
                                         {{ form.notification_mode }}
-                                        <div class="form-text">How to deliver notifications</div>
+                                        <div class="form-text">{% trans "How to deliver notifications" %}</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="id_digest_time" class="form-label">Daily Digest Time</label>
+                                        <label for="id_digest_time" class="form-label">{% trans "Digest Time" %}</label>
                                         {{ form.digest_time }}
-                                        <div class="form-text">Time to send digest (if digest mode enabled)</div>
+                                        <div class="form-text">{% trans "Time to send daily digest" %}</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="id_notification_severity_threshold" class="form-label">Severity Threshold</label>
+                                        <label for="id_notification_severity_threshold" class="form-label">{% trans "Severity Threshold" %}</label>
                                         {{ form.notification_severity_threshold }}
-                                        <div class="form-text">Only notify for predictions at or above this level</div>
+                                        <div class="form-text">{% trans "Minimum severity for notifications" %}</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="id_notification_frequency_hours" class="form-label">Notification Frequency</label>
+                                        <label for="id_notification_frequency_hours" class="form-label">{% trans "Notification Frequency" %}</label>
                                         {{ form.notification_frequency_hours }}
-                                        <div class="form-text">Minimum hours between notifications (1-24)</div>
+                                        <div class="form-text">{% trans "Minimum hours between notifications" %}</div>
                                     </div>
                                     <div class="col-12">
                                         <hr class="my-2">

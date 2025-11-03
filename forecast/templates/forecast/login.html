@@ -1,6 +1,7 @@
 {% extends 'forecast/base.html' %}
+{% load i18n %}
 
-{% block title %}Login - Migraine Forecast{% endblock %}
+{% block title %}{% trans "Login" %} - {% trans "Migraine Forecast" %}{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,26 +9,26 @@
         <div class="col-md-6">
             <div class="card mt-5">
                 <div class="card-header">
-                    <h2 class="text-center">Login</h2>
+                    <h2 class="text-center">{% trans "Login" %}</h2>
                 </div>
                 <div class="card-body">
                     <form method="post">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label for="id_username" class="form-label">Username</label>
+                            <label for="id_username" class="form-label">{% trans "Username" %}</label>
                             <input type="text" name="username" class="form-control" id="id_username" required>
                         </div>
                         <div class="mb-3">
-                            <label for="id_password" class="form-label">Password</label>
+                            <label for="id_password" class="form-label">{% trans "Password" %}</label>
                             <input type="password" name="password" class="form-control" id="id_password" required>
                         </div>
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">Login</button>
+                            <button type="submit" class="btn btn-primary">{% trans "Login" %}</button>
                         </div>
                     </form>
                 </div>
                 <div class="card-footer text-center">
-                    <p class="mb-0">Don't have an account? <a href="{% url 'forecast:register' %}">Register here</a></p>
+                    <p class="mb-0">{% trans "Don't have an account?" %} <a href="{% url 'forecast:register' %}">{% trans "Register here" %}</a></p>
                 </div>
             </div>
         </div>

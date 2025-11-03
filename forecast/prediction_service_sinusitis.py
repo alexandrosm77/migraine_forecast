@@ -115,6 +115,7 @@ class SinusitisPredictionService:
                     "sensitivity_pressure": profile.sensitivity_pressure,
                     "sensitivity_cloud_cover": profile.sensitivity_cloud_cover,
                     "sensitivity_precipitation": profile.sensitivity_precipitation,
+                    "language": profile.language,  # Pass user's language preference to LLM
                 }
                 # Map weight keys to profile keys and adjust weights
                 factor_to_profile = {

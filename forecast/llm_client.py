@@ -134,11 +134,24 @@ class LLMClient:
           - rationale: short string
         Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
         """
+        # Determine user's preferred language
+        user_language = None
+        if user_profile and "language" in user_profile:
+            user_language = user_profile["language"]
+
+        # Build language instruction for LLM
+        language_instruction = ""
+        if user_language == "el":
+            language_instruction = " Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
+        elif user_language and user_language != "en":
+            language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
+
         # System prompt with explicit JSON output instruction and schema
         sys_prompt = (
             "You are a migraine risk assessor. Analyze weather risk factors "
             "(0-1 scale, higher=riskier) and output ONLY valid JSON matching "
-            "the schema below. Do not include any text before or after the JSON.\n\n"
+            "the schema below. Do not include any text before or after the JSON."
+            f"{language_instruction}\n\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
@@ -269,12 +282,24 @@ class LLMClient:
           - rationale: short string
         Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
         """
+        # Determine user's preferred language
+        user_language = None
+        if user_profile and "language" in user_profile:
+            user_language = user_profile["language"]
+
+        # Build language instruction for LLM
+        language_instruction = ""
+        if user_language == "el":
+            language_instruction = " Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
+        elif user_language and user_language != "en":
+            language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
+
         # System prompt for sinusitis with explicit JSON output instruction and schema
         sys_prompt = (
             "You are a sinusitis risk assessor. Analyze weather risk factors (0-1 scale, higher=riskier) "
             "and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON. "
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
-            "low dries sinuses), barometric pressure changes, and precipitation (increases allergens).\n\n"
+            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens).{language_instruction}\n\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
