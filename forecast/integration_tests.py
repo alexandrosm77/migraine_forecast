@@ -263,6 +263,7 @@ class EndToEndWorkflowTest(TestCase):
         # STEP 3: Configure User Health Profile with Custom Preferences
         # ============================================================
         profile_data = {
+            "language": "en",
             "age": 35,
             "prior_conditions": "Occasional migraines, sensitive to weather changes",
             "email_notifications_enabled": True,
