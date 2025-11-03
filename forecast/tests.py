@@ -1400,7 +1400,7 @@ class LanguageSwitchingTest(TestCase):
         """Test that unauthenticated users are redirected to login."""
         response = self.client.get("/set-language/el/")
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith("/accounts/login/"))
+        self.assertTrue(response.url.startswith("/login/"))
 
     def test_user_language_middleware(self):
         """Test that middleware activates user's preferred language."""
