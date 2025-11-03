@@ -147,9 +147,11 @@ class OpenMeteoClient:
             if timezone.is_naive(target_time):
                 target_time = timezone.make_aware(target_time)
 
-            # Only process forecasts for the next 3-6 hours
+            # Store all future forecasts (up to 72 hours based on API days=3 parameter)
+            # This allows users to configure custom prediction windows (e.g., 0-23 hours)
+            # The prediction service will filter based on user preferences
             hours_ahead = (target_time - forecast_time).total_seconds() / 3600
-            if not (3 <= hours_ahead <= 6):
+            if hours_ahead < 0:  # Skip past forecasts
                 continue
 
             forecast_entry = {

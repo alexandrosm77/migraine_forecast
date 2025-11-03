@@ -177,17 +177,41 @@ class MigrainePredictionService:
                 try:
                     fc_list = list(forecasts)
                     prev_list = list(previous_forecasts)
+
+                    # Calculate temperature statistics for the prediction window
+                    temps = [f.temperature for f in fc_list] if fc_list else []
+                    pressures = [f.pressure for f in fc_list] if fc_list else []
+                    humidities = [f.humidity for f in fc_list] if fc_list else []
+
                     # Only send aggregates and changes, not raw samples (reduces token count significantly)
                     context_payload = {
                         "aggregates": {
                             "avg_forecast_temperature": (
-                                round(float(np.mean([f.temperature for f in fc_list])), 1) if fc_list else None
+                                round(float(np.mean(temps)), 1) if temps else None
+                            ),
+                            "min_forecast_temperature": (
+                                round(float(min(temps)), 1) if temps else None
+                            ),
+                            "max_forecast_temperature": (
+                                round(float(max(temps)), 1) if temps else None
+                            ),
+                            "temperature_range": (
+                                round(float(max(temps) - min(temps)), 1) if temps else None
                             ),
                             "avg_forecast_humidity": (
-                                round(float(np.mean([f.humidity for f in fc_list])), 0) if fc_list else None
+                                round(float(np.mean(humidities)), 0) if humidities else None
                             ),
                             "avg_forecast_pressure": (
-                                round(float(np.mean([f.pressure for f in fc_list])), 1) if fc_list else None
+                                round(float(np.mean(pressures)), 1) if pressures else None
+                            ),
+                            "min_forecast_pressure": (
+                                round(float(min(pressures)), 1) if pressures else None
+                            ),
+                            "max_forecast_pressure": (
+                                round(float(max(pressures)), 1) if pressures else None
+                            ),
+                            "pressure_range": (
+                                round(float(max(pressures) - min(pressures)), 1) if pressures else None
                             ),
                             "max_precipitation": round(float(max([f.precipitation for f in fc_list], default=0)), 1),
                         },
@@ -213,21 +237,81 @@ class MigrainePredictionService:
                         },
                     }
 
-                    # Add compact temporal context
-                    hours_ahead = round((end_time - start_time).total_seconds() / 3600, 1)
-                    hour_of_day = start_time.hour
-                    if 5 <= hour_of_day < 12:
-                        day_period = "morning"
-                    elif 12 <= hour_of_day < 17:
-                        day_period = "afternoon"
-                    elif 17 <= hour_of_day < 21:
-                        day_period = "evening"
-                    else:
-                        day_period = "night"
+                    # For large windows (>6 hours), add intraday variation metrics
+                    # This helps LLM understand temperature swings throughout the day
+                    if len(fc_list) > 6:
+                        # Calculate max temperature change between consecutive hours
+                        temp_deltas = [abs(fc_list[i+1].temperature - fc_list[i].temperature)
+                                      for i in range(len(fc_list)-1)]
+                        max_hourly_temp_change = max(temp_deltas) if temp_deltas else 0
 
-                    context_payload["forecast_time"] = {
-                        "hours_ahead": hours_ahead,
-                        "day_period": day_period,
+                        # Calculate max pressure change between consecutive hours
+                        pressure_deltas = [abs(fc_list[i+1].pressure - fc_list[i].pressure)
+                                          for i in range(len(fc_list)-1)]
+                        max_hourly_pressure_change = max(pressure_deltas) if pressure_deltas else 0
+
+                        context_payload["intraday_variation"] = {
+                            "max_hourly_temp_change": round(float(max_hourly_temp_change), 1),
+                            "max_hourly_pressure_change": round(float(max_hourly_pressure_change), 1),
+                            "window_hours": len(fc_list),
+                        }
+
+                    # Add comprehensive temporal context
+                    now = timezone.now()
+                    hours_ahead = round((end_time - start_time).total_seconds() / 3600, 1)
+
+                    # Current time information
+                    current_hour = now.hour
+                    if 5 <= current_hour < 12:
+                        current_period = "morning"
+                    elif 12 <= current_hour < 17:
+                        current_period = "afternoon"
+                    elif 17 <= current_hour < 21:
+                        current_period = "evening"
+                    else:
+                        current_period = "night"
+
+                    # Prediction window start time information
+                    start_hour = start_time.hour
+                    if 5 <= start_hour < 12:
+                        window_start_period = "morning"
+                    elif 12 <= start_hour < 17:
+                        window_start_period = "afternoon"
+                    elif 17 <= start_hour < 21:
+                        window_start_period = "evening"
+                    else:
+                        window_start_period = "night"
+
+                    # Day of week (0=Monday, 6=Sunday)
+                    day_of_week = now.weekday()
+                    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    is_weekend = day_of_week >= 5
+
+                    # Season (Northern Hemisphere)
+                    month = now.month
+                    if month in [12, 1, 2]:
+                        season = "winter"
+                    elif month in [3, 4, 5]:
+                        season = "spring"
+                    elif month in [6, 7, 8]:
+                        season = "summer"
+                    else:
+                        season = "fall"
+
+                    context_payload["temporal_context"] = {
+                        # Current time when prediction is being made
+                        "current_time": now.strftime("%Y-%m-%d %H:%M"),
+                        "current_hour": current_hour,
+                        "current_period": current_period,
+                        "day_of_week": day_names[day_of_week],
+                        "is_weekend": is_weekend,
+                        "season": season,
+
+                        # Prediction window information
+                        "window_start_time": start_time.strftime("%Y-%m-%d %H:%M"),
+                        "window_end_time": end_time.strftime("%Y-%m-%d %H:%M"),
+                        "window_start_period": window_start_period,
+                        "window_duration_hours": hours_ahead,
                     }
 
                     # Add summarized previous predictions (last 24h only)

@@ -171,40 +171,109 @@ class SinusitisPredictionService:
                     prev_list = list(previous_forecasts)
                     context_payload = {}
 
-                    # Add forecast time information
-                    if fc_list:
-                        first_fc = fc_list[0]
-                        hours_ahead = (first_fc.target_time - start_time).total_seconds() / 3600
-                        context_payload["forecast_time"] = {
-                            "hours_ahead": round(hours_ahead, 1),
-                            "day_period": (
-                                "morning"
-                                if 6 <= first_fc.target_time.hour < 12
-                                else (
-                                    "afternoon"
-                                    if 12 <= first_fc.target_time.hour < 18
-                                    else "evening" if 18 <= first_fc.target_time.hour < 22 else "night"
-                                )
-                            ),
-                        }
+                    # Add comprehensive temporal context
+                    now = timezone.now()
+                    hours_ahead = round((end_time - start_time).total_seconds() / 3600, 1)
 
-                    # Add aggregated weather data
+                    # Current time information
+                    current_hour = now.hour
+                    if 5 <= current_hour < 12:
+                        current_period = "morning"
+                    elif 12 <= current_hour < 17:
+                        current_period = "afternoon"
+                    elif 17 <= current_hour < 21:
+                        current_period = "evening"
+                    else:
+                        current_period = "night"
+
+                    # Prediction window start time information
+                    start_hour = start_time.hour
+                    if 5 <= start_hour < 12:
+                        window_start_period = "morning"
+                    elif 12 <= start_hour < 17:
+                        window_start_period = "afternoon"
+                    elif 17 <= start_hour < 21:
+                        window_start_period = "evening"
+                    else:
+                        window_start_period = "night"
+
+                    # Day of week (0=Monday, 6=Sunday)
+                    day_of_week = now.weekday()
+                    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    is_weekend = day_of_week >= 5
+
+                    # Season (Northern Hemisphere)
+                    month = now.month
+                    if month in [12, 1, 2]:
+                        season = "winter"
+                    elif month in [3, 4, 5]:
+                        season = "spring"
+                    elif month in [6, 7, 8]:
+                        season = "summer"
+                    else:
+                        season = "fall"
+
+                    context_payload["temporal_context"] = {
+                        # Current time when prediction is being made
+                        "current_time": now.strftime("%Y-%m-%d %H:%M"),
+                        "current_hour": current_hour,
+                        "current_period": current_period,
+                        "day_of_week": day_names[day_of_week],
+                        "is_weekend": is_weekend,
+                        "season": season,
+
+                        # Prediction window information
+                        "window_start_time": start_time.strftime("%Y-%m-%d %H:%M"),
+                        "window_end_time": end_time.strftime("%Y-%m-%d %H:%M"),
+                        "window_start_period": window_start_period,
+                        "window_duration_hours": hours_ahead,
+                    }
+
+                    # Add aggregated weather data with range information
                     if fc_list and prev_list:
-                        avg_forecast_temp = np.mean([f.temperature for f in fc_list])
-                        avg_forecast_pressure = np.mean([f.pressure for f in fc_list])
-                        avg_forecast_humidity = np.mean([f.humidity for f in fc_list])
+                        temps = [f.temperature for f in fc_list]
+                        pressures = [f.pressure for f in fc_list]
+                        humidities = [f.humidity for f in fc_list]
+
+                        avg_forecast_temp = np.mean(temps)
+                        avg_forecast_pressure = np.mean(pressures)
+                        avg_forecast_humidity = np.mean(humidities)
                         avg_prev_temp = np.mean([f.temperature for f in prev_list])
                         avg_prev_pressure = np.mean([f.pressure for f in prev_list])
 
                         context_payload["aggregates"] = {
                             "avg_forecast_temp": round(float(avg_forecast_temp), 1),
+                            "min_forecast_temp": round(float(min(temps)), 1),
+                            "max_forecast_temp": round(float(max(temps)), 1),
+                            "temperature_range": round(float(max(temps) - min(temps)), 1),
                             "avg_forecast_pressure": round(float(avg_forecast_pressure), 1),
+                            "min_forecast_pressure": round(float(min(pressures)), 1),
+                            "max_forecast_pressure": round(float(max(pressures)), 1),
+                            "pressure_range": round(float(max(pressures) - min(pressures)), 1),
                             "avg_forecast_humidity": round(float(avg_forecast_humidity), 1),
                         }
                         context_payload["changes"] = {
                             "temperature_change": round(float(avg_forecast_temp - avg_prev_temp), 1),
                             "pressure_change": round(float(avg_forecast_pressure - avg_prev_pressure), 1),
                         }
+
+                        # For large windows (>6 hours), add intraday variation metrics
+                        if len(fc_list) > 6:
+                            # Calculate max temperature change between consecutive hours
+                            temp_deltas = [abs(fc_list[i+1].temperature - fc_list[i].temperature)
+                                          for i in range(len(fc_list)-1)]
+                            max_hourly_temp_change = max(temp_deltas) if temp_deltas else 0
+
+                            # Calculate max pressure change between consecutive hours
+                            pressure_deltas = [abs(fc_list[i+1].pressure - fc_list[i].pressure)
+                                              for i in range(len(fc_list)-1)]
+                            max_hourly_pressure_change = max(pressure_deltas) if pressure_deltas else 0
+
+                            context_payload["intraday_variation"] = {
+                                "max_hourly_temp_change": round(float(max_hourly_temp_change), 1),
+                                "max_hourly_pressure_change": round(float(max_hourly_pressure_change), 1),
+                                "window_hours": len(fc_list),
+                            }
 
                     # Add previous sinusitis predictions summary
                     if user:

@@ -217,6 +217,146 @@ class EndToEndWorkflowTest(TestCase):
         self.weather_api_parse_patcher.stop()
         self.email_patcher.stop()
 
+    def test_large_prediction_window(self):
+        """
+        Test that large prediction windows (e.g., 0-23 hours) work correctly.
+
+        This test verifies:
+        1. Weather data is collected for the full 72-hour forecast period
+        2. Predictions can use custom large windows (0-23 hours)
+        3. Temperature changes throughout the day are captured and analyzed
+        """
+
+        # ============================================================
+        # STEP 1: Create User with Large Prediction Window
+        # ============================================================
+        user = User.objects.create_user(
+            username="large_window_user",
+            email="large_window@example.com",
+            password="testpass123"
+        )
+
+        # Create profile with 0-23 hour prediction window
+        from .models import UserHealthProfile
+        UserHealthProfile.objects.create(
+            user=user,
+            prediction_window_start_hours=0,
+            prediction_window_end_hours=23,
+            notification_frequency_hours=24,
+        )
+
+        # ============================================================
+        # STEP 2: Create Location
+        # ============================================================
+        location = Location.objects.create(
+            user=user,
+            city="Test City",
+            country="Test Country",
+            latitude=40.0,
+            longitude=-74.0,
+        )
+
+        # ============================================================
+        # STEP 3: Mock Weather API with 24 Hours of Data
+        # ============================================================
+        now = timezone.now()
+
+        # Mock get_forecast to return 24 hours of data with temperature variations
+        self.mock_weather_get.return_value = {
+            "hourly": {
+                "time": [(now + timedelta(hours=i)).isoformat() for i in range(24)],
+                # Simulate temperature changes throughout the day
+                "temperature_2m": [15.0 + 10 * abs((i - 12) / 12) for i in range(24)],  # Varies from 15-25°C
+                "relative_humidity_2m": [60.0 + i for i in range(24)],
+                "surface_pressure": [1013.0 - i * 0.3 for i in range(24)],  # Pressure drop
+                "wind_speed_10m": [10.0 + i * 0.5 for i in range(24)],
+                "precipitation": [0.0] * 24,
+                "cloud_cover": [30.0 + i * 2 for i in range(24)],
+            }
+        }
+
+        # Mock parse_forecast_data to return all 24 hours
+        def mock_parse_large_window(forecast_data, location_obj):
+            """Mock parser that returns 24 hours of forecast entries"""
+            parsed = []
+            for i in range(24):
+                parsed.append(
+                    {
+                        "location": location_obj,
+                        "target_time": now + timedelta(hours=i),
+                        "forecast_time": now,
+                        "temperature": 15.0 + 10 * abs((i - 12) / 12),
+                        "humidity": 60.0 + i,
+                        "pressure": 1013.0 - i * 0.3,
+                        "wind_speed": 10.0 + i * 0.5,
+                        "precipitation": 0.0,
+                        "cloud_cover": 30.0 + i * 2,
+                    }
+                )
+            return parsed
+
+        self.mock_weather_parse.side_effect = mock_parse_large_window
+
+        # ============================================================
+        # STEP 4: Collect Weather Data
+        # ============================================================
+        from .management.commands.collect_weather_data import Command as CollectWeatherCommand
+
+        collect_cmd = CollectWeatherCommand()
+        collect_cmd.handle(cleanup_hours=48, skip_cleanup=False)
+
+        # Verify we have forecasts for the full 24-hour window
+        forecasts = WeatherForecast.objects.filter(location=location)
+        self.assertEqual(forecasts.count(), 24, "Should have 24 hours of forecast data")
+
+        # Verify forecasts span the full time range
+        forecast_times = [f.target_time for f in forecasts.order_by("target_time")]
+        time_span_hours = (forecast_times[-1] - forecast_times[0]).total_seconds() / 3600
+        self.assertGreaterEqual(time_span_hours, 23, "Forecasts should span at least 23 hours")
+
+        # ============================================================
+        # STEP 5: Generate Predictions with Large Window
+        # ============================================================
+        from .management.commands.generate_predictions import Command as GeneratePredictionsCommand
+
+        predict_cmd = GeneratePredictionsCommand()
+        predict_cmd.handle(cleanup_days=7, skip_cleanup=False, location=None)
+
+        # Verify prediction was created
+        from .models import MigrainePrediction
+        predictions = MigrainePrediction.objects.filter(user=user, location=location)
+        self.assertGreater(predictions.count(), 0, "Should have created at least one prediction")
+
+        prediction = predictions.first()
+
+        # Verify prediction uses the large 0-23 hour window
+        time_diff_start = (prediction.target_time_start - now).total_seconds() / 3600
+        time_diff_end = (prediction.target_time_end - now).total_seconds() / 3600
+        self.assertLess(time_diff_start, 1, "Start should be close to 0 hours")
+        self.assertGreater(time_diff_end, 22, "End should be close to 23 hours")
+
+        # ============================================================
+        # STEP 6: Verify Temperature Changes Are Captured
+        # ============================================================
+        # Get forecasts used in the prediction
+        prediction_forecasts = WeatherForecast.objects.filter(
+            location=location,
+            target_time__gte=prediction.target_time_start,
+            target_time__lte=prediction.target_time_end,
+        ).order_by("target_time")
+
+        self.assertGreater(prediction_forecasts.count(), 10, "Should have many forecast points in 23-hour window")
+
+        # Verify temperature variation is captured
+        temps = [f.temperature for f in prediction_forecasts]
+        temp_range = max(temps) - min(temps)
+        self.assertGreater(temp_range, 5, "Should capture significant temperature variation throughout the day")
+
+        # Verify pressure changes are captured
+        pressures = [f.pressure for f in prediction_forecasts]
+        pressure_range = max(pressures) - min(pressures)
+        self.assertGreater(pressure_range, 3, "Should capture pressure changes throughout the day")
+
     def test_complete_user_journey(self):
         """
         Test the complete user journey from registration to receiving notifications.
