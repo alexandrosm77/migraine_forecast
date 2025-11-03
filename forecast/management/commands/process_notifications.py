@@ -45,18 +45,13 @@ class Command(BaseCommand):
             set_tag("task", "notification_processing")
 
             start_time = timezone.now()
-            self.stdout.write(
-                self.style.SUCCESS(f"[{start_time}] Starting notification processing...")
-            )
+            self.stdout.write(self.style.SUCCESS(f"[{start_time}] Starting notification processing..."))
 
             add_breadcrumb(
                 category="cron",
                 message="Notification processing started",
                 level="info",
-                data={
-                    "start_time": str(start_time),
-                    "dry_run": options["dry_run"]
-                }
+                data={"start_time": str(start_time), "dry_run": options["dry_run"]},
             )
 
             if options["dry_run"]:
@@ -84,44 +79,56 @@ class Command(BaseCommand):
 
                 if options["force"]:
                     # For testing: get recent predictions regardless of sent status
-                    migraine_pred = MigrainePrediction.objects.filter(
-                        location=location,
-                        prediction_time__gte=recent_time,
-                        probability__in=["HIGH", "MEDIUM"]
-                    ).order_by("-prediction_time").first()
+                    migraine_pred = (
+                        MigrainePrediction.objects.filter(
+                            location=location, prediction_time__gte=recent_time, probability__in=["HIGH", "MEDIUM"]
+                        )
+                        .order_by("-prediction_time")
+                        .first()
+                    )
 
-                    sinusitis_pred = SinusitisPrediction.objects.filter(
-                        location=location,
-                        prediction_time__gte=recent_time,
-                        probability__in=["HIGH", "MEDIUM"]
-                    ).order_by("-prediction_time").first()
+                    sinusitis_pred = (
+                        SinusitisPrediction.objects.filter(
+                            location=location, prediction_time__gte=recent_time, probability__in=["HIGH", "MEDIUM"]
+                        )
+                        .order_by("-prediction_time")
+                        .first()
+                    )
                 else:
                     # Normal mode: only unsent predictions
-                    migraine_pred = MigrainePrediction.objects.filter(
-                        location=location,
-                        prediction_time__gte=recent_time,
-                        probability__in=["HIGH", "MEDIUM"],
-                        notification_sent=False
-                    ).order_by("-prediction_time").first()
+                    migraine_pred = (
+                        MigrainePrediction.objects.filter(
+                            location=location,
+                            prediction_time__gte=recent_time,
+                            probability__in=["HIGH", "MEDIUM"],
+                            notification_sent=False,
+                        )
+                        .order_by("-prediction_time")
+                        .first()
+                    )
 
-                    sinusitis_pred = SinusitisPrediction.objects.filter(
-                        location=location,
-                        prediction_time__gte=recent_time,
-                        probability__in=["HIGH", "MEDIUM"],
-                        notification_sent=False
-                    ).order_by("-prediction_time").first()
+                    sinusitis_pred = (
+                        SinusitisPrediction.objects.filter(
+                            location=location,
+                            prediction_time__gte=recent_time,
+                            probability__in=["HIGH", "MEDIUM"],
+                            notification_sent=False,
+                        )
+                        .order_by("-prediction_time")
+                        .first()
+                    )
 
                 # Add to dictionaries if found
                 if migraine_pred:
                     migraine_predictions[location.id] = {
                         "probability": migraine_pred.probability,
-                        "prediction": migraine_pred
+                        "prediction": migraine_pred,
                     }
 
                 if sinusitis_pred:
                     sinusitis_predictions[location.id] = {
                         "probability": sinusitis_pred.probability,
-                        "prediction": sinusitis_pred
+                        "prediction": sinusitis_pred,
                     }
 
             # Count pending notifications
@@ -138,8 +145,8 @@ class Command(BaseCommand):
                 data={
                     "migraine_count": len(migraine_predictions),
                     "sinusitis_count": len(sinusitis_predictions),
-                    "total_pending": total_pending
-                }
+                    "total_pending": total_pending,
+                },
             )
 
             if total_pending == 0:
@@ -179,26 +186,27 @@ class Command(BaseCommand):
                         migraine_predictions, sinusitis_predictions
                     )
 
-                    self.stdout.write(
-                        self.style.SUCCESS(f"\n✓ Successfully sent {notifications_sent} notification(s)")
-                    )
+                    self.stdout.write(self.style.SUCCESS(f"\n✓ Successfully sent {notifications_sent} notification(s)"))
 
                     add_breadcrumb(
                         category="cron",
                         message="Notifications sent",
                         level="info",
-                        data={"notifications_sent": notifications_sent}
+                        data={"notifications_sent": notifications_sent},
                     )
 
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f"\n✗ Error sending notifications: {e}"))
                     logger.error(f"Error sending notifications: {e}", exc_info=True)
 
-                    set_context("notification_send_error", {
-                        "migraine_count": len(migraine_predictions),
-                        "sinusitis_count": len(sinusitis_predictions),
-                        "total_pending": total_pending
-                    })
+                    set_context(
+                        "notification_send_error",
+                        {
+                            "migraine_count": len(migraine_predictions),
+                            "sinusitis_count": len(sinusitis_predictions),
+                            "total_pending": total_pending,
+                        },
+                    )
                     capture_exception(e)
                     notifications_sent = 0
             else:
@@ -227,20 +235,16 @@ class Command(BaseCommand):
                 "notifications_sent": notifications_sent,
                 "duration_seconds": duration,
                 "completed_at": str(end_time),
-                "dry_run": options["dry_run"]
+                "dry_run": options["dry_run"],
             }
 
             add_breadcrumb(
-                category="cron",
-                message="Notification processing completed",
-                level="info",
-                data=summary_data
+                category="cron", message="Notification processing completed", level="info", data=summary_data
             )
 
             if not options["dry_run"]:
                 capture_message(
-                    f"Notification processing completed: {notifications_sent} notification(s) sent",
-                    level="info"
+                    f"Notification processing completed: {notifications_sent} notification(s) sent", level="info"
                 )
 
             self.stdout.write("=" * 60)

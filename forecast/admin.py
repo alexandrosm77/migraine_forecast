@@ -116,7 +116,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "notification_severity_threshold",
         "quiet_hours_enabled",
         "migraine_predictions_enabled",
-        "sinusitis_predictions_enabled"
+        "sinusitis_predictions_enabled",
     )
     fieldsets = (
         (
@@ -445,21 +445,18 @@ class MigraineAdminSite(admin.AdminSite):
                 # Normal mode: use decoupled pipeline
                 if not notify_only:
                     # Task 1: Collect weather data
-                    commands.append((
-                        "Task 1: Collect Weather Data",
-                        [sys.executable, "manage.py", "collect_weather_data"]
-                    ))
+                    commands.append(
+                        ("Task 1: Collect Weather Data", [sys.executable, "manage.py", "collect_weather_data"])
+                    )
                     # Task 2: Generate predictions
-                    commands.append((
-                        "Task 2: Generate Predictions",
-                        [sys.executable, "manage.py", "generate_predictions"]
-                    ))
+                    commands.append(
+                        ("Task 2: Generate Predictions", [sys.executable, "manage.py", "generate_predictions"])
+                    )
 
                 # Task 3: Process notifications (always run in normal mode)
-                commands.append((
-                    "Task 3: Process Notifications",
-                    [sys.executable, "manage.py", "process_notifications"]
-                ))
+                commands.append(
+                    ("Task 3: Process Notifications", [sys.executable, "manage.py", "process_notifications"])
+                )
 
             # Yield initial HTML with updated title
             total_commands = len(commands)
@@ -571,7 +568,9 @@ class MigraineAdminSite(admin.AdminSite):
 <body>
     <div class="header">
         <h1><span class="spinner"></span>Running Prediction Check <span class="status running">RUNNING</span></h1>
-        <div class="command">Executing """ + str(total_commands) + """ task(s) in decoupled pipeline</div>
+        <div class="command">Executing """ + str(
+                total_commands
+            ) + """ task(s) in decoupled pipeline</div>
     </div>"""
 
             # Run all commands sequentially and stream output

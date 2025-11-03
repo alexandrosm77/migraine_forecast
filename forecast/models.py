@@ -35,8 +35,7 @@ class UserHealthProfile(models.Model):
         default=1, help_text="Maximum health alert emails per day for this user (0 = disabled)"
     )
     notification_frequency_hours = models.IntegerField(
-        default=3,
-        help_text="Minimum hours between notifications (default: 3 hours). Prevents notification spam."
+        default=3, help_text="Minimum hours between notifications (default: 3 hours). Prevents notification spam."
     )
 
     # Per-prediction-type notification limits
@@ -56,24 +55,17 @@ class UserHealthProfile(models.Model):
         max_length=10,
         choices=SEVERITY_CHOICES,
         default="MEDIUM",
-        help_text="Only send notifications for predictions at or above this severity level"
+        help_text="Only send notifications for predictions at or above this severity level",
     )
 
     # Quiet hours / Do Not Disturb
     quiet_hours_enabled = models.BooleanField(
-        default=False,
-        help_text="Enable quiet hours to prevent notifications during specific times"
+        default=False, help_text="Enable quiet hours to prevent notifications during specific times"
     )
     quiet_hours_start = models.TimeField(
-        null=True,
-        blank=True,
-        help_text="Start of quiet hours (e.g., 22:00 for 10 PM)"
+        null=True, blank=True, help_text="Start of quiet hours (e.g., 22:00 for 10 PM)"
     )
-    quiet_hours_end = models.TimeField(
-        null=True,
-        blank=True,
-        help_text="End of quiet hours (e.g., 07:00 for 7 AM)"
-    )
+    quiet_hours_end = models.TimeField(null=True, blank=True, help_text="End of quiet hours (e.g., 07:00 for 7 AM)")
 
     # Digest mode
     NOTIFICATION_MODE_CHOICES = [
@@ -81,41 +73,28 @@ class UserHealthProfile(models.Model):
         ("DIGEST", "Daily Digest - Send one summary email per day"),
     ]
     notification_mode = models.CharField(
-        max_length=20,
-        choices=NOTIFICATION_MODE_CHOICES,
-        default="IMMEDIATE",
-        help_text="How to deliver notifications"
+        max_length=20, choices=NOTIFICATION_MODE_CHOICES, default="IMMEDIATE", help_text="How to deliver notifications"
     )
     digest_time = models.TimeField(
-        null=True,
-        blank=True,
-        help_text="Time to send daily digest email (e.g., 08:00 for 8 AM)"
+        null=True, blank=True, help_text="Time to send daily digest email (e.g., 08:00 for 8 AM)"
     )
 
     # Last notification tracking (performance optimization)
     last_notification_sent_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Timestamp of the last notification sent to this user"
+        null=True, blank=True, help_text="Timestamp of the last notification sent to this user"
     )
     last_migraine_notification_sent_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Timestamp of the last migraine notification sent"
+        null=True, blank=True, help_text="Timestamp of the last migraine notification sent"
     )
     last_sinusitis_notification_sent_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Timestamp of the last sinusitis notification sent"
+        null=True, blank=True, help_text="Timestamp of the last sinusitis notification sent"
     )
 
     prediction_window_start_hours = models.IntegerField(
-        default=3,
-        help_text="Start of prediction time window in hours ahead (default: 3 hours)"
+        default=3, help_text="Start of prediction time window in hours ahead (default: 3 hours)"
     )
     prediction_window_end_hours = models.IntegerField(
-        default=6,
-        help_text="End of prediction time window in hours ahead (default: 6 hours)"
+        default=6, help_text="End of prediction time window in hours ahead (default: 6 hours)"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -138,6 +117,7 @@ class UserHealthProfile(models.Model):
             return False
 
         from django.utils import timezone
+
         if check_time is None:
             check_time = timezone.now()
 
@@ -189,17 +169,18 @@ class LocationNotificationPreference(models.Model):
     Per-location notification preferences.
     Allows users to customize notification settings for specific locations.
     """
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="location_notification_preferences")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="notification_preferences")
 
     # Location-specific settings
     notifications_enabled = models.BooleanField(
-        default=True,
-        help_text="Enable or disable notifications for this specific location"
+        default=True, help_text="Enable or disable notifications for this specific location"
     )
     priority = models.IntegerField(
         default=1,
-        help_text="Priority level for this location (1=low, 5=high). Higher priority locations are included first if limits apply."
+        help_text="Priority level for this location (1=low, 5=high). Higher priority locations are included "
+        "first if limits apply.",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -292,6 +273,7 @@ class NotificationLog(models.Model):
     Comprehensive log of all notifications sent to users.
     Provides better tracking, analytics, and debugging capabilities.
     """
+
     NOTIFICATION_TYPE_CHOICES = [
         ("migraine", "Migraine Alert"),
         ("sinusitis", "Sinusitis Alert"),
@@ -320,16 +302,8 @@ class NotificationLog(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
 
     # Related predictions (can be multiple for combined/digest notifications)
-    migraine_predictions = models.ManyToManyField(
-        MigrainePrediction,
-        blank=True,
-        related_name="notification_logs"
-    )
-    sinusitis_predictions = models.ManyToManyField(
-        SinusitisPrediction,
-        blank=True,
-        related_name="notification_logs"
-    )
+    migraine_predictions = models.ManyToManyField(MigrainePrediction, blank=True, related_name="notification_logs")
+    sinusitis_predictions = models.ManyToManyField(SinusitisPrediction, blank=True, related_name="notification_logs")
 
     # Notification content
     subject = models.CharField(max_length=500, blank=True)
@@ -342,7 +316,9 @@ class NotificationLog(models.Model):
 
     # Timing
     scheduled_time = models.DateTimeField(null=True, blank=True, help_text="When notification was scheduled to be sent")
-    sent_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text="When notification was actually sent")
+    sent_at = models.DateTimeField(
+        null=True, blank=True, db_index=True, help_text="When notification was actually sent"
+    )
 
     # Error tracking
     error_message = models.TextField(blank=True, help_text="Error message if sending failed")
@@ -364,11 +340,13 @@ class NotificationLog(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.get_notification_type_display()} to {self.user.username} - {self.status} ({self.created_at:%Y-%m-%d %H:%M})"
+        return (f"{self.get_notification_type_display()} to {self.user.username} "
+                f"- {self.status} ({self.created_at:%Y-%m-%d %H:%M})")
 
     def mark_sent(self):
         """Mark notification as successfully sent."""
         from django.utils import timezone
+
         self.status = "sent"
         self.sent_at = timezone.now()
         self.save()

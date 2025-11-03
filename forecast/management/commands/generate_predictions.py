@@ -52,15 +52,13 @@ class Command(BaseCommand):
             set_tag("task", "prediction_generation")
 
             start_time = timezone.now()
-            self.stdout.write(
-                self.style.SUCCESS(f"[{start_time}] Starting prediction generation...")
-            )
+            self.stdout.write(self.style.SUCCESS(f"[{start_time}] Starting prediction generation..."))
 
             add_breadcrumb(
                 category="cron",
                 message="Prediction generation started",
                 level="info",
-                data={"start_time": str(start_time)}
+                data={"start_time": str(start_time)},
             )
 
         # Initialize prediction services
@@ -71,9 +69,7 @@ class Command(BaseCommand):
         if options.get("location_id"):
             locations = Location.objects.filter(id=options["location_id"])
             if not locations:
-                self.stdout.write(
-                    self.style.ERROR(f"Location with ID {options['location_id']} not found")
-                )
+                self.stdout.write(self.style.ERROR(f"Location with ID {options['location_id']} not found"))
                 return
         else:
             locations = Location.objects.all()
@@ -89,7 +85,7 @@ class Command(BaseCommand):
                 category="cron",
                 message=f"Processing {len(locations)} locations",
                 level="info",
-                data={"location_count": len(locations)}
+                data={"location_count": len(locations)},
             )
 
             # Generate predictions for each location
@@ -122,21 +118,17 @@ class Command(BaseCommand):
                         probability, prediction = migraine_service.predict_migraine_probability(
                             location=location, user=user
                         )
-                        
+
                         if prediction:
                             total_migraine_predictions += 1
-                            self.stdout.write(
-                                f"  ✓ Migraine: {probability} risk"
-                            )
-                            
+                            self.stdout.write(f"  ✓ Migraine: {probability} risk")
+
                             if probability == "HIGH":
                                 high_risk_count += 1
                             elif probability == "MEDIUM":
                                 medium_risk_count += 1
                         else:
-                            self.stdout.write(
-                                self.style.WARNING("  ⚠ Migraine: No forecast data available")
-                            )
+                            self.stdout.write(self.style.WARNING("  ⚠ Migraine: No forecast data available"))
                     except Exception as e:
                         error_msg = f"Error generating migraine prediction for {location}: {str(e)}"
                         errors.append(error_msg)
@@ -144,11 +136,10 @@ class Command(BaseCommand):
                         logger.error(error_msg, exc_info=True)
 
                         # Capture exception with context
-                        set_context("migraine_prediction_error", {
-                            "location": str(location),
-                            "location_id": location.id,
-                            "user": user.username
-                        })
+                        set_context(
+                            "migraine_prediction_error",
+                            {"location": str(location), "location_id": location.id, "user": user.username},
+                        )
                         capture_exception(e)
                 else:
                     self.stdout.write("  - Migraine predictions disabled for user")
@@ -159,21 +150,17 @@ class Command(BaseCommand):
                         probability, prediction = sinusitis_service.predict_sinusitis_probability(
                             location=location, user=user
                         )
-                        
+
                         if prediction:
                             total_sinusitis_predictions += 1
-                            self.stdout.write(
-                                f"  ✓ Sinusitis: {probability} risk"
-                            )
-                            
+                            self.stdout.write(f"  ✓ Sinusitis: {probability} risk")
+
                             if probability == "HIGH":
                                 high_risk_count += 1
                             elif probability == "MEDIUM":
                                 medium_risk_count += 1
                         else:
-                            self.stdout.write(
-                                self.style.WARNING("  ⚠ Sinusitis: No forecast data available")
-                            )
+                            self.stdout.write(self.style.WARNING("  ⚠ Sinusitis: No forecast data available"))
                     except Exception as e:
                         error_msg = f"Error generating sinusitis prediction for {location}: {str(e)}"
                         errors.append(error_msg)
@@ -181,11 +168,10 @@ class Command(BaseCommand):
                         logger.error(error_msg, exc_info=True)
 
                         # Capture exception with context
-                        set_context("sinusitis_prediction_error", {
-                            "location": str(location),
-                            "location_id": location.id,
-                            "user": user.username
-                        })
+                        set_context(
+                            "sinusitis_prediction_error",
+                            {"location": str(location), "location_id": location.id, "user": user.username},
+                        )
                         capture_exception(e)
                 else:
                     self.stdout.write("  - Sinusitis predictions disabled for user")
@@ -197,28 +183,25 @@ class Command(BaseCommand):
                 logger.error(error_msg, exc_info=True)
 
                 # Capture exception with context
-                set_context("prediction_location_error", {
-                    "location": str(location),
-                    "location_id": location.id
-                })
+                set_context("prediction_location_error", {"location": str(location), "location_id": location.id})
                 capture_exception(e)
 
         # Cleanup old predictions
         if not options["skip_cleanup"]:
             self.stdout.write("\n" + "=" * 60)
             self.stdout.write("Cleaning up old prediction data...")
-            
+
             cleanup_days = options["cleanup_days"]
             cutoff_time = timezone.now() - timedelta(days=cleanup_days)
-            
+
             old_migraine = MigrainePrediction.objects.filter(prediction_time__lt=cutoff_time)
             migraine_count = old_migraine.count()
             old_migraine.delete()
-            
+
             old_sinusitis = SinusitisPrediction.objects.filter(prediction_time__lt=cutoff_time)
             sinusitis_count = old_sinusitis.count()
             old_sinusitis.delete()
-            
+
             total_deleted = migraine_count + sinusitis_count
             if total_deleted > 0:
                 self.stdout.write(
@@ -255,23 +238,15 @@ class Command(BaseCommand):
                 "medium_risk_count": medium_risk_count,
                 "errors": len(errors),
                 "duration_seconds": duration,
-                "completed_at": str(end_time)
+                "completed_at": str(end_time),
             }
 
-            add_breadcrumb(
-                category="cron",
-                message="Prediction generation completed",
-                level="info",
-                data=summary_data
-            )
+            add_breadcrumb(category="cron", message="Prediction generation completed", level="info", data=summary_data)
 
             # Alert on high-risk predictions
             if high_risk_count > 0:
                 set_tag("high_risk_predictions", high_risk_count)
-                capture_message(
-                    f"Generated {high_risk_count} HIGH risk prediction(s)",
-                    level="info"
-                )
+                capture_message(f"Generated {high_risk_count} HIGH risk prediction(s)", level="info")
 
             if errors:
                 self.stdout.write("\nErrors encountered:")
@@ -281,13 +256,13 @@ class Command(BaseCommand):
                 # Capture summary message with errors
                 capture_message(
                     f"Prediction generation completed with {len(errors)} error(s)",
-                    level="error" if len(errors) > len(locations) / 2 else "warning"
+                    level="error" if len(errors) > len(locations) / 2 else "warning",
                 )
             else:
                 # Capture successful completion
                 capture_message(
                     f"Prediction generation completed: {total_migraine_predictions} migraine, {total_sinusitis_predictions} sinusitis",  # noqa: E501
-                    level="info"
+                    level="info",
                 )
 
             self.stdout.write("=" * 60)

@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 category="cron",
                 message="Weather data collection started",
                 level="info",
-                data={"start_time": str(start_time)}
+                data={"start_time": str(start_time)},
             )
 
             # Initialize weather service
@@ -74,7 +74,7 @@ class Command(BaseCommand):
                 category="cron",
                 message=f"Processing {len(locations)} locations",
                 level="info",
-                data={"location_count": len(locations)}
+                data={"location_count": len(locations)},
             )
 
             # Collect forecasts for each location
@@ -92,9 +92,7 @@ class Command(BaseCommand):
                     total_forecasts_created += created
                     total_forecasts_updated += updated
 
-                    self.stdout.write(
-                        f"  ✓ Created {created} new forecast(s), updated {updated} existing forecast(s)"
-                    )
+                    self.stdout.write(f"  ✓ Created {created} new forecast(s), updated {updated} existing forecast(s)")
 
                 except Exception as e:
                     error_msg = f"Error processing location {location}: {str(e)}"
@@ -103,24 +101,23 @@ class Command(BaseCommand):
                     logger.error(error_msg, exc_info=True)
 
                     # Capture exception with context
-                    set_context("weather_collection_error", {
-                        "location": str(location),
-                        "location_id": location.id,
-                        "user": location.user.username
-                    })
+                    set_context(
+                        "weather_collection_error",
+                        {"location": str(location), "location_id": location.id, "user": location.user.username},
+                    )
                     capture_exception(e)
 
         # Cleanup old forecasts
         if not options["skip_cleanup"]:
             self.stdout.write("\n" + "=" * 60)
             self.stdout.write("Cleaning up old forecast data...")
-            
+
             cleanup_hours = options["cleanup_hours"]
             cutoff_time = timezone.now() - timedelta(hours=cleanup_hours)
-            
+
             old_forecasts = WeatherForecast.objects.filter(forecast_time__lt=cutoff_time)
             count = old_forecasts.count()
-            
+
             if count > 0:
                 old_forecasts.delete()
                 self.stdout.write(
@@ -150,14 +147,11 @@ class Command(BaseCommand):
                 "forecasts_updated": total_forecasts_updated,
                 "errors": len(errors),
                 "duration_seconds": duration,
-                "completed_at": str(end_time)
+                "completed_at": str(end_time),
             }
 
             add_breadcrumb(
-                category="cron",
-                message="Weather data collection completed",
-                level="info",
-                data=summary_data
+                category="cron", message="Weather data collection completed", level="info", data=summary_data
             )
 
             if errors:
@@ -168,13 +162,13 @@ class Command(BaseCommand):
                 # Capture summary message with errors
                 capture_message(
                     f"Weather data collection completed with {len(errors)} error(s)",
-                    level="error" if len(errors) > len(locations) / 2 else "warning"
+                    level="error" if len(errors) > len(locations) / 2 else "warning",
                 )
             else:
                 # Capture successful completion
                 capture_message(
                     f"Weather data collection completed successfully: {total_forecasts_created} created, {total_forecasts_updated} updated",  # noqa: E501
-                    level="info"
+                    level="info",
                 )
 
             self.stdout.write("=" * 60)

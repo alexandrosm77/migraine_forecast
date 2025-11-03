@@ -71,8 +71,8 @@ class WeatherService:
                     "location_city": location.city,
                     "location_country": location.country,
                     "latitude": location.latitude,
-                    "longitude": location.longitude
-                }
+                    "longitude": location.longitude,
+                },
             )
 
             set_tag("location", f"{location.city}, {location.country}")
@@ -81,27 +81,27 @@ class WeatherService:
             try:
                 # Fetch forecast data from the API
                 forecast_data = self.api_client.get_forecast(
-                    latitude=location.latitude,
-                    longitude=location.longitude,
-                    days=3
+                    latitude=location.latitude, longitude=location.longitude, days=3
                 )
 
                 if not forecast_data:
                     logger.error(f"Failed to fetch forecast data for location: {location}")
 
                     # Add context for debugging
-                    set_context("weather_fetch_failure", {
-                        "location": f"{location.city}, {location.country}",
-                        "location_id": location.id,
-                        "latitude": location.latitude,
-                        "longitude": location.longitude,
-                        "api_client": "OpenMeteo"
-                    })
+                    set_context(
+                        "weather_fetch_failure",
+                        {
+                            "location": f"{location.city}, {location.country}",
+                            "location_id": location.id,
+                            "latitude": location.latitude,
+                            "longitude": location.longitude,
+                            "api_client": "OpenMeteo",
+                        },
+                    )
 
                     # Capture as a message (not exception since API returned None)
                     capture_message(
-                        f"Weather API returned no data for {location.city}, {location.country}",
-                        level="warning"
+                        f"Weather API returned no data for {location.city}, {location.country}", level="warning"
                     )
 
                     return 0, 0
@@ -112,8 +112,7 @@ class WeatherService:
                 if not parsed_data:
                     logger.warning(f"No valid forecast data parsed for location: {location}")
                     capture_message(
-                        f"No valid forecast data parsed for {location.city}, {location.country}",
-                        level="warning"
+                        f"No valid forecast data parsed for {location.city}, {location.country}", level="warning"
                     )
                     return 0, 0
 
@@ -123,14 +122,12 @@ class WeatherService:
 
                 for entry in parsed_data:
                     # Extract the unique key fields
-                    location_obj = entry.pop('location')
-                    target_time = entry.pop('target_time')
+                    location_obj = entry.pop("location")
+                    target_time = entry.pop("target_time")
 
                     # Use update_or_create to avoid duplicates
                     forecast, created = WeatherForecast.objects.update_or_create(
-                        location=location_obj,
-                        target_time=target_time,
-                        defaults=entry
+                        location=location_obj, target_time=target_time, defaults=entry
                     )
 
                     if created:
@@ -144,21 +141,21 @@ class WeatherService:
                     category="weather",
                     message=f"Forecast update completed for {location.city}, {location.country}",
                     level="info",
-                    data={
-                        "created": created_count,
-                        "updated": updated_count
-                    }
+                    data={"created": created_count, "updated": updated_count},
                 )
 
                 return created_count, updated_count
 
             except Exception as e:
                 # Capture unexpected exceptions
-                set_context("weather_update_error", {
-                    "location": f"{location.city}, {location.country}",
-                    "location_id": location.id,
-                    "operation": "update_forecast_for_location_upsert"
-                })
+                set_context(
+                    "weather_update_error",
+                    {
+                        "location": f"{location.city}, {location.country}",
+                        "location_id": location.id,
+                        "operation": "update_forecast_for_location_upsert",
+                    },
+                )
                 capture_exception(e)
                 logger.error(f"Error updating forecast for {location}: {str(e)}")
                 raise

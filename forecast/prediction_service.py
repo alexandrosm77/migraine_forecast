@@ -41,7 +41,9 @@ class MigrainePredictionService:
         """Initialize the migraine prediction service."""
         pass
 
-    def predict_migraine_probability(self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None):  # noqa: E501
+    def predict_migraine_probability(
+        self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None
+    ):  # noqa: E501
         """
         Predict migraine probability for a specific location and user.
 
@@ -58,7 +60,7 @@ class MigrainePredictionService:
         # Get user preferences for time window if not specified
         if window_start_hours is None or window_end_hours is None:
             try:
-                if user and hasattr(user, 'health_profile'):
+                if user and hasattr(user, "health_profile"):
                     profile = user.health_profile
                     window_start_hours = window_start_hours or profile.prediction_window_start_hours
                     window_end_hours = window_end_hours or profile.prediction_window_end_hours
@@ -78,7 +80,9 @@ class MigrainePredictionService:
         ).order_by("target_time")
 
         if not forecasts:
-            logger.warning(f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window")  # noqa: E501
+            logger.warning(
+                f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window"  # noqa: E501
+            )  # noqa: E501
             return None, None
 
         # Get previous forecasts for comparison
@@ -153,8 +157,8 @@ class MigrainePredictionService:
                 data={
                     "location": f"{location.city}, {location.country}",
                     "model": llm_config.model,
-                    "user_id": user.id if user else None
-                }
+                    "user_id": user.id if user else None,
+                },
             )
 
             set_tag("llm_model", llm_config.model)
@@ -287,30 +291,29 @@ class MigrainePredictionService:
                         category="prediction",
                         message="LLM prediction successful",
                         level="info",
-                        data={"probability_level": probability_level}
+                        data={"probability_level": probability_level},
                     )
                 else:
                     logger.warning("LLM returned invalid probability level, will fall back to manual calculation")
 
-                    set_context("llm_invalid_response", {
-                        "location": loc_label,
-                        "llm_level": llm_level,
-                        "llm_detail": llm_detail
-                    })
-                    capture_message(
-                        f"LLM returned invalid probability level: {llm_level}",
-                        level="warning"
+                    set_context(
+                        "llm_invalid_response",
+                        {"location": loc_label, "llm_level": llm_level, "llm_detail": llm_detail},
                     )
+                    capture_message(f"LLM returned invalid probability level: {llm_level}", level="warning")
 
             except Exception as e:
                 logger.exception("LLM prediction failed; falling back to manual calculation")
 
-                set_context("llm_prediction_failure", {
-                    "location": loc_label,
-                    "model": llm_config.model,
-                    "user_id": user.id if user else None,
-                    "error_type": type(e).__name__
-                })
+                set_context(
+                    "llm_prediction_failure",
+                    {
+                        "location": loc_label,
+                        "model": llm_config.model,
+                        "user_id": user.id if user else None,
+                        "error_type": type(e).__name__,
+                    },
+                )
                 capture_exception(e)
 
         # Fallback to manual calculation if LLM is disabled or failed

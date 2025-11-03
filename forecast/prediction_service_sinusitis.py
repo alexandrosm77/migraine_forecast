@@ -48,7 +48,9 @@ class SinusitisPredictionService:
         """Initialize the sinusitis prediction service."""
         pass
 
-    def predict_sinusitis_probability(self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None):  # noqa: E501
+    def predict_sinusitis_probability(
+        self, location, user=None, store_prediction=True, window_start_hours=None, window_end_hours=None
+    ):  # noqa: E501
         """
         Predict sinusitis probability for a specific location and user.
 
@@ -65,7 +67,7 @@ class SinusitisPredictionService:
         # Get user preferences for time window if not specified
         if window_start_hours is None or window_end_hours is None:
             try:
-                if user and hasattr(user, 'health_profile'):
+                if user and hasattr(user, "health_profile"):
                     profile = user.health_profile
                     window_start_hours = window_start_hours or profile.prediction_window_start_hours
                     window_end_hours = window_end_hours or profile.prediction_window_end_hours
@@ -85,7 +87,9 @@ class SinusitisPredictionService:
         ).order_by("target_time")
 
         if not forecasts:
-            logger.warning(f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window")  # noqa: E501
+            logger.warning(
+                f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window"  # noqa: E501
+            )  # noqa: E501
             return None, None
 
         # Get previous forecasts for comparison

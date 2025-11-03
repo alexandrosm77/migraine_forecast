@@ -331,17 +331,19 @@ class EndToEndWorkflowTest(TestCase):
             """Mock parser that returns forecast entries"""
             parsed = []
             for i in range(1, 10):
-                parsed.append({
-                    'location': location_obj,
-                    'target_time': now + timedelta(hours=i),
-                    'forecast_time': now,
-                    'temperature': 20.0 + i,
-                    'humidity': 65.0 - i,
-                    'pressure': 1013.0 - i * 0.5,
-                    'wind_speed': 10.0 + i * 0.5,
-                    'precipitation': 0.0,
-                    'cloud_cover': 30.0 + i * 5,
-                })
+                parsed.append(
+                    {
+                        "location": location_obj,
+                        "target_time": now + timedelta(hours=i),
+                        "forecast_time": now,
+                        "temperature": 20.0 + i,
+                        "humidity": 65.0 - i,
+                        "pressure": 1013.0 - i * 0.5,
+                        "wind_speed": 10.0 + i * 0.5,
+                        "precipitation": 0.0,
+                        "cloud_cover": 30.0 + i * 5,
+                    }
+                )
             return parsed
 
         self.mock_weather_parse.side_effect = mock_parse_data
@@ -362,8 +364,7 @@ class EndToEndWorkflowTest(TestCase):
 
         # Verify forecasts are in the user's custom time window (2-8 hours ahead)
         forecast_in_window = forecasts.filter(
-            target_time__gte=now + timedelta(hours=2),
-            target_time__lte=now + timedelta(hours=8)
+            target_time__gte=now + timedelta(hours=2), target_time__lte=now + timedelta(hours=8)
         )
         self.assertGreater(forecast_in_window.count(), 0)
 

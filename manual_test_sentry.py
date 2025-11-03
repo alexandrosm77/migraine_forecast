@@ -49,18 +49,17 @@ def test_exception_capture():
 def test_with_context():
     """Test event with additional context"""
     print("\n4. Testing event with context and tags...")
-    
+
     # Add tags
     set_tag("test_type", "integration_test")
     set_tag("component", "sentry_setup")
-    
+
     # Add context
-    set_context("test_info", {
-        "test_name": "Sentry Integration Test",
-        "app": "migraine_forecast",
-        "purpose": "Verify GlitchTip connection"
-    })
-    
+    set_context(
+        "test_info",
+        {"test_name": "Sentry Integration Test", "app": "migraine_forecast", "purpose": "Verify GlitchTip connection"},
+    )
+
     capture_message("Test message with context and tags", level="info")
     print("   ✓ Message with context sent to Sentry/GlitchTip")
 
@@ -69,25 +68,13 @@ def test_breadcrumbs():
     """Test breadcrumbs (event trail)"""
     print("\n5. Testing breadcrumbs...")
     from sentry_sdk import add_breadcrumb
-    
-    add_breadcrumb(
-        category="test",
-        message="Starting breadcrumb test",
-        level="info"
-    )
-    
-    add_breadcrumb(
-        category="test",
-        message="Processing test data",
-        level="info"
-    )
-    
-    add_breadcrumb(
-        category="test",
-        message="About to trigger test event",
-        level="info"
-    )
-    
+
+    add_breadcrumb(category="test", message="Starting breadcrumb test", level="info")
+
+    add_breadcrumb(category="test", message="Processing test data", level="info")
+
+    add_breadcrumb(category="test", message="About to trigger test event", level="info")
+
     capture_message("Test message with breadcrumbs", level="info")
     print("   ✓ Message with breadcrumbs sent to Sentry/GlitchTip")
 
@@ -99,13 +86,13 @@ def main():
     print(f"\nDSN: {os.getenv('SENTRY_DSN', 'http://da3f96ceb002454e85ac49a5f1916cd0@192.168.0.11:8001/1')}")
     print(f"Environment: {os.getenv('SENTRY_ENVIRONMENT', 'development')}")
     print("\nRunning tests...\n")
-    
+
     test_basic_message()
     test_error_logging()
     test_exception_capture()
     test_with_context()
     test_breadcrumbs()
-    
+
     print("\n" + "=" * 60)
     print("All tests completed!")
     print("=" * 60)

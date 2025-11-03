@@ -67,10 +67,7 @@ class NotificationService:
         # Check overall daily limit
         if profile.daily_notification_limit > 0:
             today_count = NotificationLog.objects.filter(
-                user=user,
-                status="sent",
-                sent_at__gte=start_of_day,
-                sent_at__lt=start_of_day + timedelta(days=1)
+                user=user, status="sent", sent_at__gte=start_of_day, sent_at__lt=start_of_day + timedelta(days=1)
             ).count()
 
             if today_count >= profile.daily_notification_limit:
@@ -83,11 +80,14 @@ class NotificationService:
                 status="sent",
                 notification_type="migraine",
                 sent_at__gte=start_of_day,
-                sent_at__lt=start_of_day + timedelta(days=1)
+                sent_at__lt=start_of_day + timedelta(days=1),
             ).count()
 
             if migraine_count >= profile.daily_migraine_notification_limit:
-                return False, f"Migraine daily limit reached ({migraine_count}/{profile.daily_migraine_notification_limit})"
+                return (
+                    False,
+                    f"Migraine daily limit reached ({migraine_count}/{profile.daily_migraine_notification_limit})",
+                )
 
         if notification_type == "sinusitis" and profile.daily_sinusitis_notification_limit > 0:
             sinusitis_count = NotificationLog.objects.filter(
@@ -95,17 +95,23 @@ class NotificationService:
                 status="sent",
                 notification_type="sinusitis",
                 sent_at__gte=start_of_day,
-                sent_at__lt=start_of_day + timedelta(days=1)
+                sent_at__lt=start_of_day + timedelta(days=1),
             ).count()
 
             if sinusitis_count >= profile.daily_sinusitis_notification_limit:
-                return False, f"Sinusitis daily limit reached ({sinusitis_count}/{profile.daily_sinusitis_notification_limit})"
+                return (
+                    False,
+                    f"Sinusitis daily limit reached ({sinusitis_count}/{profile.daily_sinusitis_notification_limit})",
+                )
 
         # Check notification frequency using optimized timestamp fields
         if profile.last_notification_sent_at:
             time_since_last = (now - profile.last_notification_sent_at).total_seconds() / 3600
             if time_since_last < profile.notification_frequency_hours:
-                return False, f"Too soon since last notification ({time_since_last:.1f}h < {profile.notification_frequency_hours}h)"
+                return (
+                    False,
+                    f"Too soon since last notification ({time_since_last:.1f}h < {profile.notification_frequency_hours}h)",  # noqa: E501
+                )
 
         return True, "All checks passed"
 
@@ -142,7 +148,7 @@ class NotificationService:
             severity_level=highest_severity,
             locations_count=len(all_locations),
             predictions_count=len(migraine_preds) + len(sinusitis_preds),
-            scheduled_time=timezone.now()
+            scheduled_time=timezone.now(),
         )
 
         # Add predictions to the log
@@ -198,11 +204,7 @@ class NotificationService:
             category="email",
             message="Sending migraine alert email",
             level="info",
-            data={
-                "user": user.username,
-                "location": str(location),
-                "probability": probability_level
-            }
+            data={"user": user.username, "location": str(location), "probability": probability_level},
         )
 
         set_tag("email_type", "migraine_alert")
@@ -215,10 +217,7 @@ class NotificationService:
         if not user.email:
             logger.warning(f"Cannot send migraine alert to user {user.username}: No email address")
             notification_log.mark_skipped("No email address")
-            capture_message(
-                f"Cannot send migraine alert: User {user.username} has no email address",
-                level="warning"
-            )
+            capture_message(f"Cannot send migraine alert: User {user.username} has no email address", level="warning")
             return False
 
         # Check if notification should be sent based on all preferences
@@ -283,7 +282,7 @@ class NotificationService:
                 category="email",
                 message="Migraine alert email sent successfully",
                 level="info",
-                data={"recipient": user.email}
+                data={"recipient": user.email},
             )
 
             # Mark notification as sent and update timestamp
@@ -298,16 +297,19 @@ class NotificationService:
             notification_log.mark_failed(str(e))
 
             # Capture exception with context
-            set_context("email_send_error", {
-                "email_type": "migraine_alert",
-                "recipient": user.email,
-                "user": user.username,
-                "location": str(location),
-                "probability": probability_level,
-                "subject": subject,
-                "smtp_host": settings.EMAIL_HOST,
-                "smtp_port": settings.EMAIL_PORT
-            })
+            set_context(
+                "email_send_error",
+                {
+                    "email_type": "migraine_alert",
+                    "recipient": user.email,
+                    "user": user.username,
+                    "location": str(location),
+                    "probability": probability_level,
+                    "subject": subject,
+                    "smtp_host": settings.EMAIL_HOST,
+                    "smtp_port": settings.EMAIL_PORT,
+                },
+            )
             capture_exception(e)
 
             return False
@@ -346,10 +348,7 @@ class NotificationService:
 
         # Create notification log
         notification_log = self._create_notification_log(
-            user,
-            "combined",
-            migraine_preds=migraine_predictions,
-            sinusitis_preds=sinusitis_predictions
+            user, "combined", migraine_preds=migraine_predictions, sinusitis_preds=sinusitis_predictions
         )
 
         # Add breadcrumb for combined email
@@ -360,8 +359,8 @@ class NotificationService:
             data={
                 "user": user.username,
                 "migraine_count": len(migraine_predictions) if migraine_predictions else 0,
-                "sinusitis_count": len(sinusitis_predictions) if sinusitis_predictions else 0
-            }
+                "sinusitis_count": len(sinusitis_predictions) if sinusitis_predictions else 0,
+            },
         )
 
         set_tag("email_type", "combined_alert")
@@ -370,10 +369,7 @@ class NotificationService:
         if not user.email:
             logger.warning(f"Cannot send combined alert to user {user.username}: No email address")
             notification_log.mark_skipped("No email address")
-            capture_message(
-                f"Cannot send combined alert: User {user.username} has no email address",
-                level="warning"
-            )
+            capture_message(f"Cannot send combined alert: User {user.username} has no email address", level="warning")
             return False
 
         # Determine highest severity for notification check
@@ -518,10 +514,7 @@ class NotificationService:
                 category="email",
                 message="Combined alert email sent successfully",
                 level="info",
-                data={
-                    "recipient": user.email,
-                    "location_count": len(location_data)
-                }
+                data={"recipient": user.email, "location_count": len(location_data)},
             )
 
             # Mark notification as sent and update timestamp
@@ -536,17 +529,20 @@ class NotificationService:
             notification_log.mark_failed(str(e))
 
             # Capture exception with context
-            set_context("email_send_error", {
-                "email_type": "combined_alert",
-                "recipient": user.email,
-                "user": user.username,
-                "migraine_count": len(migraine_predictions or []),
-                "sinusitis_count": len(sinusitis_predictions or []),
-                "location_count": len(location_data),
-                "subject": subject,
-                "smtp_host": settings.EMAIL_HOST,
-                "smtp_port": settings.EMAIL_PORT
-            })
+            set_context(
+                "email_send_error",
+                {
+                    "email_type": "combined_alert",
+                    "recipient": user.email,
+                    "user": user.username,
+                    "migraine_count": len(migraine_predictions or []),
+                    "sinusitis_count": len(sinusitis_predictions or []),
+                    "location_count": len(location_data),
+                    "subject": subject,
+                    "smtp_host": settings.EMAIL_HOST,
+                    "smtp_port": settings.EMAIL_PORT,
+                },
+            )
             capture_exception(e)
 
             return False
@@ -929,17 +925,25 @@ class NotificationService:
             # Check notification frequency - find the most recent notification sent
             frequency_cutoff = now - timedelta(hours=notification_frequency_hours)
 
-            recent_migraine = MigrainePrediction.objects.filter(
-                user=user,
-                notification_sent=True,
-                prediction_time__gte=frequency_cutoff,
-            ).order_by('-prediction_time').first()
+            recent_migraine = (
+                MigrainePrediction.objects.filter(
+                    user=user,
+                    notification_sent=True,
+                    prediction_time__gte=frequency_cutoff,
+                )
+                .order_by("-prediction_time")
+                .first()
+            )
 
-            recent_sinusitis = SinusitisPrediction.objects.filter(
-                user=user,
-                notification_sent=True,
-                prediction_time__gte=frequency_cutoff,
-            ).order_by('-prediction_time').first()
+            recent_sinusitis = (
+                SinusitisPrediction.objects.filter(
+                    user=user,
+                    notification_sent=True,
+                    prediction_time__gte=frequency_cutoff,
+                )
+                .order_by("-prediction_time")
+                .first()
+            )
 
             # If either type was sent within the frequency window, skip
             if recent_migraine or recent_sinusitis:

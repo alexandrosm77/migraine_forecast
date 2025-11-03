@@ -1263,9 +1263,7 @@ class NotificationServiceTest(TestCase):
         }
         sinusitis_predictions = {}
 
-        result = self.service.check_and_send_combined_notifications(
-            migraine_predictions, sinusitis_predictions
-        )
+        result = self.service.check_and_send_combined_notifications(migraine_predictions, sinusitis_predictions)
 
         # Should NOT send because last notification was only 2 hours ago (< 4 hour minimum)
         self.assertEqual(result, 0)
@@ -1336,9 +1334,7 @@ class NotificationServiceTest(TestCase):
         }
         sinusitis_predictions = {}
 
-        result = self.service.check_and_send_combined_notifications(
-            migraine_predictions, sinusitis_predictions
-        )
+        result = self.service.check_and_send_combined_notifications(migraine_predictions, sinusitis_predictions)
 
         # Should send because last notification was 4 hours ago (> 3 hour minimum)
         self.assertEqual(result, 1)

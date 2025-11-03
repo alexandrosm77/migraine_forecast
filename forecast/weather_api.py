@@ -57,12 +57,7 @@ class OpenMeteoClient:
             category="weather_api",
             message="Fetching weather forecast from Open-Meteo",
             level="info",
-            data={
-                "latitude": latitude,
-                "longitude": longitude,
-                "days": days,
-                "api_url": self.BASE_URL
-            }
+            data={"latitude": latitude, "longitude": longitude, "days": days, "api_url": self.BASE_URL},
         )
 
         try:
@@ -74,44 +69,47 @@ class OpenMeteoClient:
                     category="weather_api",
                     message="Weather forecast fetched successfully",
                     level="info",
-                    data={"status_code": response.status_code}
+                    data={"status_code": response.status_code},
                 )
 
                 return response.json()
 
         except requests.exceptions.Timeout as e:
-            set_context("weather_api_timeout", {
-                "latitude": latitude,
-                "longitude": longitude,
-                "days": days,
-                "api_url": self.BASE_URL,
-                "timeout": 30
-            })
+            set_context(
+                "weather_api_timeout",
+                {"latitude": latitude, "longitude": longitude, "days": days, "api_url": self.BASE_URL, "timeout": 30},
+            )
             capture_exception(e)
             logger.error(f"Timeout fetching weather forecast: {e}")
             return None
 
         except requests.exceptions.HTTPError as e:
-            set_context("weather_api_http_error", {
-                "latitude": latitude,
-                "longitude": longitude,
-                "days": days,
-                "api_url": self.BASE_URL,
-                "status_code": e.response.status_code if e.response else None,
-                "response_text": e.response.text if e.response else None
-            })
+            set_context(
+                "weather_api_http_error",
+                {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "days": days,
+                    "api_url": self.BASE_URL,
+                    "status_code": e.response.status_code if e.response else None,
+                    "response_text": e.response.text if e.response else None,
+                },
+            )
             capture_exception(e)
             logger.error(f"HTTP error fetching weather forecast: {e}")
             return None
 
         except requests.exceptions.RequestException as e:
-            set_context("weather_api_error", {
-                "latitude": latitude,
-                "longitude": longitude,
-                "days": days,
-                "api_url": self.BASE_URL,
-                "error_type": type(e).__name__
-            })
+            set_context(
+                "weather_api_error",
+                {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "days": days,
+                    "api_url": self.BASE_URL,
+                    "error_type": type(e).__name__,
+                },
+            )
             capture_exception(e)
             logger.error(f"Error fetching weather forecast: {e}")
             return None

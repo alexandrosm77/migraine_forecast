@@ -48,8 +48,8 @@ class LLMClient:
                 "model": self.model,
                 "base_url": self.base_url,
                 "timeout": self.timeout,
-                "message_count": len(messages)
-            }
+                "message_count": len(messages),
+            },
         )
 
         try:
@@ -61,41 +61,39 @@ class LLMClient:
                     category="llm",
                     message="LLM response received",
                     level="info",
-                    data={"status_code": resp.status_code}
+                    data={"status_code": resp.status_code},
                 )
 
                 return resp.json()
 
         except requests.exceptions.Timeout as e:
-            set_context("llm_timeout", {
-                "model": self.model,
-                "base_url": self.base_url,
-                "timeout": self.timeout,
-                "url": url
-            })
+            set_context(
+                "llm_timeout", {"model": self.model, "base_url": self.base_url, "timeout": self.timeout, "url": url}
+            )
             capture_exception(e)
             logger.error(f"LLM request timeout: {e}")
             raise
 
         except requests.exceptions.HTTPError as e:
-            set_context("llm_http_error", {
-                "model": self.model,
-                "base_url": self.base_url,
-                "status_code": e.response.status_code if e.response else None,
-                "response_text": e.response.text if e.response else None,
-                "url": url
-            })
+            set_context(
+                "llm_http_error",
+                {
+                    "model": self.model,
+                    "base_url": self.base_url,
+                    "status_code": e.response.status_code if e.response else None,
+                    "response_text": e.response.text if e.response else None,
+                    "url": url,
+                },
+            )
             capture_exception(e)
             logger.error(f"LLM HTTP error: {e}")
             raise
 
         except Exception as e:
-            set_context("llm_error", {
-                "model": self.model,
-                "base_url": self.base_url,
-                "error_type": type(e).__name__,
-                "url": url
-            })
+            set_context(
+                "llm_error",
+                {"model": self.model, "base_url": self.base_url, "error_type": type(e).__name__, "url": url},
+            )
             capture_exception(e)
             logger.error(f"LLM request error: {e}")
             raise

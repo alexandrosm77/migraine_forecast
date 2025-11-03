@@ -150,7 +150,6 @@ class UserHealthProfileForm(forms.ModelForm):
                 raise forms.ValidationError("Digest time is required when using Daily Digest mode")
 
         # Validate per-type limits
-        daily_limit = cleaned.get("daily_notification_limit")
         migraine_limit = cleaned.get("daily_migraine_notification_limit")
         sinusitis_limit = cleaned.get("daily_sinusitis_notification_limit")
 
