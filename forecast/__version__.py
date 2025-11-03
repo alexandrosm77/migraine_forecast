@@ -26,4 +26,3 @@ def get_version():
 def get_version_info():
     """Return the version as a tuple of integers (major, minor, patch)."""
     return __version_info__
-

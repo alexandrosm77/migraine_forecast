@@ -15,12 +15,10 @@ import os
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
+from forecast.__version__ import __version__ as APP_VERSION
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Import version information
-from forecast.__version__ import __version__ as APP_VERSION
 
 
 # Quick-start development settings - unsuitable for production

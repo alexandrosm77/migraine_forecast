@@ -16,4 +16,3 @@ def version_context(request):
     return {
         'APP_VERSION': __version__,
     }
-
