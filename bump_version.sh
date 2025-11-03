@@ -36,7 +36,7 @@ if [[ ! "$VERSION_PART" =~ ^(major|minor|patch)$ ]]; then
 fi
 
 # Show current version
-CURRENT_VERSION=$(grep -oP '__version__ = "\K[^"]+' forecast/__version__.py)
+CURRENT_VERSION=$(python3 -c "import sys; sys.path.insert(0, '.'); from forecast.__version__ import __version__; print(__version__)")
 echo "Current version: $CURRENT_VERSION"
 
 # Bump version
@@ -44,7 +44,7 @@ echo "Bumping $VERSION_PART version..."
 bump-my-version bump "$VERSION_PART"
 
 # Show new version
-NEW_VERSION=$(grep -oP '__version__ = "\K[^"]+' forecast/__version__.py)
+NEW_VERSION=$(python3 -c "import sys; sys.path.insert(0, '.'); from forecast.__version__ import __version__; print(__version__)")
 echo "New version: $NEW_VERSION"
 
 echo ""
