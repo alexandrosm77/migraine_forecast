@@ -1,5 +1,4 @@
 # Gunicorn configuration file
-import multiprocessing
 import os
 
 # Server socket
@@ -37,4 +36,3 @@ tmp_upload_dir = None
 # SSL (if needed in the future)
 # keyfile = None
 # certfile = None
-

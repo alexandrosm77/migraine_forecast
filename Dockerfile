@@ -13,6 +13,9 @@ RUN apt-get update && \
 # Copy project files
 COPY . .
 
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
 # Set up cron jobs for decoupled pipeline architecture (Optimized for Raspberry Pi 5)
 # Task 1: Collect weather data every 2 hours
 # Task 2: Generate predictions every 2 hours (offset by 30 min)
