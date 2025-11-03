@@ -6,12 +6,15 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libaudit1 cron supervisor && \
+    apt-get install -y --no-install-recommends libaudit1 cron supervisor gettext && \
     rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
+
+# Compile translation messages
+RUN python manage.py compilemessages
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
