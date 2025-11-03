@@ -405,7 +405,7 @@ class LLMClientTest(TestCase):
 
     @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_with_context(self, mock_post):
-        """Test probability prediction with full context"""
+        """Test probability prediction with full context including temporal and weather variations"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "choices": [
@@ -417,9 +417,35 @@ class LLMClientTest(TestCase):
         scores = {"temperature_change": 0.5}
         user_profile = {"sensitivity_overall": 1.5}
         context = {
-            "forecast_time": {"day_period": "morning", "hours_ahead": 3},
-            "aggregates": {"avg_forecast_humidity": 65.0},
+            "temporal_context": {
+                "current_time": "2025-11-03 14:30",
+                "current_hour": 14,
+                "current_period": "afternoon",
+                "day_of_week": "Sunday",
+                "is_weekend": True,
+                "season": "fall",
+                "window_start_time": "2025-11-03 17:00",
+                "window_end_time": "2025-11-03 20:00",
+                "window_start_period": "evening",
+                "window_duration_hours": 3.0,
+            },
+            "aggregates": {
+                "avg_forecast_temperature": 18.5,
+                "min_forecast_temperature": 15.0,
+                "max_forecast_temperature": 22.0,
+                "temperature_range": 7.0,
+                "avg_forecast_pressure": 1010.5,
+                "min_forecast_pressure": 1008.0,
+                "max_forecast_pressure": 1013.0,
+                "pressure_range": 5.0,
+                "avg_forecast_humidity": 65.0,
+            },
             "changes": {"temperature_change": 5.0, "pressure_change": 3.0},
+            "intraday_variation": {
+                "max_hourly_temp_change": 4.5,
+                "max_hourly_pressure_change": 2.8,
+                "window_hours": 23,
+            },
         }
 
         level, payload = self.client.predict_probability(scores, "Boston, USA", user_profile, context)
@@ -430,6 +456,15 @@ class LLMClientTest(TestCase):
         user_content = call_kwargs["json"]["messages"][1]["content"]
         self.assertIn("Boston, USA", user_content)
         self.assertIn("sensitivity", user_content.lower())
+        # Verify temporal context is included
+        self.assertIn("Sunday", user_content)
+        self.assertIn("weekend", user_content)
+        self.assertIn("fall", user_content)
+        # Verify temperature range is included
+        self.assertIn("range", user_content)
+        # Verify intraday variation is included
+        self.assertIn("Intraday variation", user_content)
+        self.assertIn("4.5", user_content)  # max_hourly_temp_change
 
     @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_network_error(self, mock_post):

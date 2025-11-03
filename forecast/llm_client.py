@@ -172,11 +172,29 @@ class LLMClient:
         ]
 
         # Add temporal context if available (compact format)
-        if context and "forecast_time" in context:
-            forecast_info = context["forecast_time"]
-            user_prompt_parts.append(
-                f"Time: {forecast_info.get('day_period', '')} {forecast_info.get('hours_ahead', '')}h ahead"
-            )
+        if context and "temporal_context" in context:
+            temporal = context["temporal_context"]
+            time_parts = []
+
+            # Current time and day
+            if temporal.get("current_time"):
+                time_parts.append(f"Now: {temporal['current_time']}")
+            if temporal.get("day_of_week"):
+                day_info = temporal["day_of_week"]
+                if temporal.get("is_weekend"):
+                    day_info += " (weekend)"
+                time_parts.append(day_info)
+            if temporal.get("season"):
+                time_parts.append(f"{temporal['season']}")
+
+            # Prediction window
+            if temporal.get("window_start_time") and temporal.get("window_end_time"):
+                time_parts.append(f"Window: {temporal['window_start_time']} to {temporal['window_end_time']}")
+            elif temporal.get("window_duration_hours"):
+                time_parts.append(f"Window: {temporal['window_duration_hours']:.1f}h ahead")
+
+            if time_parts:
+                user_prompt_parts.append(f"Timing: {' | '.join(time_parts)}")
 
         # Add user sensitivity if available
         if user_profile:
@@ -189,14 +207,44 @@ class LLMClient:
             agg = context["aggregates"]
             changes = context.get("changes", {})
             weather_summary = []
-            if changes.get("temperature_change"):
+
+            # Temperature information
+            if agg.get("avg_forecast_temperature") is not None:
+                temp_info = f"temp avg {agg['avg_forecast_temperature']:.1f}°C"
+                if agg.get("temperature_range") is not None and agg["temperature_range"] > 0:
+                    temp_info += f" (range {agg['temperature_range']:.1f}°C: {agg.get('min_forecast_temperature', 0):.1f}°C-{agg.get('max_forecast_temperature', 0):.1f}°C)"  # noqa: E501
+                weather_summary.append(temp_info)
+            elif changes.get("temperature_change"):
                 weather_summary.append(f"temp Δ{changes['temperature_change']:.1f}°C")
-            if changes.get("pressure_change"):
+
+            # Pressure information
+            if agg.get("avg_forecast_pressure") is not None:
+                pressure_info = f"pressure avg {agg['avg_forecast_pressure']:.1f}hPa"
+                if agg.get("pressure_range") is not None and agg["pressure_range"] > 0:
+                    pressure_info += f" (range {agg['pressure_range']:.1f}hPa)"
+                weather_summary.append(pressure_info)
+            elif changes.get("pressure_change"):
                 weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
+
+            # Humidity
             if agg.get("avg_forecast_humidity"):
                 weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
+
             if weather_summary:
                 user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
+
+        # Add intraday variation for large windows
+        if context and "intraday_variation" in context:
+            intraday = context["intraday_variation"]
+            variation_parts = []
+
+            if intraday.get("max_hourly_temp_change"):
+                variation_parts.append(f"max temp change {intraday['max_hourly_temp_change']:.1f}°C/hr")
+            if intraday.get("max_hourly_pressure_change"):
+                variation_parts.append(f"max pressure change {intraday['max_hourly_pressure_change']:.1f}hPa/hr")
+
+            if variation_parts:
+                user_prompt_parts.append(f"Intraday variation: {', '.join(variation_parts)}")
 
         # Add summarized previous predictions history if available
         if context and "previous_predictions" in context:
@@ -323,11 +371,29 @@ class LLMClient:
         ]
 
         # Add temporal context if available (compact format)
-        if context and "forecast_time" in context:
-            forecast_info = context["forecast_time"]
-            user_prompt_parts.append(
-                f"Time: {forecast_info.get('day_period', '')} {forecast_info.get('hours_ahead', '')}h ahead"
-            )
+        if context and "temporal_context" in context:
+            temporal = context["temporal_context"]
+            time_parts = []
+
+            # Current time and day
+            if temporal.get("current_time"):
+                time_parts.append(f"Now: {temporal['current_time']}")
+            if temporal.get("day_of_week"):
+                day_info = temporal["day_of_week"]
+                if temporal.get("is_weekend"):
+                    day_info += " (weekend)"
+                time_parts.append(day_info)
+            if temporal.get("season"):
+                time_parts.append(f"{temporal['season']}")
+
+            # Prediction window
+            if temporal.get("window_start_time") and temporal.get("window_end_time"):
+                time_parts.append(f"Window: {temporal['window_start_time']} to {temporal['window_end_time']}")
+            elif temporal.get("window_duration_hours"):
+                time_parts.append(f"Window: {temporal['window_duration_hours']:.1f}h ahead")
+
+            if time_parts:
+                user_prompt_parts.append(f"Timing: {' | '.join(time_parts)}")
 
         # Add user sensitivity if available
         if user_profile:
@@ -340,14 +406,44 @@ class LLMClient:
             agg = context["aggregates"]
             changes = context.get("changes", {})
             weather_summary = []
-            if changes.get("temperature_change"):
+
+            # Temperature information
+            if agg.get("avg_forecast_temp") is not None:
+                temp_info = f"temp avg {agg['avg_forecast_temp']:.1f}°C"
+                if agg.get("temperature_range") is not None and agg["temperature_range"] > 0:
+                    temp_info += f" (range {agg['temperature_range']:.1f}°C: {agg.get('min_forecast_temp', 0):.1f}°C-{agg.get('max_forecast_temp', 0):.1f}°C)"  # noqa: E501
+                weather_summary.append(temp_info)
+            elif changes.get("temperature_change"):
                 weather_summary.append(f"temp Δ{changes['temperature_change']:.1f}°C")
-            if changes.get("pressure_change"):
+
+            # Pressure information
+            if agg.get("avg_forecast_pressure") is not None:
+                pressure_info = f"pressure avg {agg['avg_forecast_pressure']:.1f}hPa"
+                if agg.get("pressure_range") is not None and agg["pressure_range"] > 0:
+                    pressure_info += f" (range {agg['pressure_range']:.1f}hPa)"
+                weather_summary.append(pressure_info)
+            elif changes.get("pressure_change"):
                 weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
+
+            # Humidity
             if agg.get("avg_forecast_humidity"):
                 weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
+
             if weather_summary:
                 user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
+
+        # Add intraday variation for large windows
+        if context and "intraday_variation" in context:
+            intraday = context["intraday_variation"]
+            variation_parts = []
+
+            if intraday.get("max_hourly_temp_change"):
+                variation_parts.append(f"max temp change {intraday['max_hourly_temp_change']:.1f}°C/hr")
+            if intraday.get("max_hourly_pressure_change"):
+                variation_parts.append(f"max pressure change {intraday['max_hourly_pressure_change']:.1f}hPa/hr")
+
+            if variation_parts:
+                user_prompt_parts.append(f"Intraday variation: {', '.join(variation_parts)}")
 
         # Add summarized previous predictions history if available
         if context and "previous_predictions" in context:
