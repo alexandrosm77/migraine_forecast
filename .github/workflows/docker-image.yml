@@ -109,44 +109,54 @@ jobs:
     environment: latest
     steps:
       -
-        name: Checkout repository
-        uses: actions/checkout@v4
-
-      -
-        name: Install SSH client if needed
-        run: |
-          which scp || apt-get update && apt-get install -y openssh-client
-
-      -
-        name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-      -
-        name: Copy file via direct SCP
-        run: |
-          scp -i ~/.ssh/id_rsa deploy.sh ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/home/alexandros/migraine/
-
-      -
-        name: SSH into docker host and run deployment script
+        name: Deploy to Raspberry Pi
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            chmod +x /home/alexandros/migraine/deploy.sh
-            /home/alexandros/migraine/deploy.sh \
-              --dockerhub_username ${{ vars.DOCKERHUB_USERNAME }} \
-              --dockerhub_token ${{ secrets.DOCKERHUB_TOKEN }} \
-              --sentry_dsn "${{ secrets.SENTRY_DSN }}" \
-              --sentry_enabled "${{ vars.SENTRY_ENABLED }}" \
-              --sentry_environment "${{ vars.SENTRY_ENVIRONMENT }}" \
-              --sentry_traces_sample_rate "${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
-              --sentry_profiles_sample_rate "${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}"
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting deployment of alexandrosm77/migraine_forecast:latest..."
+
+            # Docker Hub login
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Authenticating with Docker Hub..."
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
+
+            # Pull the latest image
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Pulling the latest image..."
+            docker pull alexandrosm77/migraine_forecast:latest
+
+            # Stop and remove existing container if it exists
+            if docker ps -a --format '{{.Names}}' | grep -q "^migraine$"; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Stopping and removing existing container..."
+              docker stop migraine
+              docker rm migraine
+            fi
+
+            # Create and start the new container
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating and starting new container..."
+            docker run -d \
+              --name migraine \
+              --restart unless-stopped \
+              -p 8889:8889 \
+              -v /home/alexandros/migraine/db.sqlite3:/app/db.sqlite3 \
+              -e DJANGO_DEBUG=True \
+              -e SENTRY_DSN="${{ secrets.SENTRY_DSN }}" \
+              -e SENTRY_ENABLED="${{ vars.SENTRY_ENABLED }}" \
+              -e SENTRY_ENVIRONMENT="${{ vars.SENTRY_ENVIRONMENT }}" \
+              -e SENTRY_TRACES_SAMPLE_RATE="${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
+              -e SENTRY_PROFILES_SAMPLE_RATE="${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}" \
+              alexandrosm77/migraine_forecast:latest
+
+            # Check if the container started successfully
+            if docker ps --format '{{.Names}}' | grep -q "^migraine$"; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful! Container is running."
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Container logs (last 5 lines):"
+              docker logs migraine --tail 5
+            else
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Container failed to start."
+              exit 1
+            fi
 
   cleanup:
     needs: deploy
