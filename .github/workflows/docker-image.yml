@@ -145,3 +145,21 @@ jobs:
           docker run --rm \
             alexandrosm77/migraine_forecast:latest \
             python manage.py test forecast.integration_tests --verbosity=2
+
+  cleanup:
+    needs: [test-linting, test-unittest, test-integration]
+    runs-on: self-hosted
+    if: always()
+    steps:
+      -
+        name: Clean up dangling Docker images on deployment host
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "Cleaning up dangling Docker images..."
+            docker image prune -f
+            echo "Cleanup complete. Current images:"
+            docker images alexandrosm77/migraine_forecast
