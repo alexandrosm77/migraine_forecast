@@ -9,8 +9,16 @@ class UserHealthProfileForm(forms.ModelForm):
             "age",
             "prior_conditions",
             "email_notifications_enabled",
+            "notification_mode",
+            "digest_time",
+            "notification_severity_threshold",
             "daily_notification_limit",
+            "daily_migraine_notification_limit",
+            "daily_sinusitis_notification_limit",
             "notification_frequency_hours",
+            "quiet_hours_enabled",
+            "quiet_hours_start",
+            "quiet_hours_end",
             "prediction_window_start_hours",
             "prediction_window_end_hours",
             "migraine_predictions_enabled",
@@ -31,6 +39,11 @@ class UserHealthProfileForm(forms.ModelForm):
                     "class": "form-check-input",
                 }
             ),
+            "quiet_hours_enabled": forms.CheckboxInput(
+                attrs={
+                    "class": "form-check-input",
+                }
+            ),
             "migraine_predictions_enabled": forms.CheckboxInput(
                 attrs={
                     "class": "form-check-input",
@@ -39,6 +52,34 @@ class UserHealthProfileForm(forms.ModelForm):
             "sinusitis_predictions_enabled": forms.CheckboxInput(
                 attrs={
                     "class": "form-check-input",
+                }
+            ),
+            "notification_mode": forms.Select(
+                attrs={
+                    "class": "form-select",
+                }
+            ),
+            "notification_severity_threshold": forms.Select(
+                attrs={
+                    "class": "form-select",
+                }
+            ),
+            "digest_time": forms.TimeInput(
+                attrs={
+                    "type": "time",
+                    "class": "form-control",
+                }
+            ),
+            "quiet_hours_start": forms.TimeInput(
+                attrs={
+                    "type": "time",
+                    "class": "form-control",
+                }
+            ),
+            "quiet_hours_end": forms.TimeInput(
+                attrs={
+                    "type": "time",
+                    "class": "form-control",
                 }
             ),
         }
@@ -90,5 +131,33 @@ class UserHealthProfileForm(forms.ModelForm):
                 raise forms.ValidationError("Prediction window start must be before window end")
             if (window_end - window_start) < 1:
                 raise forms.ValidationError("Prediction window must be at least 1 hour wide")
+
+        # Validate quiet hours
+        quiet_hours_enabled = cleaned.get("quiet_hours_enabled")
+        quiet_hours_start = cleaned.get("quiet_hours_start")
+        quiet_hours_end = cleaned.get("quiet_hours_end")
+
+        if quiet_hours_enabled:
+            if not quiet_hours_start or not quiet_hours_end:
+                raise forms.ValidationError("Quiet hours start and end times are required when quiet hours are enabled")
+
+        # Validate digest mode
+        notification_mode = cleaned.get("notification_mode")
+        digest_time = cleaned.get("digest_time")
+
+        if notification_mode == "DIGEST":
+            if not digest_time:
+                raise forms.ValidationError("Digest time is required when using Daily Digest mode")
+
+        # Validate per-type limits
+        daily_limit = cleaned.get("daily_notification_limit")
+        migraine_limit = cleaned.get("daily_migraine_notification_limit")
+        sinusitis_limit = cleaned.get("daily_sinusitis_notification_limit")
+
+        if migraine_limit is not None and migraine_limit < 0:
+            raise forms.ValidationError("Migraine notification limit cannot be negative")
+
+        if sinusitis_limit is not None and sinusitis_limit < 0:
+            raise forms.ValidationError("Sinusitis notification limit cannot be negative")
 
         return cleaned

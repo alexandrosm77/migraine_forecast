@@ -13,6 +13,8 @@ from forecast.models import (
     UserHealthProfile,
     LLMResponse,
     LLMConfiguration,
+    NotificationLog,
+    LocationNotificationPreference,
 )
 import subprocess
 import time
@@ -99,22 +101,191 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "user",
         "age",
         "email_notifications_enabled",
+        "notification_mode",
+        "notification_severity_threshold",
+        "quiet_hours_enabled",
         "daily_notification_limit",
         "migraine_predictions_enabled",
         "sinusitis_predictions_enabled",
-        "sensitivity_overall",
-        "sensitivity_temperature",
-        "sensitivity_humidity",
-        "sensitivity_pressure",
-        "sensitivity_cloud_cover",
-        "sensitivity_precipitation",
         "updated_at",
     )
     search_fields = ("user__username",)
-    list_filter = ("email_notifications_enabled", "migraine_predictions_enabled", "sinusitis_predictions_enabled")
+    list_filter = (
+        "email_notifications_enabled",
+        "notification_mode",
+        "notification_severity_threshold",
+        "quiet_hours_enabled",
+        "migraine_predictions_enabled",
+        "sinusitis_predictions_enabled"
+    )
+    fieldsets = (
+        (
+            "User Information",
+            {
+                "fields": ("user", "age"),
+            },
+        ),
+        (
+            "Notification Settings",
+            {
+                "fields": (
+                    "email_notifications_enabled",
+                    "notification_mode",
+                    "digest_time",
+                    "notification_severity_threshold",
+                    "notification_frequency_hours",
+                ),
+            },
+        ),
+        (
+            "Notification Limits",
+            {
+                "fields": (
+                    "daily_notification_limit",
+                    "daily_migraine_notification_limit",
+                    "daily_sinusitis_notification_limit",
+                ),
+            },
+        ),
+        (
+            "Quiet Hours",
+            {
+                "fields": (
+                    "quiet_hours_enabled",
+                    "quiet_hours_start",
+                    "quiet_hours_end",
+                ),
+            },
+        ),
+        (
+            "Prediction Settings",
+            {
+                "fields": (
+                    "migraine_predictions_enabled",
+                    "sinusitis_predictions_enabled",
+                    "prediction_window_hours",
+                ),
+            },
+        ),
+        (
+            "Sensitivity Settings",
+            {
+                "fields": (
+                    "sensitivity_overall",
+                    "sensitivity_temperature",
+                    "sensitivity_humidity",
+                    "sensitivity_pressure",
+                    "sensitivity_cloud_cover",
+                    "sensitivity_precipitation",
+                ),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "last_notification_sent_at",
+                    "last_migraine_notification_sent_at",
+                    "last_sinusitis_notification_sent_at",
+                    "updated_at",
+                ),
+            },
+        ),
+    )
+    readonly_fields = (
+        "last_notification_sent_at",
+        "last_migraine_notification_sent_at",
+        "last_sinusitis_notification_sent_at",
+        "updated_at",
+    )
 
     def get_queryset(self, request):
         """Filter health profiles to show only the user's own profile unless they're a superuser."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(user=request.user)
+
+
+@admin.register(NotificationLog)
+class NotificationLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "notification_type",
+        "channel",
+        "status",
+        "severity_level",
+        "locations_count",
+        "predictions_count",
+        "sent_at",
+        "created_at",
+    )
+    list_filter = (
+        "notification_type",
+        "channel",
+        "status",
+        "severity_level",
+        "created_at",
+        "sent_at",
+    )
+    search_fields = ("user__username", "subject", "error_message")
+    readonly_fields = ("created_at", "sent_at")
+    date_hierarchy = "created_at"
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": ("user", "notification_type", "channel", "status"),
+            },
+        ),
+        (
+            "Content",
+            {
+                "fields": ("subject", "severity_level", "locations_count", "predictions_count"),
+            },
+        ),
+        (
+            "Related Predictions",
+            {
+                "fields": ("migraine_predictions", "sinusitis_predictions"),
+            },
+        ),
+        (
+            "Delivery Information",
+            {
+                "fields": ("sent_at", "error_message", "retry_count"),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": ("metadata", "created_at"),
+            },
+        ),
+    )
+
+    formfield_overrides = {
+        JSONField: {"widget": JSONEditorWidget(options={"mode": "text", "modes": ["text", "tree", "view"]})},
+    }
+
+    def get_queryset(self, request):
+        """Filter notification logs to show only the user's own logs unless they're a superuser."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(user=request.user)
+
+
+@admin.register(LocationNotificationPreference)
+class LocationNotificationPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "location", "notifications_enabled", "priority")
+    list_filter = ("notifications_enabled", "priority")
+    search_fields = ("user__username", "location__city")
+
+    def get_queryset(self, request):
+        """Filter location preferences to show only the user's own preferences unless they're a superuser."""
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
@@ -504,6 +675,8 @@ admin_site.register(WeatherForecast, WeatherForecastAdmin)
 admin_site.register(MigrainePrediction, MigrainePredictionAdmin)
 admin_site.register(SinusitisPrediction, SinusitisPredictionAdmin)
 admin_site.register(UserHealthProfile, UserHealthProfileAdmin)
+admin_site.register(NotificationLog, NotificationLogAdmin)
+admin_site.register(LocationNotificationPreference, LocationNotificationPreferenceAdmin)
 admin_site.register(LLMResponse, LLMResponseAdmin)
 admin_site.register(LLMConfiguration, LLMConfigurationAdmin)
 

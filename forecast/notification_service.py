@@ -2,10 +2,11 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from django.utils import timezone
 import logging
 from datetime import timedelta
 
-from .models import MigrainePrediction, SinusitisPrediction, Location
+from .models import MigrainePrediction, SinusitisPrediction, Location, NotificationLog
 from .prediction_service import MigrainePredictionService
 from .prediction_service_sinusitis import SinusitisPredictionService
 from .weather_service import WeatherService
@@ -24,6 +25,157 @@ class NotificationService:
         self.prediction_service = MigrainePredictionService()
         self.sinusitis_prediction_service = SinusitisPredictionService()
         self.weather_service = WeatherService()
+
+    def _should_send_notification(self, user, severity_level, notification_type="general"):
+        """
+        Check if a notification should be sent based on all user preferences.
+
+        Args:
+            user: User object
+            severity_level: "LOW", "MEDIUM", or "HIGH"
+            notification_type: "migraine", "sinusitis", or "general"
+
+        Returns:
+            tuple: (should_send: bool, reason: str)
+        """
+        try:
+            profile = user.health_profile
+        except Exception:
+            # No profile, use defaults - allow notification
+            return True, "No profile found, using defaults"
+
+        # Check if email notifications are enabled
+        if not profile.email_notifications_enabled:
+            return False, "Email notifications disabled"
+
+        # Check notification mode - if digest mode, don't send immediate notifications
+        if profile.notification_mode == "DIGEST":
+            return False, "User is in digest mode"
+
+        # Check severity threshold
+        if not profile.should_send_notification(severity_level):
+            return False, f"Severity {severity_level} below threshold {profile.notification_severity_threshold}"
+
+        # Check quiet hours
+        if profile.is_in_quiet_hours():
+            return False, "Currently in quiet hours"
+
+        # Check daily limits
+        now = timezone.now()
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Check overall daily limit
+        if profile.daily_notification_limit > 0:
+            today_count = NotificationLog.objects.filter(
+                user=user,
+                status="sent",
+                sent_at__gte=start_of_day,
+                sent_at__lt=start_of_day + timedelta(days=1)
+            ).count()
+
+            if today_count >= profile.daily_notification_limit:
+                return False, f"Daily limit reached ({today_count}/{profile.daily_notification_limit})"
+
+        # Check per-type limits
+        if notification_type == "migraine" and profile.daily_migraine_notification_limit > 0:
+            migraine_count = NotificationLog.objects.filter(
+                user=user,
+                status="sent",
+                notification_type="migraine",
+                sent_at__gte=start_of_day,
+                sent_at__lt=start_of_day + timedelta(days=1)
+            ).count()
+
+            if migraine_count >= profile.daily_migraine_notification_limit:
+                return False, f"Migraine daily limit reached ({migraine_count}/{profile.daily_migraine_notification_limit})"
+
+        if notification_type == "sinusitis" and profile.daily_sinusitis_notification_limit > 0:
+            sinusitis_count = NotificationLog.objects.filter(
+                user=user,
+                status="sent",
+                notification_type="sinusitis",
+                sent_at__gte=start_of_day,
+                sent_at__lt=start_of_day + timedelta(days=1)
+            ).count()
+
+            if sinusitis_count >= profile.daily_sinusitis_notification_limit:
+                return False, f"Sinusitis daily limit reached ({sinusitis_count}/{profile.daily_sinusitis_notification_limit})"
+
+        # Check notification frequency using optimized timestamp fields
+        if profile.last_notification_sent_at:
+            time_since_last = (now - profile.last_notification_sent_at).total_seconds() / 3600
+            if time_since_last < profile.notification_frequency_hours:
+                return False, f"Too soon since last notification ({time_since_last:.1f}h < {profile.notification_frequency_hours}h)"
+
+        return True, "All checks passed"
+
+    def _create_notification_log(self, user, notification_type, migraine_preds=None, sinusitis_preds=None):
+        """
+        Create a notification log entry.
+
+        Args:
+            user: User object
+            notification_type: Type of notification
+            migraine_preds: List of MigrainePrediction objects
+            sinusitis_preds: List of SinusitisPrediction objects
+
+        Returns:
+            NotificationLog object
+        """
+        migraine_preds = migraine_preds or []
+        sinusitis_preds = sinusitis_preds or []
+
+        # Determine highest severity
+        all_severities = [p.probability for p in migraine_preds + sinusitis_preds]
+        severity_order = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+        highest_severity = max(all_severities, key=lambda x: severity_order.get(x, 0)) if all_severities else "LOW"
+
+        # Count unique locations
+        all_locations = set([p.location for p in migraine_preds + sinusitis_preds])
+
+        log = NotificationLog.objects.create(
+            user=user,
+            notification_type=notification_type,
+            channel="email",
+            status="pending",
+            recipient=user.email,
+            severity_level=highest_severity,
+            locations_count=len(all_locations),
+            predictions_count=len(migraine_preds) + len(sinusitis_preds),
+            scheduled_time=timezone.now()
+        )
+
+        # Add predictions to the log
+        if migraine_preds:
+            log.migraine_predictions.set(migraine_preds)
+        if sinusitis_preds:
+            log.sinusitis_predictions.set(sinusitis_preds)
+
+        return log
+
+    def _update_last_notification_timestamp(self, user, notification_type):
+        """
+        Update the last notification timestamp for a user.
+
+        Args:
+            user: User object
+            notification_type: "migraine", "sinusitis", or "combined"
+        """
+        try:
+            profile = user.health_profile
+            now = timezone.now()
+
+            profile.last_notification_sent_at = now
+
+            if notification_type in ["migraine", "combined"]:
+                profile.last_migraine_notification_sent_at = now
+
+            if notification_type in ["sinusitis", "combined"]:
+                profile.last_sinusitis_notification_sent_at = now
+
+            profile.save()
+        except Exception as e:
+            logger.warning(f"Could not update last notification timestamp for user {user.username}: {e}")
 
     def send_migraine_alert(self, prediction):
         """
@@ -56,23 +208,25 @@ class NotificationService:
         set_tag("email_type", "migraine_alert")
         set_tag("risk_level", probability_level)
 
+        # Create notification log
+        notification_log = self._create_notification_log(user, "migraine", migraine_preds=[prediction])
+
         # Skip if user has no email
         if not user.email:
             logger.warning(f"Cannot send migraine alert to user {user.username}: No email address")
+            notification_log.mark_skipped("No email address")
             capture_message(
                 f"Cannot send migraine alert: User {user.username} has no email address",
                 level="warning"
             )
             return False
 
-        # Check if user has email notifications enabled
-        try:
-            if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
-                logger.info(f"Skipping migraine alert for user {user.username}: Email notifications disabled")
-                return False
-        except Exception as e:
-            logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
-            # Continue with sending email if we can't determine preference
+        # Check if notification should be sent based on all preferences
+        should_send, reason = self._should_send_notification(user, probability_level, "migraine")
+        if not should_send:
+            logger.info(f"Skipping migraine alert for user {user.username}: {reason}")
+            notification_log.mark_skipped(reason)
+            return False
 
         # Get additional context for human-friendly explanations
         detailed_factors = self._get_detailed_weather_factors(prediction)
@@ -109,6 +263,10 @@ class NotificationService:
         html_message = render_to_string("forecast/email/migraine_alert.html", context)
         plain_message = strip_tags(html_message)
 
+        # Update notification log with subject
+        notification_log.subject = subject
+        notification_log.save()
+
         try:
             # Send email
             send_mail(
@@ -128,9 +286,16 @@ class NotificationService:
                 data={"recipient": user.email}
             )
 
+            # Mark notification as sent and update timestamp
+            notification_log.mark_sent()
+            self._update_last_notification_timestamp(user, "migraine")
+
             return True
         except Exception as e:
             logger.error(f"Failed to send migraine alert email: {e}")
+
+            # Mark notification as failed
+            notification_log.mark_failed(str(e))
 
             # Capture exception with context
             set_context("email_send_error", {
@@ -179,6 +344,14 @@ class NotificationService:
 
         user = all_predictions[0].user
 
+        # Create notification log
+        notification_log = self._create_notification_log(
+            user,
+            "combined",
+            migraine_preds=migraine_predictions,
+            sinusitis_preds=sinusitis_predictions
+        )
+
         # Add breadcrumb for combined email
         add_breadcrumb(
             category="email",
@@ -196,20 +369,24 @@ class NotificationService:
         # Skip if user has no email
         if not user.email:
             logger.warning(f"Cannot send combined alert to user {user.username}: No email address")
+            notification_log.mark_skipped("No email address")
             capture_message(
                 f"Cannot send combined alert: User {user.username} has no email address",
                 level="warning"
             )
             return False
 
-        # Check if user has email notifications enabled
-        try:
-            if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
-                logger.info(f"Skipping combined alert for user {user.username}: Email notifications disabled")
-                return False
-        except Exception as e:
-            logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
-            # Continue with sending email if we can't determine preference
+        # Determine highest severity for notification check
+        all_severities = [p.probability for p in all_predictions]
+        severity_order = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+        highest_severity = max(all_severities, key=lambda x: severity_order.get(x, 0))
+
+        # Check if notification should be sent
+        should_send, reason = self._should_send_notification(user, highest_severity, "general")
+        if not should_send:
+            logger.info(f"Skipping combined alert for user {user.username}: {reason}")
+            notification_log.mark_skipped(reason)
+            return False
 
         # Prepare location-based predictions
         location_data = []
@@ -317,6 +494,10 @@ class NotificationService:
         html_message = render_to_string("forecast/email/combined_alert.html", context)
         plain_message = strip_tags(html_message)
 
+        # Update notification log with subject
+        notification_log.subject = subject
+        notification_log.save()
+
         try:
             # Send email
             send_mail(
@@ -343,9 +524,16 @@ class NotificationService:
                 }
             )
 
+            # Mark notification as sent and update timestamp
+            notification_log.mark_sent()
+            self._update_last_notification_timestamp(user, "combined")
+
             return True
         except Exception as e:
             logger.error(f"Failed to send combined alert email: {e}")
+
+            # Mark notification as failed
+            notification_log.mark_failed(str(e))
 
             # Capture exception with context
             set_context("email_send_error", {

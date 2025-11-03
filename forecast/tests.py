@@ -828,8 +828,13 @@ class UserHealthProfileFormTest(TestCase):
             "age": 30,
             "prior_conditions": "Aura, hypertension",
             "email_notifications_enabled": True,
+            "notification_mode": "IMMEDIATE",
+            "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 2,
+            "daily_migraine_notification_limit": 1,
+            "daily_sinusitis_notification_limit": 1,
             "notification_frequency_hours": 4,
+            "quiet_hours_enabled": False,
             "prediction_window_start_hours": 2,
             "prediction_window_end_hours": 8,
             "migraine_predictions_enabled": True,
@@ -848,8 +853,13 @@ class UserHealthProfileFormTest(TestCase):
         """Test that form clamps sensitivity values to valid range"""
         form_data = {
             "email_notifications_enabled": True,
+            "notification_mode": "IMMEDIATE",
+            "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
+            "daily_migraine_notification_limit": 1,
+            "daily_sinusitis_notification_limit": 1,
             "notification_frequency_hours": 3,
+            "quiet_hours_enabled": False,
             "prediction_window_start_hours": 3,
             "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
@@ -873,8 +883,13 @@ class UserHealthProfileFormTest(TestCase):
         """Test that optional fields can be omitted"""
         form_data = {
             "email_notifications_enabled": True,
+            "notification_mode": "IMMEDIATE",
+            "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
+            "daily_migraine_notification_limit": 1,
+            "daily_sinusitis_notification_limit": 1,
             "notification_frequency_hours": 3,
+            "quiet_hours_enabled": False,
             "prediction_window_start_hours": 3,
             "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
@@ -894,8 +909,13 @@ class UserHealthProfileFormTest(TestCase):
         # Test too low
         form_data = {
             "email_notifications_enabled": True,
+            "notification_mode": "IMMEDIATE",
+            "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
+            "daily_migraine_notification_limit": 1,
+            "daily_sinusitis_notification_limit": 1,
             "notification_frequency_hours": 0,  # Too low
+            "quiet_hours_enabled": False,
             "prediction_window_start_hours": 3,
             "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
@@ -922,8 +942,13 @@ class UserHealthProfileFormTest(TestCase):
         # Test window start too low
         form_data = {
             "email_notifications_enabled": True,
+            "notification_mode": "IMMEDIATE",
+            "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
+            "daily_migraine_notification_limit": 1,
+            "daily_sinusitis_notification_limit": 1,
             "notification_frequency_hours": 3,
+            "quiet_hours_enabled": False,
             "prediction_window_start_hours": 0,  # Too low
             "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,

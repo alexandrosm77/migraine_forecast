@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Daily Health Digest</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .summary {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .summary h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        .location-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+            background-color: #fff;
+        }
+        .location-header {
+            margin: 0 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .location-header h3 {
+            margin: 0;
+            color: #495057;
+        }
+        .prediction-group {
+            margin: 15px 0;
+        }
+        .migraine-prediction {
+            background-color: #f0f8ff;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .sinusitis-prediction {
+            background-color: #fffbf0;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .prediction-header {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .migraine-prediction .prediction-header {
+            color: #3498db;
+        }
+        .sinusitis-prediction .prediction-header {
+            color: #f59e0b;
+        }
+        .probability {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .probability-HIGH {
+            background-color: #dc3545;
+            color: white;
+        }
+        .probability-MEDIUM {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .probability-LOW {
+            background-color: #28a745;
+            color: white;
+        }
+        .time-window {
+            font-size: 14px;
+            color: #666;
+            margin: 5px 0;
+        }
+        .weather-data {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        .weather-item {
+            margin-bottom: 5px;
+        }
+        .footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+        }
+        .no-predictions {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Daily Health Digest</h1>
+        <p>{{ digest_date|date:"l, F j, Y" }}</p>
+    </div>
+    <div class="content">
+        <p>Hello {{ user.first_name|default:user.username }},</p>
+        
+        {% if total_count > 0 %}
+        <div class="summary">
+            <h3>📋 Summary</h3>
+            <p>Here's your daily digest of health predictions from the past 24 hours:</p>
+            <div class="summary-stats">
+                <div class="stat">
+                    <div class="stat-number">{{ total_count }}</div>
+                    <div class="stat-label">Total Predictions</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">{{ migraine_count }}</div>
+                    <div class="stat-label">Migraine</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">{{ sinusitis_count }}</div>
+                    <div class="stat-label">Sinusitis</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">{{ location_data|length }}</div>
+                    <div class="stat-label">Locations</div>
+                </div>
+            </div>
+        </div>
+
+        {% for loc_data in location_data %}
+        <div class="location-section">
+            <div class="location-header">
+                <h3>📍 {{ loc_data.location.city }}, {{ loc_data.location.country }}</h3>
+            </div>
+
+            {% if loc_data.migraine %}
+            <div class="prediction-group">
+                <h4 style="margin: 0 0 10px 0; color: #3498db;">🧠 Migraine Predictions</h4>
+                {% for pred in loc_data.migraine %}
+                <div class="migraine-prediction">
+                    <div class="prediction-header">
+                        Migraine Alert
+                        <span class="probability probability-{{ pred.probability }}">{{ pred.probability }}</span>
+                    </div>
+                    <div class="time-window">
+                        ⏰ {{ pred.target_time_start|date:"M j, g:i a" }} - {{ pred.target_time_end|date:"M j, g:i a" }}
+                    </div>
+                    {% if pred.reasoning %}
+                    <div style="margin-top: 10px; font-size: 13px;">
+                        <strong>Reasoning:</strong> {{ pred.reasoning|truncatewords:30 }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if loc_data.sinusitis %}
+            <div class="prediction-group">
+                <h4 style="margin: 0 0 10px 0; color: #f59e0b;">🤧 Sinusitis Predictions</h4>
+                {% for pred in loc_data.sinusitis %}
+                <div class="sinusitis-prediction">
+                    <div class="prediction-header">
+                        Sinusitis Alert
+                        <span class="probability probability-{{ pred.probability }}">{{ pred.probability }}</span>
+                    </div>
+                    <div class="time-window">
+                        ⏰ {{ pred.target_time_start|date:"M j, g:i a" }} - {{ pred.target_time_end|date:"M j, g:i a" }}
+                    </div>
+                    {% if pred.reasoning %}
+                    <div style="margin-top: 10px; font-size: 13px;">
+                        <strong>Reasoning:</strong> {{ pred.reasoning|truncatewords:30 }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <div class="no-predictions">
+            <p style="font-size: 18px;">✅ No health alerts in the past 24 hours</p>
+            <p>You're all clear! We'll continue monitoring and notify you of any changes.</p>
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <p>This is your daily digest email. You can change your notification preferences in your profile settings.</p>
+            <p style="margin-top: 10px;">
+                <a href="{{ request.scheme }}://{{ request.get_host }}/profile/" style="color: #667eea;">Manage Notification Settings</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+
