@@ -163,7 +163,8 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
                 "fields": (
                     "migraine_predictions_enabled",
                     "sinusitis_predictions_enabled",
-                    "prediction_window_hours",
+                    "prediction_window_start_hours",
+                    "prediction_window_end_hours",
                 ),
             },
         ),

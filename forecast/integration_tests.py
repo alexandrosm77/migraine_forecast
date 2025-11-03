@@ -266,8 +266,13 @@ class EndToEndWorkflowTest(TestCase):
             "age": 35,
             "prior_conditions": "Occasional migraines, sensitive to weather changes",
             "email_notifications_enabled": True,
+            "notification_mode": "IMMEDIATE",
+            "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 3,
+            "daily_migraine_notification_limit": 2,
+            "daily_sinusitis_notification_limit": 2,
             "notification_frequency_hours": 4,  # Custom: 4 hours between notifications
+            "quiet_hours_enabled": False,
             "prediction_window_start_hours": 2,  # Custom: Check 2-8 hours ahead
             "prediction_window_end_hours": 8,
             "migraine_predictions_enabled": True,
