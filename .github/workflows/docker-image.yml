@@ -31,15 +31,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       -
-        name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      -
         name: Install bump-my-version
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.bump_version != 'none'
-        run: pip install bump-my-version
+        run: pip3 install --user bump-my-version
 
       -
         name: Configure Git
