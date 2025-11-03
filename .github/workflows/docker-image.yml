@@ -58,8 +58,53 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  test-linting:
     needs: build
+    runs-on: self-hosted
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Run linting checks
+        run: |
+          docker run --rm \
+            alexandrosm77/migraine_forecast:latest \
+            sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
+
+  test-unittest:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Run unit tests in Docker container
+        run: |
+          docker run --rm \
+            alexandrosm77/migraine_forecast:latest \
+            python manage.py test forecast.tests --verbosity=2
+
+  test-integration:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Run integration tests in Docker container
+        run: |
+          docker run --rm \
+            alexandrosm77/migraine_forecast:latest \
+            python manage.py test forecast.integration_tests --verbosity=2
+
+  deploy:
+    needs: [test-linting, test-unittest, test-integration]
     runs-on: self-hosted
     environment: latest
     steps:
@@ -103,56 +148,8 @@ jobs:
               --sentry_traces_sample_rate "${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
               --sentry_profiles_sample_rate "${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}"
 
-  test-linting:
-    needs: deploy
-    runs-on: self-hosted
-    continue-on-error: true
-    steps:
-      -
-        name: Checkout repository
-        uses: actions/checkout@v4
-
-      -
-        name: Run linting checks
-        run: |
-          docker run --rm \
-            alexandrosm77/migraine_forecast:latest \
-            sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
-
-  test-unittest:
-    needs: deploy
-    runs-on: self-hosted
-    continue-on-error: true
-    steps:
-      -
-        name: Checkout repository
-        uses: actions/checkout@v4
-
-      -
-        name: Run unit tests in Docker container
-        run: |
-          docker run --rm \
-            alexandrosm77/migraine_forecast:latest \
-            python manage.py test forecast.tests --verbosity=2
-
-  test-integration:
-    needs: deploy
-    runs-on: self-hosted
-    continue-on-error: true
-    steps:
-      -
-        name: Checkout repository
-        uses: actions/checkout@v4
-
-      -
-        name: Run integration tests in Docker container
-        run: |
-          docker run --rm \
-            alexandrosm77/migraine_forecast:latest \
-            python manage.py test forecast.integration_tests --verbosity=2
-
   cleanup:
-    needs: [test-linting, test-unittest, test-integration]
+    needs: deploy
     runs-on: self-hosted
     environment: latest
     if: always()
