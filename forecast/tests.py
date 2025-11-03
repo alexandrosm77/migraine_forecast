@@ -825,6 +825,7 @@ class UserHealthProfileFormTest(TestCase):
     def test_form_valid_data(self):
         """Test form with valid data"""
         form_data = {
+            "language": "en",
             "age": 30,
             "prior_conditions": "Aura, hypertension",
             "email_notifications_enabled": True,
@@ -852,6 +853,7 @@ class UserHealthProfileFormTest(TestCase):
     def test_form_clamps_sensitivity_values(self):
         """Test that form clamps sensitivity values to valid range"""
         form_data = {
+            "language": "en",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
@@ -882,6 +884,7 @@ class UserHealthProfileFormTest(TestCase):
     def test_form_optional_fields(self):
         """Test that optional fields can be omitted"""
         form_data = {
+            "language": "en",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
@@ -908,6 +911,7 @@ class UserHealthProfileFormTest(TestCase):
         """Test notification frequency validation"""
         # Test too low
         form_data = {
+            "language": "en",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
@@ -941,6 +945,7 @@ class UserHealthProfileFormTest(TestCase):
         """Test prediction window validation"""
         # Test window start too low
         form_data = {
+            "language": "en",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
@@ -1521,7 +1526,6 @@ class LanguageSwitchingTest(TestCase):
     def test_llm_receives_user_language_preference(self):
         """Test that LLM client receives user's language preference in the profile."""
         from forecast.llm_client import LLMClient
-        from unittest.mock import Mock, patch
 
         # Set user language to Greek
         self.profile.language = "el"
@@ -1539,7 +1543,7 @@ class LanguageSwitchingTest(TestCase):
                 "choices": [
                     {
                         "message": {
-                            "content": '{"probability_level": "LOW", "confidence": 0.5, "rationale": "Test", "analysis_text": "Test", "prevention_tips": []}'
+                            "content": '{"probability_level": "LOW", "confidence": 0.5, "rationale": "Test", "analysis_text": "Test", "prevention_tips": []}'  # noqa
                         }
                     }
                 ]

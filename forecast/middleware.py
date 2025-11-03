@@ -19,4 +19,3 @@ class UserLanguageMiddleware(MiddlewareMixin):
             except Exception:
                 # If the user doesn't have a health profile yet, use default language
                 pass
-

@@ -142,7 +142,8 @@ class LLMClient:
         # Build language instruction for LLM
         language_instruction = ""
         if user_language == "el":
-            language_instruction = " Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
+            language_instruction = (" Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, "
+                                    "prevention_tips).")
         elif user_language and user_language != "en":
             language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
 
@@ -290,7 +291,8 @@ class LLMClient:
         # Build language instruction for LLM
         language_instruction = ""
         if user_language == "el":
-            language_instruction = " Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
+            language_instruction = (" Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, "
+                                    "prevention_tips).")
         elif user_language and user_language != "en":
             language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
 
@@ -299,7 +301,8 @@ class LLMClient:
             "You are a sinusitis risk assessor. Analyze weather risk factors (0-1 scale, higher=riskier) "
             "and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON. "
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
-            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens).{language_instruction}\n\n"
+            f"low dries sinuses), barometric pressure changes, and precipitation (increases "
+            f"allergens).{language_instruction}\n\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
