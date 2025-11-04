@@ -12,6 +12,7 @@ import os
 import django
 
 # Setup Django
+os.environ.setdefault("SENTRY_ENABLED", "true")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
 django.setup()
 
@@ -83,7 +84,7 @@ def main():
     print("=" * 60)
     print("Sentry/GlitchTip Integration Test")
     print("=" * 60)
-    print(f"\nDSN: {os.getenv('SENTRY_DSN', 'http://da3f96ceb002454e85ac49a5f1916cd0@192.168.0.11:8001/1')}")
+    print(f"\nDSN: {os.getenv('SENTRY_DSN', 'http://a5d5bab0548d4a5f8b8701ee945ebb47@192.168.0.11:8001/1')}")
     print(f"Environment: {os.getenv('SENTRY_ENVIRONMENT', 'development')}")
     print("\nRunning tests...\n")
 
