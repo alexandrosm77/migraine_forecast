@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 
-from forecast.models import Location, MigrainePrediction, SinusitisPrediction
+from forecast.models import Location, MigrainePrediction, SinusitisPrediction, LLMResponse
 from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
 
@@ -20,12 +20,12 @@ class Command(BaseCommand):
             "--cleanup-days",
             type=int,
             default=7,
-            help="Delete predictions older than this many days (default: 7)",
+            help="Delete predictions and LLM responses older than this many days (default: 7)",
         )
         parser.add_argument(
             "--skip-cleanup",
             action="store_true",
-            help="Skip cleanup of old prediction data",
+            help="Skip cleanup of old prediction and LLM response data",
         )
         parser.add_argument(
             "--location-id",
@@ -41,7 +41,7 @@ class Command(BaseCommand):
         1. Reads weather forecasts from the database
         2. Generates migraine and sinusitis predictions
         3. Stores predictions in the database
-        4. Cleans up old prediction data
+        4. Cleans up old prediction and LLM response data
 
         This is Task 2 of the decoupled pipeline architecture.
         Recommended schedule: Every 30 minutes
@@ -202,16 +202,21 @@ class Command(BaseCommand):
             sinusitis_count = old_sinusitis.count()
             old_sinusitis.delete()
 
-            total_deleted = migraine_count + sinusitis_count
+            # Clean up old LLM responses (same retention period as predictions)
+            old_llm_responses = LLMResponse.objects.filter(created_at__lt=cutoff_time)
+            llm_count = old_llm_responses.count()
+            old_llm_responses.delete()
+
+            total_deleted = migraine_count + sinusitis_count + llm_count
             if total_deleted > 0:
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"  ✓ Deleted {migraine_count} migraine and {sinusitis_count} sinusitis "
-                        f"prediction(s) older than {cleanup_days} days"
+                        f"  ✓ Deleted {migraine_count} migraine, {sinusitis_count} sinusitis "
+                        f"prediction(s), and {llm_count} LLM response(s) older than {cleanup_days} days"
                     )
                 )
             else:
-                self.stdout.write("  No old predictions to delete")
+                self.stdout.write("  No old predictions or LLM responses to delete")
 
             # Summary
             end_time = timezone.now()
