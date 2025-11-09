@@ -150,10 +150,32 @@ class LLMClient:
 
         # System prompt with explicit JSON output instruction and schema
         sys_prompt = (
-            "You are a migraine risk assessor. Analyze weather risk factors "
-            "(0-1 scale, higher=riskier) and output ONLY valid JSON matching "
+            "You are a migraine risk assessor. Analyze weather risk factors and output ONLY valid JSON matching "
             "the schema below. Do not include any text before or after the JSON."
             f"{language_instruction}\n\n"
+            "RISK SCORE INTERPRETATION:\n"
+            "- Each risk factor is scored 0-1 (0=no risk, 1=maximum risk)\n"
+            "- temperature_change: 0.2+ is moderate, 0.4+ is high (based on 5°C threshold)\n"
+            "- humidity_extreme: 0.5+ is moderate, 0.8+ is high (based on 70%+ or 30%- thresholds)\n"
+            "- pressure_change: 0.2+ is moderate, 0.4+ is high (based on 5 hPa threshold)\n"
+            "- pressure_low: 0.25+ is moderate, 0.5+ is high (based on <1005 hPa threshold)\n"
+            "- precipitation: 0.4+ is moderate, 0.8+ is high (based on 5mm threshold)\n"
+            "- cloud_cover: 0.5+ is moderate, 0.9+ is high (based on 80% threshold)\n\n"
+            "WEIGHTS (importance of each factor):\n"
+            "- pressure_change: 34% (most important)\n"
+            "- temperature_change: 22%\n"
+            "- pressure_low: 17%\n"
+            "- humidity_extreme: 13%\n"
+            "- cloud_cover: 9%\n"
+            "- precipitation: 4%\n\n"
+            "CLASSIFICATION GUIDELINES:\n"
+            "- Calculate weighted score: sum(risk_score × weight) for each factor\n"
+            "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
+            "- MEDIUM: weighted score 0.4-0.69\n"
+            "- HIGH: weighted score ≥ 0.7 (only when multiple high-weight factors are elevated)\n"
+            "- Consider actual weather values, not just scores\n"
+            "- Previous predictions are for context only - do not blindly follow patterns\n"
+            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
@@ -170,6 +192,15 @@ class LLMClient:
             f"Location: {location_label}",
             f"Risk scores: {json.dumps(scores)}",
         ]
+
+        # Calculate and add weighted score if weights are available
+        if "weights" in scores:
+            weights = scores["weights"]
+            weighted_score = 0.0
+            for factor in ["temperature_change", "humidity_extreme", "pressure_change", "pressure_low", "precipitation", "cloud_cover"]:
+                if factor in scores and factor in weights:
+                    weighted_score += scores[factor] * weights[factor]
+            user_prompt_parts.append(f"Weighted score: {weighted_score:.2f} (LOW<0.4, MEDIUM:0.4-0.69, HIGH≥0.7)")
 
         # Add temporal context if available (compact format)
         if context and "temporal_context" in context:
@@ -247,6 +278,7 @@ class LLMClient:
                 user_prompt_parts.append(f"Intraday variation: {', '.join(variation_parts)}")
 
         # Add summarized previous predictions history if available
+        # Note: This is for context only - each prediction should be based on current weather data
         if context and "previous_predictions" in context:
             prev_summary = context["previous_predictions"]
             if prev_summary.get("count", 0) > 0:
@@ -259,7 +291,7 @@ class LLMClient:
                 if prev_summary.get("low_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['low_count']}L")
                 if summary_parts:
-                    user_prompt_parts.append(f"Last 24h predictions: {'/'.join(summary_parts)}")
+                    user_prompt_parts.append(f"Last 24h predictions (for context only, analyze current data independently): {'/'.join(summary_parts)}")
 
         # Add weather trend information if available
         if context and "weather_trend" in context:
@@ -348,11 +380,33 @@ class LLMClient:
 
         # System prompt for sinusitis with explicit JSON output instruction and schema
         sys_prompt = (
-            "You are a sinusitis risk assessor. Analyze weather risk factors (0-1 scale, higher=riskier) "
-            "and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON. "
+            "You are a sinusitis risk assessor. Analyze weather risk factors and output ONLY valid JSON matching "
+            "the schema below. Do not include any text before or after the JSON. "
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
-            f"low dries sinuses), barometric pressure changes, and precipitation (increases "
-            f"allergens).{language_instruction}\n\n"
+            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens).{language_instruction}\n\n"
+            "RISK SCORE INTERPRETATION:\n"
+            "- Each risk factor is scored 0-1 (0=no risk, 1=maximum risk)\n"
+            "- temperature_change: 0.2+ is moderate, 0.4+ is high (based on 5°C threshold)\n"
+            "- humidity_extreme: 0.5+ is moderate, 0.8+ is high (based on 70%+ or 30%- thresholds)\n"
+            "- pressure_change: 0.2+ is moderate, 0.4+ is high (based on 5 hPa threshold)\n"
+            "- pressure_low: 0.25+ is moderate, 0.5+ is high (based on <1005 hPa threshold)\n"
+            "- precipitation: 0.4+ is moderate, 0.8+ is high (based on 5mm threshold)\n"
+            "- cloud_cover: 0.5+ is moderate, 0.9+ is high (based on 80% threshold)\n\n"
+            "WEIGHTS (importance of each factor for sinusitis):\n"
+            "- pressure_change: 34% (most important)\n"
+            "- temperature_change: 22%\n"
+            "- pressure_low: 17%\n"
+            "- humidity_extreme: 13%\n"
+            "- cloud_cover: 9%\n"
+            "- precipitation: 4%\n\n"
+            "CLASSIFICATION GUIDELINES:\n"
+            "- Calculate weighted score: sum(risk_score × weight) for each factor\n"
+            "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
+            "- MEDIUM: weighted score 0.4-0.69\n"
+            "- HIGH: weighted score ≥ 0.7 (only when multiple high-weight factors are elevated)\n"
+            "- Consider actual weather values, not just scores\n"
+            "- Previous predictions are for context only - do not blindly follow patterns\n"
+            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
@@ -369,6 +423,15 @@ class LLMClient:
             f"Location: {location_label}",
             f"Risk scores: {json.dumps(scores)}",
         ]
+
+        # Calculate and add weighted score if weights are available
+        if "weights" in scores:
+            weights = scores["weights"]
+            weighted_score = 0.0
+            for factor in ["temperature_change", "humidity_extreme", "pressure_change", "pressure_low", "precipitation", "cloud_cover"]:
+                if factor in scores and factor in weights:
+                    weighted_score += scores[factor] * weights[factor]
+            user_prompt_parts.append(f"Weighted score: {weighted_score:.2f} (LOW<0.4, MEDIUM:0.4-0.69, HIGH≥0.7)")
 
         # Add temporal context if available (compact format)
         if context and "temporal_context" in context:
@@ -446,6 +509,7 @@ class LLMClient:
                 user_prompt_parts.append(f"Intraday variation: {', '.join(variation_parts)}")
 
         # Add summarized previous predictions history if available
+        # Note: This is for context only - each prediction should be based on current weather data
         if context and "previous_predictions" in context:
             prev_summary = context["previous_predictions"]
             if prev_summary.get("count", 0) > 0:
@@ -458,7 +522,7 @@ class LLMClient:
                 if prev_summary.get("low_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['low_count']}L")
                 if summary_parts:
-                    user_prompt_parts.append(f"Last 24h predictions: {'/'.join(summary_parts)}")
+                    user_prompt_parts.append(f"Last 24h predictions (for context only, analyze current data independently): {'/'.join(summary_parts)}")
 
         # Add weather trend information if available
         if context and "weather_trend" in context:

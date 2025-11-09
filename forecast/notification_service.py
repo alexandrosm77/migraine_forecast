@@ -748,16 +748,28 @@ class NotificationService:
         # Precipitation analysis
         if weather_factors.get("precipitation", 0) > 0:
             max_precipitation = max([f.precipitation for f in forecasts], default=0)
+
+            # Determine appropriate name and explanation based on actual precipitation level
+            if max_precipitation >= thresholds["precipitation_high"]:
+                name = "Heavy Precipitation"
+                explanation = (
+                    f"Expected precipitation of {max_precipitation:.1f} mm, "
+                    f"which exceeds the {thresholds['precipitation_high']} mm threshold. "
+                    "Heavy rain or storms can trigger migraines."
+                )
+            else:
+                name = "Moderate Precipitation"
+                explanation = (
+                    f"Expected precipitation of {max_precipitation:.1f} mm. "
+                    "Rain and changing weather patterns can contribute to migraine risk."
+                )
+
             detailed_factors.append(
                 {
-                    "name": "Heavy Precipitation",
+                    "name": name,
                     "score": weather_factors["precipitation"],
                     "weight": weights["precipitation"],
-                    "explanation": (
-                        f"Expected precipitation of {max_precipitation:.1f} mm, "
-                        f"which exceeds the {thresholds['precipitation_high']} mm threshold. "
-                        "Heavy rain or storms can trigger migraines."
-                    ),
+                    "explanation": explanation,
                     "severity": "high" if max_precipitation >= 10 else "medium",
                 }
             )
@@ -765,16 +777,28 @@ class NotificationService:
         # Cloud cover analysis
         if weather_factors.get("cloud_cover", 0) > 0:
             avg_cloud_cover = np.mean([f.cloud_cover for f in forecasts])
+
+            # Determine appropriate name and explanation based on actual cloud cover level
+            if avg_cloud_cover >= thresholds["cloud_cover_high"]:
+                name = "Heavy Cloud Cover"
+                explanation = (
+                    f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the "
+                    f"{thresholds['cloud_cover_high']}% threshold. "
+                    "Overcast conditions can affect some migraine sufferers."
+                )
+            else:
+                name = "Moderate Cloud Cover"
+                explanation = (
+                    f"Cloud cover will be {avg_cloud_cover:.1f}%. "
+                    "Changing light conditions can contribute to migraine risk for some people."
+                )
+
             detailed_factors.append(
                 {
-                    "name": "Heavy Cloud Cover",
+                    "name": name,
                     "score": weather_factors["cloud_cover"],
                     "weight": weights["cloud_cover"],
-                    "explanation": (
-                        f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the "
-                        f"{thresholds['cloud_cover_high']}% threshold. "
-                        "Overcast conditions can affect some migraine sufferers."
-                    ),
+                    "explanation": explanation,
                     "severity": "medium",
                 }
             )
@@ -1249,15 +1273,22 @@ class NotificationService:
         # Cloud cover analysis
         if weather_factors.get("cloud_cover", 0) > 0:
             avg_cloud_cover = np.mean([f.cloud_cover for f in forecasts])
+
+            # Determine appropriate explanation based on actual cloud cover level
+            if avg_cloud_cover >= thresholds["cloud_cover_high"]:
+                explanation = (
+                    f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the "
+                    f"{thresholds['cloud_cover_high']}% threshold."
+                )
+            else:
+                explanation = f"Cloud cover will be {avg_cloud_cover:.1f}%."
+
             detailed_factors.append(
                 {
                     "name": "Cloud Cover",
                     "score": weather_factors["cloud_cover"],
                     "weight": weights["cloud_cover"],
-                    "explanation": (
-                        f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the "
-                        f"{thresholds['cloud_cover_high']}% threshold."
-                    ),
+                    "explanation": explanation,
                     "severity": "medium",
                 }
             )
