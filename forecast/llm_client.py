@@ -197,7 +197,14 @@ class LLMClient:
         if "weights" in scores:
             weights = scores["weights"]
             weighted_score = 0.0
-            for factor in ["temperature_change", "humidity_extreme", "pressure_change", "pressure_low", "precipitation", "cloud_cover"]:
+            for factor in [
+                "temperature_change",
+                "humidity_extreme",
+                "pressure_change",
+                "pressure_low",
+                "precipitation",
+                "cloud_cover",
+            ]:
                 if factor in scores and factor in weights:
                     weighted_score += scores[factor] * weights[factor]
             user_prompt_parts.append(f"Weighted score: {weighted_score:.2f} (LOW<0.4, MEDIUM:0.4-0.69, HIGH≥0.7)")
@@ -291,7 +298,10 @@ class LLMClient:
                 if prev_summary.get("low_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['low_count']}L")
                 if summary_parts:
-                    user_prompt_parts.append(f"Last 24h predictions (for context only, analyze current data independently): {'/'.join(summary_parts)}")
+                    user_prompt_parts.append(
+                        f"Last 24h predictions (for context only, analyze "
+                        f"current data independently): {'/'.join(summary_parts)}"
+                    )
 
         # Add weather trend information if available
         if context and "weather_trend" in context:
@@ -383,7 +393,8 @@ class LLMClient:
             "You are a sinusitis risk assessor. Analyze weather risk factors and output ONLY valid JSON matching "
             "the schema below. Do not include any text before or after the JSON. "
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
-            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens).{language_instruction}\n\n"
+            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens"
+            f").{language_instruction}\n\n"
             "RISK SCORE INTERPRETATION:\n"
             "- Each risk factor is scored 0-1 (0=no risk, 1=maximum risk)\n"
             "- temperature_change: 0.2+ is moderate, 0.4+ is high (based on 5°C threshold)\n"
@@ -428,7 +439,14 @@ class LLMClient:
         if "weights" in scores:
             weights = scores["weights"]
             weighted_score = 0.0
-            for factor in ["temperature_change", "humidity_extreme", "pressure_change", "pressure_low", "precipitation", "cloud_cover"]:
+            for factor in [
+                "temperature_change",
+                "humidity_extreme",
+                "pressure_change",
+                "pressure_low",
+                "precipitation",
+                "cloud_cover",
+            ]:
                 if factor in scores and factor in weights:
                     weighted_score += scores[factor] * weights[factor]
             user_prompt_parts.append(f"Weighted score: {weighted_score:.2f} (LOW<0.4, MEDIUM:0.4-0.69, HIGH≥0.7)")
@@ -522,7 +540,10 @@ class LLMClient:
                 if prev_summary.get("low_count", 0) > 0:
                     summary_parts.append(f"{prev_summary['low_count']}L")
                 if summary_parts:
-                    user_prompt_parts.append(f"Last 24h predictions (for context only, analyze current data independently): {'/'.join(summary_parts)}")
+                    user_prompt_parts.append(
+                        f"Last 24h predictions (for context only, analyze current data independently"
+                        f"): {'/'.join(summary_parts)}"
+                    )
 
         # Add weather trend information if available
         if context and "weather_trend" in context:
