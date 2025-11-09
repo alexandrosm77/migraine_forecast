@@ -162,12 +162,12 @@ class LLMClient:
             "- precipitation: 0.4+ is moderate, 0.8+ is high (based on 5mm threshold)\n"
             "- cloud_cover: 0.5+ is moderate, 0.9+ is high (based on 80% threshold)\n\n"
             "WEIGHTS (importance of each factor):\n"
-            "- pressure_change: 34% (most important)\n"
-            "- temperature_change: 22%\n"
-            "- pressure_low: 17%\n"
-            "- humidity_extreme: 13%\n"
-            "- cloud_cover: 9%\n"
-            "- precipitation: 4%\n\n"
+            "- pressure_change: 30% (most important)\n"
+            "- temperature_change: 25%\n"
+            "- pressure_low: 15%\n"
+            "- humidity_extreme: 15%\n"
+            "- cloud_cover: 10%\n"
+            "- precipitation: 5%\n\n"
             "CLASSIFICATION GUIDELINES:\n"
             "- Calculate weighted score: sum(risk_score × weight) for each factor\n"
             "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
@@ -207,7 +207,21 @@ class LLMClient:
             ]:
                 if factor in scores and factor in weights:
                     weighted_score += scores[factor] * weights[factor]
-            user_prompt_parts.append(f"Weighted score: {weighted_score:.2f} (LOW<0.4, MEDIUM:0.4-0.69, HIGH≥0.7)")
+
+            # Calculate adjusted thresholds based on user sensitivity
+            high_thr = 0.7
+            med_thr = 0.4
+            if user_profile is not None:
+                overall = user_profile.get("sensitivity_overall", 1.0)
+                # More sensitive → lower thresholds; less sensitive → higher thresholds
+                shift = (overall - 1.0) * 0.15
+                high_thr = min(max(high_thr - shift, 0.5), 0.9)
+                med_thr = min(max(med_thr - shift, 0.25), 0.7)
+
+            user_prompt_parts.append(
+                f"Weighted score: {weighted_score:.2f} "
+                f"(LOW<{med_thr:.2f}, MEDIUM:{med_thr:.2f}-{high_thr-0.01:.2f}, HIGH≥{high_thr:.2f})"
+            )
 
         # Add temporal context if available (compact format)
         if context and "temporal_context" in context:
@@ -333,6 +347,11 @@ class LLMClient:
             "temperature": 0.2,
         }
 
+        # Log the full request for debugging
+        logger.info(f"LLM Request for {location_label}:")
+        logger.info(f"User prompt: {user_prompt_str}")
+        logger.info(f"Request payload: {request_payload}")
+
         try:
             result = self.chat_complete(
                 messages=messages,
@@ -350,9 +369,14 @@ class LLMClient:
                 logger.warning("LLM response not JSON parsable: %s", content[:200])
                 return None, {"raw": result, "request_payload": request_payload}
             level = parsed.get("probability_level")
+
+            # Log the LLM response for debugging
+            logger.info(f"LLM Response for {location_label}: {parsed}")
+
             if isinstance(level, str):
                 level_up = level.strip().upper()
                 if level_up in {"LOW", "MEDIUM", "HIGH"}:
+                    logger.info(f"LLM classified as {level_up} for {location_label}")
                     return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
             logger.warning("LLM response missing/invalid probability_level: %s", parsed)
             return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
@@ -404,12 +428,12 @@ class LLMClient:
             "- precipitation: 0.4+ is moderate, 0.8+ is high (based on 5mm threshold)\n"
             "- cloud_cover: 0.5+ is moderate, 0.9+ is high (based on 80% threshold)\n\n"
             "WEIGHTS (importance of each factor for sinusitis):\n"
-            "- pressure_change: 34% (most important)\n"
-            "- temperature_change: 22%\n"
-            "- pressure_low: 17%\n"
-            "- humidity_extreme: 13%\n"
-            "- cloud_cover: 9%\n"
-            "- precipitation: 4%\n\n"
+            "- temperature_change: 30% (most important for sinusitis)\n"
+            "- humidity_extreme: 25% (very important - affects allergens/mold and sinus dryness)\n"
+            "- pressure_change: 20%\n"
+            "- precipitation: 10% (increases allergens)\n"
+            "- pressure_low: 10%\n"
+            "- cloud_cover: 5%\n\n"
             "CLASSIFICATION GUIDELINES:\n"
             "- Calculate weighted score: sum(risk_score × weight) for each factor\n"
             "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
@@ -449,7 +473,21 @@ class LLMClient:
             ]:
                 if factor in scores and factor in weights:
                     weighted_score += scores[factor] * weights[factor]
-            user_prompt_parts.append(f"Weighted score: {weighted_score:.2f} (LOW<0.4, MEDIUM:0.4-0.69, HIGH≥0.7)")
+
+            # Calculate adjusted thresholds based on user sensitivity (sinusitis uses lower thresholds)
+            high_thr = 0.65  # Slightly lower than migraine
+            med_thr = 0.35  # Slightly lower than migraine
+            if user_profile is not None:
+                overall = user_profile.get("sensitivity_overall", 1.0)
+                # More sensitive → lower thresholds; less sensitive → higher thresholds
+                shift = (overall - 1.0) * 0.15
+                high_thr = min(max(high_thr - shift, 0.45), 0.85)
+                med_thr = min(max(med_thr - shift, 0.20), 0.65)
+
+            user_prompt_parts.append(
+                f"Weighted score: {weighted_score:.2f} "
+                f"(LOW<{med_thr:.2f}, MEDIUM:{med_thr:.2f}-{high_thr-0.01:.2f}, HIGH≥{high_thr:.2f})"
+            )
 
         # Add temporal context if available (compact format)
         if context and "temporal_context" in context:

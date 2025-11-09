@@ -803,8 +803,20 @@ class NotificationService:
                 }
             )
 
-        # Calculate total weighted score
-        total_score = sum(factor["score"] * factor["weight"] for factor in detailed_factors)
+        # Calculate total weighted score using ALL factors from weather_factors, not just detailed_factors
+        # This ensures the displayed score matches the score used for classification
+        total_score = 0.0
+        for factor_name in [
+            "temperature_change",
+            "humidity_extreme",
+            "pressure_change",
+            "pressure_low",
+            "precipitation",
+            "cloud_cover",
+        ]:
+            score = weather_factors.get(factor_name, 0)
+            weight = weights.get(factor_name, 0)
+            total_score += score * weight
 
         # Sort factors by their weighted contribution (score * weight)
         detailed_factors.sort(key=lambda x: x["score"] * x["weight"], reverse=True)
@@ -1293,8 +1305,20 @@ class NotificationService:
                 }
             )
 
-        # Calculate total weighted score
-        total_score = sum(factor["score"] * factor["weight"] for factor in detailed_factors)
+        # Calculate total weighted score using ALL factors from weather_factors, not just detailed_factors
+        # This ensures the displayed score matches the score used for classification
+        total_score = 0.0
+        for factor_name in [
+            "temperature_change",
+            "humidity_extreme",
+            "pressure_change",
+            "pressure_low",
+            "precipitation",
+            "cloud_cover",
+        ]:
+            score = weather_factors.get(factor_name, 0)
+            weight = weights.get(factor_name, 0)
+            total_score += score * weight
 
         # Sort factors by their weighted contribution (score * weight)
         detailed_factors.sort(key=lambda x: x["score"] * x["weight"], reverse=True)
