@@ -150,15 +150,23 @@ jobs:
         run: |
           echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying infrastructure..."
 
+          # Create temporary SSH key file
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
           # Deploy namespace, PVs, and CronJob via stdin
-          cat k8s/namespace.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          cat k8s/namespace.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-          cat k8s/persistent-volume.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          cat k8s/persistent-volume.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-          cat k8s/backup-cronjob.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          cat k8s/backup-cronjob.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
+
+          # Clean up key
+          rm -f ~/.ssh/deploy_key
 
           echo "$(date '+%Y-%m-%d %H:%M:%S') - Infrastructure deployed"
 
@@ -224,18 +232,23 @@ jobs:
         run: |
           echo "$(date '+%Y-%m-%d %H:%M:%S') - Running database migrations..."
 
+          # Create temporary SSH key file
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
           # Delete old migration job if it exists
-          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
             "sudo kubectl delete job migraine-migration -n migraine-forecast --ignore-not-found=true"
 
           # Apply migration job via stdin
-          cat k8s/migration-job.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          cat k8s/migration-job.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
           # Wait for migration to complete (max 5 minutes)
           echo "Waiting for migrations to complete..."
-          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
             "sudo kubectl wait --for=condition=complete --timeout=300s job/migraine-migration -n migraine-forecast && \
              echo '$(date '+%Y-%m-%d %H:%M:%S') - Migrations completed successfully' || \
@@ -244,39 +257,47 @@ jobs:
               echo '$(date '+%Y-%m-%d %H:%M:%S') - Database backup is available for manual recovery if needed' && \
               exit 1)"
 
+          # Clean up key
+          rm -f ~/.ssh/deploy_key
+
       -
         name: Deploy application
         run: |
           echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
 
+          # Create temporary SSH key file
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
           # Delete old monolithic deployment if it exists (migration from single to split deployment)
-          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
             "sudo kubectl delete deployment migraine-forecast -n migraine-forecast --ignore-not-found=true"
 
           # Deploy the application and service via stdin
-          cat k8s/deployment.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          cat k8s/deployment.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-          cat k8s/service.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          cat k8s/service.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
           # Wait for web deployment to complete
           echo "Waiting for web deployment to complete..."
-          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
             "sudo kubectl rollout status deployment/migraine-forecast-web -n migraine-forecast --timeout=300s"
 
           # Wait for cron deployment to complete
           echo "Waiting for cron deployment to complete..."
-          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
             "sudo kubectl rollout status deployment/migraine-forecast-cron -n migraine-forecast --timeout=300s"
 
           # Show status
           echo "$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful!"
 
-          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
             "echo '$(date '+%Y-%m-%d %H:%M:%S') - Pod status:' && \
              sudo kubectl get pods -n migraine-forecast -l app=migraine-forecast && \
@@ -286,6 +307,9 @@ jobs:
              echo '' && \
              echo '$(date '+%Y-%m-%d %H:%M:%S') - Cron pod logs:' && \
              sudo kubectl logs -n migraine-forecast -l component=cron --tail=10"
+
+          # Clean up key
+          rm -f ~/.ssh/deploy_key
 
   cleanup:
     needs: deploy
