@@ -1,0 +1,257 @@
+name: Kubernetes Deployment
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    environment: latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      -
+        name: Get current version
+        id: get_version
+        run: |
+          VERSION=$(python3 -c "import sys; sys.path.insert(0, '.'); from forecast.__version__ import __version__; print(__version__)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      -
+        name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          platforms: linux/arm64
+          tags: |
+            alexandrosm77/migraine_forecast:latest
+            alexandrosm77/migraine_forecast:${{ steps.get_version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  test-linting:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Run linting checks
+        run: |
+          docker run --rm \
+            alexandrosm77/migraine_forecast@${{ needs.build.outputs.image-digest }} \
+            sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
+
+  test-unittest:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Run unit tests in Docker container
+        run: |
+          docker run --rm \
+            alexandrosm77/migraine_forecast@${{ needs.build.outputs.image-digest }} \
+            python manage.py test forecast.tests --verbosity=2
+
+  test-integration:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Run integration tests in Docker container
+        run: |
+          docker run --rm \
+            alexandrosm77/migraine_forecast@${{ needs.build.outputs.image-digest }} \
+            python manage.py test forecast.integration_tests --verbosity=2
+
+  deploy:
+    needs: [test-linting, test-unittest, test-integration]
+    runs-on: self-hosted
+    environment: latest
+    # Ensure only one deployment runs at a time
+    concurrency:
+      group: deployment
+      cancel-in-progress: false
+    steps:
+      -
+        name: Checkout repository
+        uses: actions/checkout@v4
+
+      -
+        name: Create/Update Kubernetes secrets and config
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating/updating Kubernetes secrets..."
+
+            # Create namespace if it doesn't exist
+            kubectl create namespace migraine-forecast --dry-run=client -o yaml | kubectl apply -f -
+
+            # Create/update secret from GitHub secrets
+            kubectl create secret generic migraine-secrets \
+              --from-literal=SENTRY_DSN="${{ secrets.SENTRY_DSN }}" \
+              --from-literal=DOCKERHUB_TOKEN="${{ secrets.DOCKERHUB_TOKEN }}" \
+              --namespace=migraine-forecast \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+            # Create/update ConfigMap
+            kubectl create configmap migraine-config \
+              --from-literal=DJANGO_DEBUG="False" \
+              --from-literal=SENTRY_ENABLED="${{ vars.SENTRY_ENABLED }}" \
+              --from-literal=SENTRY_ENVIRONMENT="${{ vars.SENTRY_ENVIRONMENT }}" \
+              --from-literal=SENTRY_TRACES_SAMPLE_RATE="${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
+              --from-literal=SENTRY_PROFILES_SAMPLE_RATE="${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}" \
+              --from-literal=DOCKERHUB_USERNAME="${{ vars.DOCKERHUB_USERNAME }}" \
+              --namespace=migraine-forecast \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Secrets and config updated successfully"
+
+      -
+        name: Backup database
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating database backup..."
+            
+            # Run backup job immediately (don't wait for scheduled time)
+            kubectl create job --from=cronjob/migraine-db-backup migraine-backup-$(date +%s) -n migraine-forecast || true
+            
+            # Wait for backup to complete (max 60 seconds)
+            for i in {1..12}; do
+              if kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --field-selector status.successful=1 2>/dev/null | grep -q migraine-backup; then
+                echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup completed successfully"
+                break
+              fi
+              echo "Waiting for backup to complete... ($i/12)"
+              sleep 5
+            done
+
+      -
+        name: Run database migrations
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Running database migrations..."
+            
+            # Delete old migration job if it exists
+            kubectl delete job migraine-migration -n migraine-forecast --ignore-not-found=true
+            
+            # Apply migration job
+            kubectl apply -f /home/alexandros/migraine_forecast/k8s/migration-job.yaml
+            
+            # Wait for migration to complete (max 5 minutes)
+            echo "Waiting for migrations to complete..."
+            kubectl wait --for=condition=complete --timeout=300s job/migraine-migration -n migraine-forecast
+            
+            if [ $? -eq 0 ]; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Migrations completed successfully"
+            else
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Migrations failed!"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: kubectl logs -n migraine-forecast job/migraine-migration"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Database backup is available for manual recovery if needed"
+              exit 1
+            fi
+
+      -
+        name: Deploy application
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
+            
+            # Update deployment to use latest image
+            kubectl set image deployment/migraine-forecast \
+              migraine-forecast=alexandrosm77/migraine_forecast:latest \
+              -n migraine-forecast
+            
+            # Wait for rollout to complete (max 5 minutes)
+            echo "Waiting for deployment to complete..."
+            kubectl rollout status deployment/migraine-forecast -n migraine-forecast --timeout=300s
+            
+            if [ $? -eq 0 ]; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful!"
+              
+              # Show pod status
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Pod status:"
+              kubectl get pods -n migraine-forecast -l app=migraine-forecast
+              
+              # Show recent logs
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Recent logs:"
+              kubectl logs -n migraine-forecast -l app=migraine-forecast --tail=10
+            else
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Deployment failed!"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: kubectl logs -n migraine-forecast -l app=migraine-forecast"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Rollback with: kubectl rollout undo deployment/migraine-forecast -n migraine-forecast"
+              exit 1
+            fi
+
+  cleanup:
+    needs: deploy
+    runs-on: self-hosted
+    environment: latest
+    if: always()
+    steps:
+      -
+        name: Clean up old resources
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "Cleaning up old migration jobs..."
+            kubectl delete jobs -n migraine-forecast -l job-name=migraine-migration --field-selector status.successful=1
+            
+            echo "Cleaning up old backup jobs (keep last 3)..."
+            kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --sort-by=.metadata.creationTimestamp -o name | head -n -3 | xargs -r kubectl delete -n migraine-forecast
+            
+            echo "Cleanup complete"
+

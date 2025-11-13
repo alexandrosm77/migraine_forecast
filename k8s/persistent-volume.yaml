@@ -1,0 +1,78 @@
+---
+# PersistentVolume - The actual storage on your Raspberry Pi
+# Think of this as: "I have a directory on my host that I want to use"
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: migraine-db-pv
+  labels:
+    app: migraine-forecast
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce  # Only one pod can mount this at a time
+  persistentVolumeReclaimPolicy: Retain  # Don't delete data if PVC is deleted
+  storageClassName: local-storage
+  hostPath:
+    path: /home/alexandros/migraine  # Your existing directory on the Pi
+    type: DirectoryOrCreate
+
+---
+# PersistentVolumeClaim - Request for storage
+# Think of this as: "My app needs storage, give me some from the PV above"
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: migraine-db-pvc
+  namespace: migraine-forecast
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      app: migraine-forecast
+
+---
+# PersistentVolume for backups
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: migraine-backup-pv
+  labels:
+    app: migraine-forecast
+    type: backup
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  hostPath:
+    path: /home/alexandros/migraine/backups
+    type: DirectoryOrCreate
+
+---
+# PersistentVolumeClaim for backups
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: migraine-backup-pvc
+  namespace: migraine-forecast
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage
+  resources:
+    requests:
+      storage: 5Gi
+  selector:
+    matchLabels:
+      app: migraine-forecast
+      type: backup
+

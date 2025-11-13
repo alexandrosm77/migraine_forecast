@@ -1,0 +1,20 @@
+# Kustomization - Groups all your manifests together
+# Think of this as a simplified docker-compose.yml
+# Usage: kubectl apply -k k8s/
+#
+# Note: secrets.yaml is NOT included here - secrets are created
+# from GitHub secrets during deployment for better security
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: migraine-forecast
+
+resources:
+  - namespace.yaml
+  - persistent-volume.yaml
+  # secrets.yaml - created from GitHub secrets during deployment
+  - deployment.yaml
+  - service.yaml
+  - backup-cronjob.yaml
+  # migration-job.yaml is applied separately during deployment
+

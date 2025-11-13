@@ -1,0 +1,23 @@
+# Service - Exposes your app on a network port
+# Think of this as: docker run -p 8889:8889
+apiVersion: v1
+kind: Service
+metadata:
+  name: migraine-forecast
+  namespace: migraine-forecast
+  labels:
+    app: migraine-forecast
+spec:
+  type: NodePort  # Expose on a port on your Pi's IP
+  selector:
+    app: migraine-forecast
+  ports:
+  - port: 8889        # Port inside the cluster
+    targetPort: 8889  # Port on the container
+    nodePort: 30889   # Port on your Pi (30000-32767 range)
+    protocol: TCP
+    name: http
+
+# Alternative: Use LoadBalancer type if you have MetalLB installed
+# Or use ClusterIP if you're using an Ingress controller
+

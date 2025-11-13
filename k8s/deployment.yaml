@@ -1,0 +1,94 @@
+# Deployment - Manages your running containers (pods)
+# Think of this as: docker run -d --name migraine --restart unless-stopped ...
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: migraine-forecast
+  namespace: migraine-forecast
+  labels:
+    app: migraine-forecast
+spec:
+  # How many copies of your app to run (1 for single Pi)
+  replicas: 1
+  
+  # Deployment strategy - how to update
+  strategy:
+    type: Recreate  # Stop old pod before starting new one (important for SQLite!)
+  
+  selector:
+    matchLabels:
+      app: migraine-forecast
+  
+  template:
+    metadata:
+      labels:
+        app: migraine-forecast
+    spec:
+      # Pod spec - defines what runs in the container
+      containers:
+      - name: migraine-forecast
+        image: alexandrosm77/migraine_forecast:latest
+        imagePullPolicy: Always  # Always pull latest image
+        
+        ports:
+        - containerPort: 8889
+          name: http
+          protocol: TCP
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: migraine-config
+        
+        # Environment variables from Secret
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: SENTRY_DSN
+        
+        # Volume mounts - like docker -v
+        volumeMounts:
+        - name: db-storage
+          mountPath: /app/db.sqlite3
+          subPath: db.sqlite3  # Mount just the file, not the whole directory
+        
+        # Health checks - Kubernetes will restart if these fail
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8889
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8889
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Resource limits (adjust based on your Pi's capacity)
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"  # 0.25 CPU cores
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"  # 2 CPU cores max
+      
+      # Volumes - define storage
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: migraine-db-pvc
+      
+      # Node selector - ensure it runs on ARM64 (optional)
+      # nodeSelector:
+      #   kubernetes.io/arch: arm64
+

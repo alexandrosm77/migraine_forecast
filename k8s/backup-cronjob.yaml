@@ -1,0 +1,66 @@
+# CronJob - Runs scheduled tasks (like crontab)
+# This backs up the database before deployments
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: migraine-db-backup
+  namespace: migraine-forecast
+spec:
+  # Run daily at 2 AM
+  schedule: "0 2 * * *"
+  
+  # Keep last 3 successful jobs and 1 failed job for debugging
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          
+          containers:
+          - name: backup
+            image: alpine:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Starting database backup at $(date)"
+              
+              # Create backup with timestamp
+              BACKUP_FILE="/backups/db.sqlite3.backup.$(date '+%Y%m%d_%H%M%S')"
+              
+              if [ -f /db/db.sqlite3 ]; then
+                cp /db/db.sqlite3 "$BACKUP_FILE"
+                echo "Database backed up to: $BACKUP_FILE"
+                
+                # Keep only the last 10 backups
+                ls -t /backups/db.sqlite3.backup.* 2>/dev/null | tail -n +11 | xargs -r rm
+                echo "Old backups cleaned up (keeping last 10)"
+                
+                # Show backup info
+                ls -lh "$BACKUP_FILE"
+              else
+                echo "No database found at /db/db.sqlite3"
+                exit 1
+              fi
+              
+              echo "Backup completed successfully at $(date)"
+            
+            volumeMounts:
+            - name: db-storage
+              mountPath: /db
+              readOnly: true
+            - name: backup-storage
+              mountPath: /backups
+          
+          volumes:
+          - name: db-storage
+            persistentVolumeClaim:
+              claimName: migraine-db-pvc
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: migraine-backup-pvc
+

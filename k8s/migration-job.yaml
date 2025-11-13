@@ -1,0 +1,35 @@
+# Job - Runs a one-time task (like running migrations)
+# This is used during deployment to run database migrations
+# Think of this as: docker run --rm ... python manage.py migrate
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migraine-migration
+  namespace: migraine-forecast
+spec:
+  # Don't keep old jobs around
+  ttlSecondsAfterFinished: 300  # Delete job 5 minutes after completion
+  
+  template:
+    spec:
+      restartPolicy: OnFailure
+      
+      containers:
+      - name: migrate
+        image: alexandrosm77/migraine_forecast:latest
+        command:
+        - python
+        - manage.py
+        - migrate
+        - --noinput
+        
+        volumeMounts:
+        - name: db-storage
+          mountPath: /app/db.sqlite3
+          subPath: db.sqlite3
+      
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: migraine-db-pvc
+

@@ -174,3 +174,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Kubernetes secrets (created from GitHub secrets during deployment)
+k8s/secrets.yaml
