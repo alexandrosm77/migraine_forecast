@@ -233,27 +233,44 @@ class SinusitisPredictionService:
                         temps = [f.temperature for f in fc_list]
                         pressures = [f.pressure for f in fc_list]
                         humidities = [f.humidity for f in fc_list]
+                        cloud_covers = [f.cloud_cover for f in fc_list]
+                        precipitations = [f.precipitation for f in fc_list]
 
                         avg_forecast_temp = np.mean(temps)
                         avg_forecast_pressure = np.mean(pressures)
                         avg_forecast_humidity = np.mean(humidities)
                         avg_prev_temp = np.mean([f.temperature for f in prev_list])
                         avg_prev_pressure = np.mean([f.pressure for f in prev_list])
+                        avg_prev_humidity = np.mean([f.humidity for f in prev_list])
 
                         context_payload["aggregates"] = {
+                            # Temperature
                             "avg_forecast_temp": round(float(avg_forecast_temp), 1),
                             "min_forecast_temp": round(float(min(temps)), 1),
                             "max_forecast_temp": round(float(max(temps)), 1),
                             "temperature_range": round(float(max(temps) - min(temps)), 1),
+                            # Pressure
                             "avg_forecast_pressure": round(float(avg_forecast_pressure), 1),
                             "min_forecast_pressure": round(float(min(pressures)), 1),
                             "max_forecast_pressure": round(float(max(pressures)), 1),
                             "pressure_range": round(float(max(pressures) - min(pressures)), 1),
+                            # Humidity
                             "avg_forecast_humidity": round(float(avg_forecast_humidity), 1),
+                            "min_forecast_humidity": round(float(min(humidities)), 1),
+                            "max_forecast_humidity": round(float(max(humidities)), 1),
+                            "humidity_range": round(float(max(humidities) - min(humidities)), 1),
+                            # Cloud cover
+                            "avg_forecast_cloud_cover": round(float(np.mean(cloud_covers)), 0),
+                            "min_forecast_cloud_cover": round(float(min(cloud_covers)), 0),
+                            "max_forecast_cloud_cover": round(float(max(cloud_covers)), 0),
+                            # Precipitation
+                            "max_precipitation": round(float(max(precipitations)), 1) if precipitations else 0,
+                            "total_precipitation": round(float(sum(precipitations)), 1) if precipitations else 0,
                         }
                         context_payload["changes"] = {
                             "temperature_change": round(float(avg_forecast_temp - avg_prev_temp), 1),
                             "pressure_change": round(float(avg_forecast_pressure - avg_prev_pressure), 1),
+                            "humidity_change": round(float(avg_forecast_humidity - avg_prev_humidity), 1),
                         }
 
                         # For large windows (>6 hours), add intraday variation metrics

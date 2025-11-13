@@ -11,8 +11,6 @@ Usage:
 """
 import json
 import sys
-from pathlib import Path
-from datetime import datetime
 from collections import defaultdict
 
 
@@ -47,9 +45,9 @@ def generate_summary_report(results):
     for i, data in enumerate(results_sorted, 1):
         model = data["model"][:33]
         timestamp = data["timestamp"][:19]
-        overall = f"{data['summary']['overall_accuracy']:.1%} ({data['summary']['total_correct']}/{data['summary']['total_tests']})"
-        migraine = f"{data['summary']['migraine_accuracy']:.1%} ({data['summary']['migraine_correct']}/{data['summary']['migraine_total']})"
-        sinusitis = f"{data['summary']['sinusitis_accuracy']:.1%} ({data['summary']['sinusitis_correct']}/{data['summary']['sinusitis_total']})"
+        overall = f"{data['summary']['overall_accuracy']:.1%} ({data['summary']['total_correct']}/{data['summary']['total_tests']})"  # noqa
+        migraine = f"{data['summary']['migraine_accuracy']:.1%} ({data['summary']['migraine_correct']}/{data['summary']['migraine_total']})"  # noqa
+        sinusitis = f"{data['summary']['sinusitis_accuracy']:.1%} ({data['summary']['sinusitis_correct']}/{data['summary']['sinusitis_total']})"  # noqa
         
         print(f"{i:<6} {model:<35} {timestamp:<20} {overall:<12} {migraine:<12} {sinusitis:<12}")
     
@@ -233,14 +231,14 @@ def compare_best_vs_worst(results):
         if best["migraine_tests"][i]["correct"] and not worst["migraine_tests"][i]["correct"]:
             scenario = best["migraine_tests"][i]
             print(f"  • Migraine: {scenario['scenario_name']}")
-            print(f"    Expected: {scenario['expected']} | Best: {scenario['predicted']} | Worst: {worst['migraine_tests'][i]['predicted']}")
+            print(f"    Expected: {scenario['expected']} | Best: {scenario['predicted']} | Worst: {worst['migraine_tests'][i]['predicted']}")  # noqa
             count += 1
     
     for i in range(len(best["sinusitis_tests"])):
         if best["sinusitis_tests"][i]["correct"] and not worst["sinusitis_tests"][i]["correct"]:
             scenario = best["sinusitis_tests"][i]
             print(f"  • Sinusitis: {scenario['scenario_name']}")
-            print(f"    Expected: {scenario['expected']} | Best: {scenario['predicted']} | Worst: {worst['sinusitis_tests'][i]['predicted']}")
+            print(f"    Expected: {scenario['expected']} | Best: {scenario['predicted']} | Worst: {worst['sinusitis_tests'][i]['predicted']}")  # noqa
             count += 1
     
     if count == 0:
@@ -295,4 +293,3 @@ Examples:
 
 if __name__ == "__main__":
     main()
-

@@ -182,20 +182,38 @@ class MigrainePredictionService:
                     temps = [f.temperature for f in fc_list] if fc_list else []
                     pressures = [f.pressure for f in fc_list] if fc_list else []
                     humidities = [f.humidity for f in fc_list] if fc_list else []
+                    cloud_covers = [f.cloud_cover for f in fc_list] if fc_list else []
+                    precipitations = [f.precipitation for f in fc_list] if fc_list else []
 
                     # Only send aggregates and changes, not raw samples (reduces token count significantly)
                     context_payload = {
                         "aggregates": {
+                            # Temperature
                             "avg_forecast_temperature": (round(float(np.mean(temps)), 1) if temps else None),
                             "min_forecast_temperature": (round(float(min(temps)), 1) if temps else None),
                             "max_forecast_temperature": (round(float(max(temps)), 1) if temps else None),
                             "temperature_range": (round(float(max(temps) - min(temps)), 1) if temps else None),
+                            # Humidity
                             "avg_forecast_humidity": (round(float(np.mean(humidities)), 0) if humidities else None),
+                            "min_forecast_humidity": (round(float(min(humidities)), 0) if humidities else None),
+                            "max_forecast_humidity": (round(float(max(humidities)), 0) if humidities else None),
+                            "humidity_range": (
+                                round(float(max(humidities) - min(humidities)), 0) if humidities else None
+                            ),
+                            # Pressure
                             "avg_forecast_pressure": (round(float(np.mean(pressures)), 1) if pressures else None),
                             "min_forecast_pressure": (round(float(min(pressures)), 1) if pressures else None),
                             "max_forecast_pressure": (round(float(max(pressures)), 1) if pressures else None),
                             "pressure_range": (round(float(max(pressures) - min(pressures)), 1) if pressures else None),
-                            "max_precipitation": round(float(max([f.precipitation for f in fc_list], default=0)), 1),
+                            # Cloud cover
+                            "avg_forecast_cloud_cover": (
+                                round(float(np.mean(cloud_covers)), 0) if cloud_covers else None
+                            ),
+                            "min_forecast_cloud_cover": (round(float(min(cloud_covers)), 0) if cloud_covers else None),
+                            "max_forecast_cloud_cover": (round(float(max(cloud_covers)), 0) if cloud_covers else None),
+                            # Precipitation
+                            "max_precipitation": (round(float(max(precipitations)), 1) if precipitations else 0),
+                            "total_precipitation": (round(float(sum(precipitations)), 1) if precipitations else 0),
                         },
                         "changes": {
                             "temperature_change": round(
@@ -212,6 +230,15 @@ class MigrainePredictionService:
                                     abs(
                                         (np.mean([f.pressure for f in fc_list]) if fc_list else 0)
                                         - (np.mean([f.pressure for f in prev_list]) if prev_list else 0)
+                                    )
+                                ),
+                                1,
+                            ),
+                            "humidity_change": round(
+                                float(
+                                    abs(
+                                        (np.mean([f.humidity for f in fc_list]) if fc_list else 0)
+                                        - (np.mean([f.humidity for f in prev_list]) if prev_list else 0)
                                     )
                                 ),
                                 1,

@@ -622,6 +622,8 @@ class NotificationService:
             dict: Detailed weather factor information with explanations
         """
         from .prediction_service import MigrainePredictionService
+        from .models import WeatherForecast, LLMResponse
+        import numpy as np
 
         # Import thresholds for comparison
         thresholds = MigrainePredictionService.THRESHOLDS
@@ -630,9 +632,14 @@ class NotificationService:
 
         detailed_factors = []
 
-        # Get current and previous weather data for context
-        from .models import WeatherForecast
-        import numpy as np
+        # Try to get the LLM request context which has the exact values sent to LLM
+        llm_context = None
+        try:
+            llm_response = LLMResponse.objects.filter(migraine_prediction=prediction).first()
+            if llm_response and llm_response.request_payload:
+                llm_context = llm_response.request_payload.get("context", {})
+        except Exception:
+            pass
 
         # Get forecasts for the prediction window
         forecasts = WeatherForecast.objects.filter(
@@ -651,12 +658,24 @@ class NotificationService:
 
         # Temperature change analysis
         if weather_factors.get("temperature_change", 0) > 0 and previous_forecasts:
-            avg_prev_temp = np.mean([f.temperature for f in previous_forecasts])
-            avg_forecast_temp = np.mean([f.temperature for f in forecasts])
-            temp_change = abs(avg_forecast_temp - avg_prev_temp)
+            # Use LLM context data if available, otherwise calculate from forecasts
+            if llm_context and "changes" in llm_context and "temperature_change" in llm_context["changes"]:
+                temp_change = llm_context["changes"]["temperature_change"]
+                avg_forecast_temp = llm_context.get("aggregates", {}).get("avg_forecast_temperature")
+                # Calculate previous temp from the change
+                avg_prev_temp = avg_forecast_temp - temp_change if avg_forecast_temp else None
+                if avg_prev_temp is None:
+                    avg_prev_temp = np.mean([f.temperature for f in previous_forecasts])
+                    avg_forecast_temp = np.mean([f.temperature for f in forecasts])
+            else:
+                avg_prev_temp = np.mean([f.temperature for f in previous_forecasts])
+                avg_forecast_temp = np.mean([f.temperature for f in forecasts])
+                temp_change = abs(avg_forecast_temp - avg_prev_temp)
 
             if temp_change >= thresholds["temperature_change"]:
                 direction = "increase" if avg_forecast_temp > avg_prev_temp else "decrease"
+                pct_change = abs((temp_change / avg_prev_temp) * 100) if avg_prev_temp != 0 else 0
+
                 detailed_factors.append(
                     {
                         "name": "Temperature Change",
@@ -664,9 +683,8 @@ class NotificationService:
                         "weight": weights["temperature_change"],
                         "explanation": (
                             f"Temperature will {direction} by {temp_change:.1f}°C "
-                            f"(from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C). "
-                            f"Changes of {thresholds['temperature_change']}°C or more "
-                            "can trigger migraines."
+                            f"({pct_change:.0f}% change) from {avg_prev_temp:.1f}°C to {avg_forecast_temp:.1f}°C. "
+                            f"Rapid temperature changes are a known migraine trigger."
                         ),
                         "severity": ("high" if temp_change >= thresholds["temperature_change"] * 2 else "medium"),
                     }
@@ -674,31 +692,75 @@ class NotificationService:
 
         # Humidity analysis
         if weather_factors.get("humidity_extreme", 0) > 0:
-            avg_humidity = np.mean([f.humidity for f in forecasts])
+            # Use LLM context data if available
+            if llm_context and "aggregates" in llm_context and "avg_forecast_humidity" in llm_context["aggregates"]:
+                avg_humidity = llm_context["aggregates"]["avg_forecast_humidity"]
+            else:
+                avg_humidity = np.mean([f.humidity for f in forecasts])
 
             if avg_humidity >= thresholds["humidity_high"]:
+                # Calculate humidity change - use LLM context if available
+                humidity_change_text = ""
+                if llm_context and "changes" in llm_context and "humidity_change" in llm_context["changes"]:
+                    humidity_change = llm_context["changes"]["humidity_change"]
+                    # Estimate previous humidity from the change
+                    avg_prev_humidity = avg_humidity - humidity_change
+                elif previous_forecasts:
+                    avg_prev_humidity = np.mean([f.humidity for f in previous_forecasts])
+                    humidity_change = avg_humidity - avg_prev_humidity
+                else:
+                    avg_prev_humidity = None
+                    humidity_change = 0
+
+                if avg_prev_humidity and abs(humidity_change) >= 5:
+                    pct_change = abs((humidity_change / avg_prev_humidity) * 100) if avg_prev_humidity != 0 else 0
+                    change_dir = "rising" if humidity_change > 0 else "falling"
+                    humidity_change_text = (
+                        f" Humidity is {change_dir} by {abs(humidity_change):.1f} percentage points "
+                        f"({pct_change:.0f}% change) from {avg_prev_humidity:.1f}%."
+                    )
+
                 detailed_factors.append(
                     {
                         "name": "High Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
                         "explanation": (
-                            f"Humidity will be {avg_humidity:.1f}%, which is above the "
-                            f"{thresholds['humidity_high']}% threshold. "
-                            "High humidity can increase migraine risk."
+                            f"Humidity will be {avg_humidity:.1f}%, which is very high.{humidity_change_text} "
+                            "Extreme humidity levels can increase migraine risk."
                         ),
                         "severity": "high" if avg_humidity >= 85 else "medium",
                     }
                 )
             elif avg_humidity <= thresholds["humidity_low"]:
+                # Calculate humidity change - use LLM context if available
+                humidity_change_text = ""
+                if llm_context and "changes" in llm_context and "humidity_change" in llm_context["changes"]:
+                    humidity_change = llm_context["changes"]["humidity_change"]
+                    # Estimate previous humidity from the change
+                    avg_prev_humidity = avg_humidity - humidity_change
+                elif previous_forecasts:
+                    avg_prev_humidity = np.mean([f.humidity for f in previous_forecasts])
+                    humidity_change = avg_humidity - avg_prev_humidity
+                else:
+                    avg_prev_humidity = None
+                    humidity_change = 0
+
+                if avg_prev_humidity and abs(humidity_change) >= 5:
+                    pct_change = abs((humidity_change / avg_prev_humidity) * 100) if avg_prev_humidity != 0 else 0
+                    change_dir = "dropping" if humidity_change < 0 else "rising"
+                    humidity_change_text = (
+                        f" Humidity is {change_dir} by {abs(humidity_change):.1f} percentage points "
+                        f"({pct_change:.0f}% change) from {avg_prev_humidity:.1f}%."
+                    )
+
                 detailed_factors.append(
                     {
                         "name": "Low Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
                         "explanation": (
-                            f"Humidity will be {avg_humidity:.1f}%, which is below the "
-                            f"{thresholds['humidity_low']}% threshold. "
+                            f"Humidity will be {avg_humidity:.1f}%, which is very low.{humidity_change_text} "
                             "Very dry air can trigger migraines."
                         ),
                         "severity": "high" if avg_humidity <= 20 else "medium",
@@ -707,12 +769,24 @@ class NotificationService:
 
         # Pressure change analysis
         if weather_factors.get("pressure_change", 0) > 0 and previous_forecasts:
-            avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
-            avg_forecast_pressure = np.mean([f.pressure for f in forecasts])
-            pressure_change = abs(avg_forecast_pressure - avg_prev_pressure)
+            # Use LLM context data if available
+            if llm_context and "changes" in llm_context and "pressure_change" in llm_context["changes"]:
+                pressure_change = llm_context["changes"]["pressure_change"]
+                avg_forecast_pressure = llm_context.get("aggregates", {}).get("avg_forecast_pressure")
+                # Calculate previous pressure from the change
+                avg_prev_pressure = avg_forecast_pressure - pressure_change if avg_forecast_pressure else None
+                if avg_prev_pressure is None:
+                    avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
+                    avg_forecast_pressure = np.mean([f.pressure for f in forecasts])
+            else:
+                avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
+                avg_forecast_pressure = np.mean([f.pressure for f in forecasts])
+                pressure_change = abs(avg_forecast_pressure - avg_prev_pressure)
 
             if pressure_change >= thresholds["pressure_change"]:
-                direction = "increase" if avg_forecast_pressure > avg_prev_pressure else "drop"
+                direction = "rise" if avg_forecast_pressure > avg_prev_pressure else "drop"
+                pct_change = abs((pressure_change / avg_prev_pressure) * 100) if avg_prev_pressure != 0 else 0
+
                 detailed_factors.append(
                     {
                         "name": "Barometric Pressure Change",
@@ -720,9 +794,8 @@ class NotificationService:
                         "weight": weights["pressure_change"],
                         "explanation": (
                             f"Barometric pressure will {direction} by {pressure_change:.1f} hPa "
-                            f"(from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa). "
-                            f"Pressure changes of {thresholds['pressure_change']} hPa or more "
-                            "are strong migraine triggers."
+                            f"({pct_change:.1f}% change) from {avg_prev_pressure:.1f} to {avg_forecast_pressure:.1f} hPa. "  # noqa
+                            f"Rapid pressure changes are one of the strongest migraine triggers."
                         ),
                         "severity": ("high" if pressure_change >= thresholds["pressure_change"] * 2 else "medium"),
                     }
@@ -730,15 +803,40 @@ class NotificationService:
 
         # Low pressure analysis
         if weather_factors.get("pressure_low", 0) > 0:
-            avg_pressure = np.mean([f.pressure for f in forecasts])
+            # Use LLM context data if available
+            if llm_context and "aggregates" in llm_context and "avg_forecast_pressure" in llm_context["aggregates"]:
+                avg_pressure = llm_context["aggregates"]["avg_forecast_pressure"]
+                min_pressure = llm_context["aggregates"].get("min_forecast_pressure", avg_pressure)
+            else:
+                avg_pressure = np.mean([f.pressure for f in forecasts])
+                min_pressure = min([f.pressure for f in forecasts], default=avg_pressure)
+
+            # Add context about pressure trend if we have previous data
+            pressure_context = ""
+            if previous_forecasts:
+                avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
+                if avg_prev_pressure > avg_pressure:
+                    pressure_drop = avg_prev_pressure - avg_pressure
+                    pct_drop = (pressure_drop / avg_prev_pressure) * 100 if avg_prev_pressure != 0 else 0
+                    pressure_context = (
+                        f" Pressure is dropping by {pressure_drop:.1f} hPa ({pct_drop:.1f}% decrease) "
+                        f"from {avg_prev_pressure:.1f} hPa."
+                    )
+
+            # Show range if there's significant variation
+            range_text = ""
+            if llm_context and "aggregates" in llm_context:
+                pressure_range = llm_context["aggregates"].get("pressure_range", 0)
+                if pressure_range >= 3:
+                    range_text = f" Pressure will range from {min_pressure:.1f} to {llm_context['aggregates'].get('max_forecast_pressure', avg_pressure):.1f} hPa."  # noqa
+
             detailed_factors.append(
                 {
                     "name": "Low Barometric Pressure",
                     "score": weather_factors["pressure_low"],
                     "weight": weights["pressure_low"],
                     "explanation": (
-                        f"Barometric pressure will be {avg_pressure:.1f} hPa, "
-                        f"which is below the {thresholds['pressure_low']} hPa threshold. "
+                        f"Barometric pressure will be {avg_pressure:.1f} hPa, which is low.{pressure_context}{range_text} "  # noqa
                         "Low pressure systems are associated with increased migraine frequency."
                     ),
                     "severity": "high" if avg_pressure <= 995 else "medium",
@@ -747,22 +845,21 @@ class NotificationService:
 
         # Precipitation analysis
         if weather_factors.get("precipitation", 0) > 0:
-            max_precipitation = max([f.precipitation for f in forecasts], default=0)
+            # Use LLM context data if available
+            if llm_context and "aggregates" in llm_context and "max_precipitation" in llm_context["aggregates"]:
+                max_precipitation = llm_context["aggregates"]["max_precipitation"]
+            else:
+                max_precipitation = max([f.precipitation for f in forecasts], default=0)
 
             # Determine appropriate name and explanation based on actual precipitation level
             if max_precipitation >= thresholds["precipitation_high"]:
                 name = "Heavy Precipitation"
                 explanation = (
-                    f"Expected precipitation of {max_precipitation:.1f} mm, "
-                    f"which exceeds the {thresholds['precipitation_high']} mm threshold. "
-                    "Heavy rain or storms can trigger migraines."
+                    f"Expected precipitation of {max_precipitation:.1f} mm. Heavy rain or storms can trigger migraines."
                 )
             else:
                 name = "Moderate Precipitation"
-                explanation = (
-                    f"Expected precipitation of {max_precipitation:.1f} mm. "
-                    "Rain and changing weather patterns can contribute to migraine risk."
-                )
+                explanation = f"Expected precipitation of {max_precipitation:.1f} mm. Rain and changing weather patterns can contribute to migraine risk."  # noqa
 
             detailed_factors.append(
                 {
@@ -776,22 +873,19 @@ class NotificationService:
 
         # Cloud cover analysis
         if weather_factors.get("cloud_cover", 0) > 0:
-            avg_cloud_cover = np.mean([f.cloud_cover for f in forecasts])
+            # Use LLM context data if available
+            if llm_context and "aggregates" in llm_context and "avg_forecast_cloud_cover" in llm_context["aggregates"]:
+                avg_cloud_cover = llm_context["aggregates"]["avg_forecast_cloud_cover"]
+            else:
+                avg_cloud_cover = np.mean([f.cloud_cover for f in forecasts])
 
             # Determine appropriate name and explanation based on actual cloud cover level
             if avg_cloud_cover >= thresholds["cloud_cover_high"]:
                 name = "Heavy Cloud Cover"
-                explanation = (
-                    f"Cloud cover will be {avg_cloud_cover:.1f}%, which is above the "
-                    f"{thresholds['cloud_cover_high']}% threshold. "
-                    "Overcast conditions can affect some migraine sufferers."
-                )
+                explanation = f"Cloud cover will be {avg_cloud_cover:.1f}%. Overcast conditions can affect some migraine sufferers."  # noqa
             else:
                 name = "Moderate Cloud Cover"
-                explanation = (
-                    f"Cloud cover will be {avg_cloud_cover:.1f}%. "
-                    "Changing light conditions can contribute to migraine risk for some people."
-                )
+                explanation = f"Cloud cover will be {avg_cloud_cover:.1f}%. Changing light conditions can contribute to migraine risk for some people."  # noqa
 
             detailed_factors.append(
                 {
@@ -1145,6 +1239,8 @@ class NotificationService:
             dict: Detailed weather factor information with explanations
         """
         from .prediction_service_sinusitis import SinusitisPredictionService
+        from .models import WeatherForecast
+        import numpy as np
 
         # Import thresholds for comparison
         thresholds = SinusitisPredictionService.THRESHOLDS
@@ -1152,10 +1248,6 @@ class NotificationService:
         weather_factors = prediction.weather_factors or {}
 
         detailed_factors = []
-
-        # Get current and previous weather data for context
-        from .models import WeatherForecast
-        import numpy as np
 
         # Get forecasts for the prediction window
         forecasts = WeatherForecast.objects.filter(
@@ -1199,28 +1291,44 @@ class NotificationService:
             avg_humidity = np.mean([f.humidity for f in forecasts])
 
             if avg_humidity >= thresholds["humidity_high"]:
+                # Calculate humidity change if we have previous data
+                humidity_change_text = ""
+                if previous_forecasts:
+                    avg_prev_humidity = np.mean([f.humidity for f in previous_forecasts])
+                    humidity_change = avg_humidity - avg_prev_humidity
+                    if abs(humidity_change) >= 10:
+                        change_dir = "rising" if humidity_change > 0 else "falling"
+                        humidity_change_text = f" Humidity is {change_dir} by {abs(humidity_change):.1f}%."
+
                 detailed_factors.append(
                     {
                         "name": "High Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
                         "explanation": (
-                            f"Humidity will be {avg_humidity:.1f}%, which is above the "
-                            f"{thresholds['humidity_high']}% threshold. "
+                            f"Humidity will be {avg_humidity:.1f}%, which is very high.{humidity_change_text} "
                             "High humidity promotes mold growth and allergens that can trigger sinusitis."
                         ),
                         "severity": "high" if avg_humidity >= 85 else "medium",
                     }
                 )
             elif avg_humidity <= thresholds["humidity_low"]:
+                # Calculate humidity change if we have previous data
+                humidity_change_text = ""
+                if previous_forecasts:
+                    avg_prev_humidity = np.mean([f.humidity for f in previous_forecasts])
+                    humidity_change = avg_humidity - avg_prev_humidity
+                    if abs(humidity_change) >= 10:
+                        change_dir = "dropping" if humidity_change < 0 else "rising"
+                        humidity_change_text = f" Humidity is {change_dir} by {abs(humidity_change):.1f}%."
+
                 detailed_factors.append(
                     {
                         "name": "Low Humidity",
                         "score": weather_factors["humidity_extreme"],
                         "weight": weights["humidity_extreme"],
                         "explanation": (
-                            f"Humidity will be {avg_humidity:.1f}%, which is below the "
-                            f"{thresholds['humidity_low']}% threshold. "
+                            f"Humidity will be {avg_humidity:.1f}%, which is very low.{humidity_change_text} "
                             "Very dry air can dry out and irritate sinus passages."
                         ),
                         "severity": "high" if avg_humidity <= 15 else "medium",
@@ -1252,14 +1360,21 @@ class NotificationService:
         # Low pressure analysis
         if weather_factors.get("pressure_low", 0) > 0:
             avg_pressure = np.mean([f.pressure for f in forecasts])
+
+            # Add context about pressure trend if we have previous data
+            pressure_context = ""
+            if previous_forecasts:
+                avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
+                if avg_prev_pressure > avg_pressure:
+                    pressure_context = f" Pressure is dropping from {avg_prev_pressure:.1f} hPa."
+
             detailed_factors.append(
                 {
                     "name": "Low Barometric Pressure",
                     "score": weather_factors["pressure_low"],
                     "weight": weights["pressure_low"],
                     "explanation": (
-                        f"Barometric pressure will be {avg_pressure:.1f} hPa, "
-                        f"which is below the {thresholds['pressure_low']} hPa threshold. "
+                        f"Barometric pressure will be {avg_pressure:.1f} hPa, which is low.{pressure_context} "
                         "Low pressure systems can worsen sinus symptoms."
                     ),
                     "severity": "high" if avg_pressure <= 990 else "medium",
