@@ -146,6 +146,24 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Secrets and config updated successfully"
 
       -
+        name: Deploy infrastructure (PVs, CronJob)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying infrastructure..."
+
+            # Deploy namespace, PVs, and CronJob (needed for backup)
+            cd /home/alexandros/migraine_forecast
+            sudo kubectl apply -f k8s/namespace.yaml
+            sudo kubectl apply -f k8s/persistent-volume.yaml
+            sudo kubectl apply -f k8s/backup-cronjob.yaml
+
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Infrastructure deployed"
+
+      -
         name: Backup database
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -155,8 +173,14 @@ jobs:
           script: |
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating database backup..."
 
+            # Check if database exists (skip backup on first deployment)
+            if [ ! -f /home/alexandros/migraine/db.sqlite3 ]; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - No database found, skipping backup (first deployment)"
+              exit 0
+            fi
+
             # Run backup job immediately (don't wait for scheduled time)
-            sudo kubectl create job --from=cronjob/migraine-db-backup migraine-backup-$(date +%s) -n migraine-forecast || true
+            sudo kubectl create job --from=cronjob/migraine-db-backup migraine-backup-$(date +%s) -n migraine-forecast
 
             # Wait for backup to complete (max 60 seconds)
             for i in {1..12}; do
@@ -207,10 +231,10 @@ jobs:
           script: |
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
 
-            # Update deployment to use latest image
-            sudo kubectl set image deployment/migraine-forecast \
-              migraine-forecast=alexandrosm77/migraine_forecast:latest \
-              -n migraine-forecast
+            # Deploy the application and service
+            cd /home/alexandros/migraine_forecast
+            sudo kubectl apply -f k8s/deployment.yaml
+            sudo kubectl apply -f k8s/service.yaml
 
             # Wait for rollout to complete (max 5 minutes)
             echo "Waiting for deployment to complete..."
