@@ -1,45 +1,56 @@
-# Deployment - Manages your running containers (pods)
-# Think of this as: docker run -d --name migraine --restart unless-stopped ...
+# Web Deployment - Runs Gunicorn web server (can scale)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: migraine-forecast
+  name: migraine-forecast-web
   namespace: migraine-forecast
   labels:
     app: migraine-forecast
+    component: web
 spec:
-  # How many copies of your app to run (1 for single Pi)
+  # Can scale this up if needed
   replicas: 1
-  
-  # Deployment strategy - how to update
+
+  # Deployment strategy - RollingUpdate for zero-downtime deployments
   strategy:
-    type: Recreate  # Stop old pod before starting new one (important for SQLite!)
-  
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
   selector:
     matchLabels:
       app: migraine-forecast
-  
+      component: web
+
   template:
     metadata:
       labels:
         app: migraine-forecast
+        component: web
     spec:
-      # Pod spec - defines what runs in the container
       containers:
-      - name: migraine-forecast
+      - name: web
         image: alexandrosm77/migraine_forecast:latest
-        imagePullPolicy: Always  # Always pull latest image
-        
+        imagePullPolicy: Always
+
+        # Override CMD to run only gunicorn (no cron)
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "Starting gunicorn web server..."
+            exec gunicorn migraine_project.wsgi:application -c gunicorn.conf.py
+
         ports:
         - containerPort: 8889
           name: http
           protocol: TCP
-        
+
         # Environment variables from ConfigMap
         envFrom:
         - configMapRef:
             name: migraine-config
-        
+
         # Environment variables from Secret
         env:
         - name: SENTRY_DSN
@@ -47,14 +58,15 @@ spec:
             secretKeyRef:
               name: migraine-secrets
               key: SENTRY_DSN
-        
-        # Volume mounts - like docker -v
+
+        # Volume mounts - read-only for web (SQLite allows multiple readers)
         volumeMounts:
         - name: db-storage
           mountPath: /app/db.sqlite3
-          subPath: db.sqlite3  # Mount just the file, not the whole directory
-        
-        # Health checks - Kubernetes will restart if these fail
+          subPath: db.sqlite3
+          readOnly: true  # Web only reads, cron pod writes
+
+        # Health checks
         livenessProbe:
           httpGet:
             path: /
@@ -63,7 +75,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
-        
+
         readinessProbe:
           httpGet:
             path: /
@@ -72,23 +84,95 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-        
-        # Resource limits (adjust based on your Pi's capacity)
+
+        # Resource limits
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"  # 0.25 CPU cores
+            memory: "256Mi"
+            cpu: "100m"
           limits:
-            memory: "2Gi"
-            cpu: "2000m"  # 2 CPU cores max
-      
-      # Volumes - define storage
+            memory: "1Gi"
+            cpu: "1000m"
+
       volumes:
       - name: db-storage
         persistentVolumeClaim:
           claimName: migraine-db-pvc
-      
-      # Node selector - ensure it runs on ARM64 (optional)
-      # nodeSelector:
-      #   kubernetes.io/arch: arm64
+
+---
+# Cron Deployment - Runs scheduled tasks (single replica, no scaling)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: migraine-forecast-cron
+  namespace: migraine-forecast
+  labels:
+    app: migraine-forecast
+    component: cron
+spec:
+  # MUST be 1 - cron jobs should not run in parallel
+  replicas: 1
+
+  # Deployment strategy - Recreate to ensure only one cron pod at a time
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: migraine-forecast
+      component: cron
+
+  template:
+    metadata:
+      labels:
+        app: migraine-forecast
+        component: cron
+    spec:
+      containers:
+      - name: cron
+        image: alexandrosm77/migraine_forecast:latest
+        imagePullPolicy: Always
+
+        # Override CMD to run only cron (no gunicorn)
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "Starting cron daemon..."
+            cron
+            echo "Cron started. Tailing logs..."
+            tail -f /var/log/cron.log
+
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: migraine-config
+
+        # Environment variables from Secret
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: SENTRY_DSN
+
+        # Volume mounts - read-write for cron (writes to database)
+        volumeMounts:
+        - name: db-storage
+          mountPath: /app/db.sqlite3
+          subPath: db.sqlite3
+          # No readOnly - cron needs to write
+
+        # Resource limits - higher for LLM inference
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: migraine-db-pvc
 

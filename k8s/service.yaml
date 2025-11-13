@@ -11,6 +11,7 @@ spec:
   type: NodePort  # Expose on a port on your Pi's IP
   selector:
     app: migraine-forecast
+    component: web  # Only route traffic to web pods, not cron pods
   ports:
   - port: 8889        # Port inside the cluster
     targetPort: 8889  # Port on the container

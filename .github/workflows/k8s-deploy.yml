@@ -256,20 +256,31 @@ jobs:
           cat k8s/service.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-          # Wait for rollout to complete and show status
-          echo "Waiting for deployment to complete..."
+          # Wait for web deployment to complete
+          echo "Waiting for web deployment to complete..."
           ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
-            "sudo kubectl rollout status deployment/migraine-forecast -n migraine-forecast --timeout=300s && \
-             echo '$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful!' && \
-             echo '$(date '+%Y-%m-%d %H:%M:%S') - Pod status:' && \
+            "sudo kubectl rollout status deployment/migraine-forecast-web -n migraine-forecast --timeout=300s"
+
+          # Wait for cron deployment to complete
+          echo "Waiting for cron deployment to complete..."
+          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "sudo kubectl rollout status deployment/migraine-forecast-cron -n migraine-forecast --timeout=300s"
+
+          # Show status
+          echo "$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful!"
+
+          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "echo '$(date '+%Y-%m-%d %H:%M:%S') - Pod status:' && \
              sudo kubectl get pods -n migraine-forecast -l app=migraine-forecast && \
-             echo '$(date '+%Y-%m-%d %H:%M:%S') - Recent logs:' && \
-             sudo kubectl logs -n migraine-forecast -l app=migraine-forecast --tail=10 || \
-             (echo '$(date '+%Y-%m-%d %H:%M:%S') - Error: Deployment failed!' && \
-              echo '$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: sudo kubectl logs -n migraine-forecast -l app=migraine-forecast' && \
-              echo '$(date '+%Y-%m-%d %H:%M:%S') - Rollback with: sudo kubectl rollout undo deployment/migraine-forecast -n migraine-forecast' && \
-              exit 1)"
+             echo '' && \
+             echo '$(date '+%Y-%m-%d %H:%M:%S') - Web pod logs:' && \
+             sudo kubectl logs -n migraine-forecast -l component=web --tail=10 && \
+             echo '' && \
+             echo '$(date '+%Y-%m-%d %H:%M:%S') - Cron pod logs:' && \
+             sudo kubectl logs -n migraine-forecast -l component=cron --tail=10"
 
   cleanup:
     needs: deploy
