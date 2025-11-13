@@ -146,32 +146,21 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Secrets and config updated successfully"
 
       -
-        name: Copy Kubernetes manifests to Pi
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "k8s/*"
-          target: "/tmp/k8s-manifests/"
-          strip_components: 0
-
-      -
         name: Deploy infrastructure (PVs, CronJob)
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying infrastructure..."
+        run: |
+          echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying infrastructure..."
 
-            # Deploy namespace, PVs, and CronJob (needed for backup)
-            sudo kubectl apply -f /tmp/k8s-manifests/namespace.yaml
-            sudo kubectl apply -f /tmp/k8s-manifests/persistent-volume.yaml
-            sudo kubectl apply -f /tmp/k8s-manifests/backup-cronjob.yaml
+          # Deploy namespace, PVs, and CronJob via stdin
+          cat k8s/namespace.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - Infrastructure deployed"
+          cat k8s/persistent-volume.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
+
+          cat k8s/backup-cronjob.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
+
+          echo "$(date '+%Y-%m-%d %H:%M:%S') - Infrastructure deployed"
 
       -
         name: Backup database
@@ -204,67 +193,55 @@ jobs:
 
       -
         name: Run database migrations
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - Running database migrations..."
+        run: |
+          echo "$(date '+%Y-%m-%d %H:%M:%S') - Running database migrations..."
 
-            # Delete old migration job if it exists
-            sudo kubectl delete job migraine-migration -n migraine-forecast --ignore-not-found=true
+          # Delete old migration job if it exists
+          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "sudo kubectl delete job migraine-migration -n migraine-forecast --ignore-not-found=true"
 
-            # Apply migration job
-            sudo kubectl apply -f /tmp/k8s-manifests/migration-job.yaml
+          # Apply migration job via stdin
+          cat k8s/migration-job.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-            # Wait for migration to complete (max 5 minutes)
-            echo "Waiting for migrations to complete..."
-            sudo kubectl wait --for=condition=complete --timeout=300s job/migraine-migration -n migraine-forecast
-
-            if [ $? -eq 0 ]; then
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Migrations completed successfully"
-            else
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Migrations failed!"
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: sudo kubectl logs -n migraine-forecast job/migraine-migration"
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Database backup is available for manual recovery if needed"
-              exit 1
-            fi
+          # Wait for migration to complete (max 5 minutes)
+          echo "Waiting for migrations to complete..."
+          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "sudo kubectl wait --for=condition=complete --timeout=300s job/migraine-migration -n migraine-forecast && \
+             echo '$(date '+%Y-%m-%d %H:%M:%S') - Migrations completed successfully' || \
+             (echo '$(date '+%Y-%m-%d %H:%M:%S') - Error: Migrations failed!' && \
+              echo '$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: sudo kubectl logs -n migraine-forecast job/migraine-migration' && \
+              echo '$(date '+%Y-%m-%d %H:%M:%S') - Database backup is available for manual recovery if needed' && \
+              exit 1)"
 
       -
         name: Deploy application
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
+        run: |
+          echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
 
-            # Deploy the application and service
-            sudo kubectl apply -f /tmp/k8s-manifests/deployment.yaml
-            sudo kubectl apply -f /tmp/k8s-manifests/service.yaml
+          # Deploy the application and service via stdin
+          cat k8s/deployment.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-            # Wait for rollout to complete (max 5 minutes)
-            echo "Waiting for deployment to complete..."
-            sudo kubectl rollout status deployment/migraine-forecast -n migraine-forecast --timeout=300s
+          cat k8s/service.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
-            if [ $? -eq 0 ]; then
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful!"
-
-              # Show pod status
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Pod status:"
-              sudo kubectl get pods -n migraine-forecast -l app=migraine-forecast
-
-              # Show recent logs
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Recent logs:"
-              sudo kubectl logs -n migraine-forecast -l app=migraine-forecast --tail=10
-            else
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Deployment failed!"
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: sudo kubectl logs -n migraine-forecast -l app=migraine-forecast"
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Rollback with: sudo kubectl rollout undo deployment/migraine-forecast -n migraine-forecast"
-              exit 1
-            fi
+          # Wait for rollout to complete and show status
+          echo "Waiting for deployment to complete..."
+          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "sudo kubectl rollout status deployment/migraine-forecast -n migraine-forecast --timeout=300s && \
+             echo '$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful!' && \
+             echo '$(date '+%Y-%m-%d %H:%M:%S') - Pod status:' && \
+             sudo kubectl get pods -n migraine-forecast -l app=migraine-forecast && \
+             echo '$(date '+%Y-%m-%d %H:%M:%S') - Recent logs:' && \
+             sudo kubectl logs -n migraine-forecast -l app=migraine-forecast --tail=10 || \
+             (echo '$(date '+%Y-%m-%d %H:%M:%S') - Error: Deployment failed!' && \
+              echo '$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: sudo kubectl logs -n migraine-forecast -l app=migraine-forecast' && \
+              echo '$(date '+%Y-%m-%d %H:%M:%S') - Rollback with: sudo kubectl rollout undo deployment/migraine-forecast -n migraine-forecast' && \
+              exit 1)"
 
   cleanup:
     needs: deploy
@@ -273,7 +250,7 @@ jobs:
     if: always()
     steps:
       -
-        name: Clean up old resources
+        name: Clean up old Kubernetes resources
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -281,10 +258,69 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "Cleaning up old migration jobs..."
-            sudo kubectl delete jobs -n migraine-forecast -l job-name=migraine-migration --field-selector status.successful=1
+            sudo kubectl delete jobs -n migraine-forecast -l job-name=migraine-migration --field-selector status.successful=1 --ignore-not-found=true
 
             echo "Cleaning up old backup jobs (keep last 3)..."
-            sudo kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --sort-by=.metadata.creationTimestamp -o name | head -n -3 | xargs -r sudo kubectl delete -n migraine-forecast
+            sudo kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --sort-by=.metadata.creationTimestamp -o name 2>/dev/null | head -n -3 | xargs -r sudo kubectl delete -n migraine-forecast
 
-            echo "Cleanup complete"
+            echo "Kubernetes cleanup complete"
+
+      -
+        name: Clean up old Docker Hub images
+        run: |
+          echo "Cleaning up old Docker images from Docker Hub..."
+
+          # Login to Docker Hub
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
+
+          # Get all tags except 'latest' and the current version
+          CURRENT_VERSION="${{ needs.build.outputs.version }}"
+
+          # Use Docker Hub API to get all tags (using python to parse JSON)
+          python3 << 'EOF'
+          import requests
+          import json
+
+          # Login to Docker Hub
+          login_data = {
+              "username": "${{ vars.DOCKERHUB_USERNAME }}",
+              "password": "${{ secrets.DOCKERHUB_TOKEN }}"
+          }
+          response = requests.post("https://hub.docker.com/v2/users/login/", json=login_data)
+          token = response.json()["token"]
+
+          # Get all tags
+          headers = {"Authorization": f"JWT {token}"}
+          response = requests.get(
+              "https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/migraine_forecast/tags/?page_size=100",
+              headers=headers
+          )
+          tags = [tag["name"] for tag in response.json()["results"]]
+
+          # Filter out 'latest' and current version
+          current_version = "${{ needs.build.outputs.version }}"
+          version_tags = [t for t in tags if t != "latest" and t != current_version]
+
+          # Sort by version (simple string sort, works for semantic versioning)
+          version_tags.sort(reverse=True)
+
+          # Keep last 5, delete the rest
+          tags_to_delete = version_tags[5:]
+
+          print(f"Current tags: {tags}")
+          print(f"Keeping: latest, {current_version}, {version_tags[:5]}")
+          print(f"Deleting: {tags_to_delete}")
+
+          # Delete old tags
+          for tag in tags_to_delete:
+              print(f"Deleting tag: {tag}")
+              delete_url = f"https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/migraine_forecast/tags/{tag}/"
+              response = requests.delete(delete_url, headers=headers)
+              if response.status_code == 204:
+                  print(f"  ✓ Deleted {tag}")
+              else:
+                  print(f"  ✗ Failed to delete {tag}: {response.status_code}")
+
+          print("Docker Hub cleanup complete")
+          EOF
 
