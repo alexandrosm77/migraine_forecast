@@ -123,17 +123,17 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating/updating Kubernetes secrets..."
 
             # Create namespace if it doesn't exist
-            kubectl create namespace migraine-forecast --dry-run=client -o yaml | kubectl apply -f -
+            sudo kubectl create namespace migraine-forecast --dry-run=client -o yaml | sudo kubectl apply -f -
 
             # Create/update secret from GitHub secrets
-            kubectl create secret generic migraine-secrets \
+            sudo kubectl create secret generic migraine-secrets \
               --from-literal=SENTRY_DSN="${{ secrets.SENTRY_DSN }}" \
               --from-literal=DOCKERHUB_TOKEN="${{ secrets.DOCKERHUB_TOKEN }}" \
               --namespace=migraine-forecast \
-              --dry-run=client -o yaml | kubectl apply -f -
+              --dry-run=client -o yaml | sudo kubectl apply -f -
 
             # Create/update ConfigMap
-            kubectl create configmap migraine-config \
+            sudo kubectl create configmap migraine-config \
               --from-literal=DJANGO_DEBUG="False" \
               --from-literal=SENTRY_ENABLED="${{ vars.SENTRY_ENABLED }}" \
               --from-literal=SENTRY_ENVIRONMENT="${{ vars.SENTRY_ENVIRONMENT }}" \
@@ -141,7 +141,7 @@ jobs:
               --from-literal=SENTRY_PROFILES_SAMPLE_RATE="${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}" \
               --from-literal=DOCKERHUB_USERNAME="${{ vars.DOCKERHUB_USERNAME }}" \
               --namespace=migraine-forecast \
-              --dry-run=client -o yaml | kubectl apply -f -
+              --dry-run=client -o yaml | sudo kubectl apply -f -
 
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Secrets and config updated successfully"
 
@@ -154,13 +154,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Creating database backup..."
-            
+
             # Run backup job immediately (don't wait for scheduled time)
-            kubectl create job --from=cronjob/migraine-db-backup migraine-backup-$(date +%s) -n migraine-forecast || true
-            
+            sudo kubectl create job --from=cronjob/migraine-db-backup migraine-backup-$(date +%s) -n migraine-forecast || true
+
             # Wait for backup to complete (max 60 seconds)
             for i in {1..12}; do
-              if kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --field-selector status.successful=1 2>/dev/null | grep -q migraine-backup; then
+              if sudo kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --field-selector status.successful=1 2>/dev/null | grep -q migraine-backup; then
                 echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup completed successfully"
                 break
               fi
@@ -177,22 +177,22 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Running database migrations..."
-            
+
             # Delete old migration job if it exists
-            kubectl delete job migraine-migration -n migraine-forecast --ignore-not-found=true
-            
+            sudo kubectl delete job migraine-migration -n migraine-forecast --ignore-not-found=true
+
             # Apply migration job
-            kubectl apply -f /home/alexandros/migraine_forecast/k8s/migration-job.yaml
-            
+            sudo kubectl apply -f /home/alexandros/migraine_forecast/k8s/migration-job.yaml
+
             # Wait for migration to complete (max 5 minutes)
             echo "Waiting for migrations to complete..."
-            kubectl wait --for=condition=complete --timeout=300s job/migraine-migration -n migraine-forecast
-            
+            sudo kubectl wait --for=condition=complete --timeout=300s job/migraine-migration -n migraine-forecast
+
             if [ $? -eq 0 ]; then
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Migrations completed successfully"
             else
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Migrations failed!"
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: kubectl logs -n migraine-forecast job/migraine-migration"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: sudo kubectl logs -n migraine-forecast job/migraine-migration"
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Database backup is available for manual recovery if needed"
               exit 1
             fi
@@ -206,30 +206,30 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
-            
+
             # Update deployment to use latest image
-            kubectl set image deployment/migraine-forecast \
+            sudo kubectl set image deployment/migraine-forecast \
               migraine-forecast=alexandrosm77/migraine_forecast:latest \
               -n migraine-forecast
-            
+
             # Wait for rollout to complete (max 5 minutes)
             echo "Waiting for deployment to complete..."
-            kubectl rollout status deployment/migraine-forecast -n migraine-forecast --timeout=300s
-            
+            sudo kubectl rollout status deployment/migraine-forecast -n migraine-forecast --timeout=300s
+
             if [ $? -eq 0 ]; then
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful!"
-              
+
               # Show pod status
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Pod status:"
-              kubectl get pods -n migraine-forecast -l app=migraine-forecast
-              
+              sudo kubectl get pods -n migraine-forecast -l app=migraine-forecast
+
               # Show recent logs
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Recent logs:"
-              kubectl logs -n migraine-forecast -l app=migraine-forecast --tail=10
+              sudo kubectl logs -n migraine-forecast -l app=migraine-forecast --tail=10
             else
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Deployment failed!"
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: kubectl logs -n migraine-forecast -l app=migraine-forecast"
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Rollback with: kubectl rollout undo deployment/migraine-forecast -n migraine-forecast"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: sudo kubectl logs -n migraine-forecast -l app=migraine-forecast"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Rollback with: sudo kubectl rollout undo deployment/migraine-forecast -n migraine-forecast"
               exit 1
             fi
 
@@ -248,10 +248,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "Cleaning up old migration jobs..."
-            kubectl delete jobs -n migraine-forecast -l job-name=migraine-migration --field-selector status.successful=1
-            
+            sudo kubectl delete jobs -n migraine-forecast -l job-name=migraine-migration --field-selector status.successful=1
+
             echo "Cleaning up old backup jobs (keep last 3)..."
-            kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --sort-by=.metadata.creationTimestamp -o name | head -n -3 | xargs -r kubectl delete -n migraine-forecast
-            
+            sudo kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --sort-by=.metadata.creationTimestamp -o name | head -n -3 | xargs -r sudo kubectl delete -n migraine-forecast
+
             echo "Cleanup complete"
 
