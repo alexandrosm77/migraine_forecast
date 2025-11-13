@@ -146,6 +146,12 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Secrets and config updated successfully"
 
       -
+        name: Copy Kubernetes manifests to Pi
+        run: |
+          # Copy k8s manifests to a temporary directory on the Pi
+          scp -r k8s/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/tmp/k8s-manifests/
+
+      -
         name: Deploy infrastructure (PVs, CronJob)
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -156,10 +162,9 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying infrastructure..."
 
             # Deploy namespace, PVs, and CronJob (needed for backup)
-            cd /home/alexandros/migraine_forecast
-            sudo kubectl apply -f k8s/namespace.yaml
-            sudo kubectl apply -f k8s/persistent-volume.yaml
-            sudo kubectl apply -f k8s/backup-cronjob.yaml
+            sudo kubectl apply -f /tmp/k8s-manifests/namespace.yaml
+            sudo kubectl apply -f /tmp/k8s-manifests/persistent-volume.yaml
+            sudo kubectl apply -f /tmp/k8s-manifests/backup-cronjob.yaml
 
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Infrastructure deployed"
 
@@ -206,7 +211,7 @@ jobs:
             sudo kubectl delete job migraine-migration -n migraine-forecast --ignore-not-found=true
 
             # Apply migration job
-            sudo kubectl apply -f /home/alexandros/migraine_forecast/k8s/migration-job.yaml
+            sudo kubectl apply -f /tmp/k8s-manifests/migration-job.yaml
 
             # Wait for migration to complete (max 5 minutes)
             echo "Waiting for migrations to complete..."
@@ -232,9 +237,8 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
 
             # Deploy the application and service
-            cd /home/alexandros/migraine_forecast
-            sudo kubectl apply -f k8s/deployment.yaml
-            sudo kubectl apply -f k8s/service.yaml
+            sudo kubectl apply -f /tmp/k8s-manifests/deployment.yaml
+            sudo kubectl apply -f /tmp/k8s-manifests/service.yaml
 
             # Wait for rollout to complete (max 5 minutes)
             echo "Waiting for deployment to complete..."
