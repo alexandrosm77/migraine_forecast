@@ -8,15 +8,12 @@ metadata:
     app: migraine-forecast
     component: web
 spec:
-  # Can scale this up if needed
+  # MUST be 1 for SQLite - only one pod can write to SQLite at a time
   replicas: 1
 
-  # Deployment strategy - RollingUpdate for zero-downtime deployments
+  # Deployment strategy - Recreate to avoid SQLite write conflicts
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+    type: Recreate  # Stop old pod before starting new one (important for SQLite!)
 
   selector:
     matchLabels:
@@ -59,12 +56,12 @@ spec:
               name: migraine-secrets
               key: SENTRY_DSN
 
-        # Volume mounts - read-only for web (SQLite allows multiple readers)
+        # Volume mounts - read-write (web needs to write too)
         volumeMounts:
         - name: db-storage
           mountPath: /app/db.sqlite3
           subPath: db.sqlite3
-          readOnly: true  # Web only reads, cron pod writes
+          # No readOnly - web needs to write to database
 
         # Health checks
         livenessProbe:
@@ -141,6 +138,26 @@ spec:
             cron
             echo "Cron started. Tailing logs..."
             tail -f /var/log/cron.log
+
+        # Graceful shutdown - wait for running cron jobs to finish
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  echo "Received shutdown signal, waiting for cron jobs to finish..."
+                  # Wait up to 60 seconds for any running Python processes to finish
+                  for i in {1..60}; do
+                    if ! pgrep -f "python manage.py" > /dev/null; then
+                      echo "No cron jobs running, safe to shutdown"
+                      exit 0
+                    fi
+                    echo "Waiting for cron jobs to finish... ($i/60)"
+                    sleep 1
+                  done
+                  echo "Timeout reached, forcing shutdown"
 
         # Environment variables from ConfigMap
         envFrom:
