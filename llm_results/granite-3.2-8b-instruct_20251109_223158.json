@@ -1,0 +1,155 @@
+{
+  "model": "granite-3.2-8b-instruct",
+  "base_url": "http://localhost:1234",
+  "timestamp": "2025-11-09T22:29:13.966905",
+  "migraine_tests": [
+    {
+      "scenario_name": "Clear LOW - Minimal risk",
+      "description": "Perfect weather, no risk factors",
+      "weighted_score": 0.0,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 0.98,
+      "rationale": "All risk factors are at minimal levels with no significant changes in temperature, pressure, or humidity.",
+      "analysis": "The current weather conditions show an average temperature of 20\u00b0C, average pressure of 1013 hPa, and humidity at 50%. There is no notable change in any of the risk factors, resulting in a low overall risk for migraines.",
+      "error": null
+    },
+    {
+      "scenario_name": "Clear HIGH - Multiple severe factors",
+      "description": "Major pressure drop + large temp change + high humidity",
+      "weighted_score": 0.877,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.95,
+      "rationale": "Despite the weighted score being 0.88, which falls into the MEDIUM category according to the schema, the presence of multiple severe factors (temperature change: 0.9, humidity extreme: 0.85, pressure change: 0.95, pressure low: 0.8) justifies a HIGH risk level due to the significant impact these factors have on migraine triggers.",
+      "analysis": "The location is experiencing severe weather conditions with an average temperature of 8.0\u00b0C, average atmospheric pressure of 992.0 hPa, and humidity levels at 92%. The risk scores indicate a high temperature change (0.9), extreme humidity (0.85), significant pressure change (0.95), low pressure (0.8), moderate precipitation (0.6), and high cloud cover (0.9).",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (low end)",
+      "description": "Just above LOW threshold (0.40)",
+      "weighted_score": 0.42,
+      "expected": "MEDIUM",
+      "predicted": "MEDIUM",
+      "correct": true,
+      "confidence": 0.48,
+      "rationale": "The weighted score of 0.42 falls within the MEDIUM range due to elevated pressure change and humidity extreme factors.",
+      "analysis": "Temperature change is moderate (0.4), humidity is high (0.5), pressure change is high (0.5), pressure low is moderate (0.3), precipitation is low (0.2), and cloud cover is moderate (0.4).",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (high end)",
+      "description": "Just below HIGH threshold (0.70)",
+      "weighted_score": 0.707,
+      "expected": "HIGH",
+      "predicted": "MEDIUM",
+      "correct": false,
+      "confidence": 0.62,
+      "rationale": "The weighted score of 0.71 falls within the MEDIUM range due to high pressure change and temperature change scores, along with moderate humidity extreme and cloud cover scores.",
+      "analysis": "Temperature change is at a high level (0.7), indicating a significant fluctuation which can trigger migraines. Humidity is also extremely high (0.75) and could contribute to migraine risk. Pressure change is very high (0.8), which is the most important factor, and pressure is slightly low (0.6). Precipitation and cloud cover are at moderate levels.",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary HIGH (low end)",
+      "description": "Just at HIGH threshold (0.70)",
+      "weighted_score": 0.772,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.92,
+      "rationale": "Despite the weighted score being just above the MEDIUM threshold (0.77), multiple high-weight factors are elevated: pressure_change (0.85) and humidity_extreme (0.8). These factors indicate a significant risk for migraines.",
+      "analysis": "The weather conditions show an average temperature of 7\u00b0C, which is close to the moderate threshold for temperature change (0.2+). Humidity is at 88%, exceeding the high threshold for humidity extreme (0.8+). Pressure is at 995 hPa, just below the low pressure threshold (<1005 hPa), but with a significant risk score of 0.7. These factors collectively suggest a HIGH migraine risk.",
+      "error": null
+    },
+    {
+      "scenario_name": "High pressure change only",
+      "description": "Single dominant factor (pressure change 30% weight)",
+      "weighted_score": 0.39,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 0.39,
+      "rationale": "The weighted score of 0.39 indicates a low risk level due to the dominance of pressure change (0.95) which is moderate but not high enough to classify as HIGH. Other factors like temperature_change and cloud_cover are also low.",
+      "analysis": "High pressure change with average temperature 18.0\u00b0C, average pressure 1008.0 hPa, and humidity at 55%.",
+      "error": null
+    },
+    {
+      "scenario_name": "London example (reported as HIGH)",
+      "description": "Real-world case that was misclassified",
+      "weighted_score": 0.468,
+      "expected": "MEDIUM",
+      "predicted": "MEDIUM",
+      "correct": true,
+      "confidence": 0.53,
+      "rationale": "The weighted score of 0.47 indicates a MEDIUM risk level for migraines in London based on the given weather factors. Although pressure change (0.71) and cloud cover (1.0) are high, they're partially offset by moderate humidity (0.53), low temperature change (0.11), and minimal precipitation (0.18). The overall risk is not high enough to classify as HIGH.",
+      "analysis": "London's weather features a significant pressure drop (71% of maximum weight) and complete cloud cover, both considered high-risk factors for migraines. However, the temperature change is moderate and humidity is only slightly elevated, mitigating some of this risk. Precipitation remains low.",
+      "error": null
+    },
+    {
+      "scenario_name": "Thessaloniki example (reported as HIGH)",
+      "description": "Real-world case with weighted score 0.36",
+      "weighted_score": 0.376,
+      "expected": "LOW",
+      "predicted": "MEDIUM",
+      "correct": false,
+      "confidence": 0.63,
+      "rationale": "The weighted score of 0.38 indicates a MEDIUM risk level due to elevated cloud cover (1.0) and humidity (0.81), moderate pressure change (0.41), and low precipitation (0.42). Although temperature change is minimal, the high humidity and cloud cover contribute significantly to migraine risk.",
+      "analysis": "Thessaloniki's weather features high humidity (94%), extensive cloud cover (1.0), and a moderate pressure change (0.41 hPa). Temperature averages 15.5\u00b0C, which is not extreme, but the combination of high humidity and cloud cover raises migraine risk.",
+      "error": null
+    }
+  ],
+  "sinusitis_tests": [
+    {
+      "scenario_name": "Clear LOW - Minimal risk",
+      "description": "Perfect weather for sinuses",
+      "weighted_score": 0.0,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 0.98,
+      "rationale": "All risk factors are at minimal levels with no significant temperature changes, humidity or pressure variations, and no precipitation.",
+      "analysis": "Current weather conditions show stable pressure (1013 hPa), moderate humidity (50%), and no recent temperature fluctuations or precipitation. These factors suggest a low risk of sinusitis.",
+      "error": null
+    },
+    {
+      "scenario_name": "Clear HIGH - Humidity and temp change",
+      "description": "High humidity + temperature change (key sinusitis triggers)",
+      "weighted_score": 0.808,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.95,
+      "rationale": "The weighted score of 0.81 indicates a high risk for sinusitis due to significant temperature change (0.9), extreme humidity (0.95), and moderate pressure change (0.7). The combination of these factors suggests an increased likelihood of sinusitis symptoms.",
+      "analysis": "The weather conditions show rapid temperature changes, high humidity levels, and a slight decrease in barometric pressure. These factors collectively increase the risk for sinusitis.",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (sinusitis)",
+      "description": "Just above LOW threshold (0.35)",
+      "weighted_score": 0.365,
+      "expected": "MEDIUM",
+      "predicted": "MEDIUM",
+      "correct": true,
+      "confidence": 0.68,
+      "rationale": "The weighted score of 0.36 falls within the MEDIUM range due to elevated temperature change and humidity extreme factors.",
+      "analysis": "Temperature change of 0.4 and humidity at 75% are the primary contributors to a medium risk for sinusitis.",
+      "error": null
+    }
+  ],
+  "summary": {
+    "migraine_accuracy": 0.75,
+    "migraine_correct": 6,
+    "migraine_total": 8,
+    "migraine_errors": 0,
+    "sinusitis_accuracy": 1.0,
+    "sinusitis_correct": 3,
+    "sinusitis_total": 3,
+    "sinusitis_errors": 0,
+    "overall_accuracy": 0.8181818181818182,
+    "total_correct": 9,
+    "total_tests": 11,
+    "total_errors": 0
+  }
+}

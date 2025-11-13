@@ -1,0 +1,155 @@
+{
+  "model": "granite-4.0-micro",
+  "base_url": "http://localhost:1234",
+  "timestamp": "2025-11-09T22:34:44.591933",
+  "migraine_tests": [
+    {
+      "scenario_name": "Clear LOW - Minimal risk",
+      "description": "Perfect weather, no risk factors",
+      "weighted_score": 0.0,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 1.0,
+      "rationale": "All weather risk factors are at minimal levels with scores close to zero, resulting in a weighted score well below the threshold for medium or high risk.",
+      "analysis": "The location has clear conditions with no significant temperature change, humidity extremes, pressure changes, low pressure, precipitation, or cloud cover. These factors contribute to an overall low migraine risk assessment.",
+      "error": null
+    },
+    {
+      "scenario_name": "Clear HIGH - Multiple severe factors",
+      "description": "Major pressure drop + large temp change + high humidity",
+      "weighted_score": 0.877,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.85,
+      "rationale": "Multiple high-risk factors including extreme temperature change, humidity extreme, and significant pressure change contribute to a weighted score of 0.88, exceeding the HIGH threshold.",
+      "analysis": "The weather conditions show clear skies with an average temperature of 8\u00b0C, low pressure at 992 hPa, and very high humidity (92%). These factors align with multiple elevated risk scores.",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (low end)",
+      "description": "Just above LOW threshold (0.40)",
+      "weighted_score": 0.42,
+      "expected": "MEDIUM",
+      "predicted": "MEDIUM",
+      "correct": true,
+      "confidence": 0.85,
+      "rationale": "Weighted score is 0.42, which falls in the MEDIUM range (0.40-0.69). Multiple factors are elevated, including temperature change and humidity extreme.",
+      "analysis": "The weather has a moderate risk of triggering migraines based on the provided scores. Temperature change and humidity extreme contribute significantly to the risk.",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (high end)",
+      "description": "Just below HIGH threshold (0.70)",
+      "weighted_score": 0.707,
+      "expected": "HIGH",
+      "predicted": "MEDIUM",
+      "correct": false,
+      "confidence": 0.75,
+      "rationale": "Weighted score of 0.71 falls in the MEDIUM range based on weather conditions.",
+      "analysis": "Temperature change and pressure change are high risk factors, while humidity is extreme but not as severe as temperature or pressure changes.",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary HIGH (low end)",
+      "description": "Just at HIGH threshold (0.70)",
+      "weighted_score": 0.772,
+      "expected": "HIGH",
+      "predicted": "MEDIUM",
+      "correct": false,
+      "confidence": 0.78,
+      "rationale": "Multiple risk factors are elevated, but weighted score is below the high-risk threshold.",
+      "analysis": "Temperature change and pressure change scores are high (0.75 & 0.85), humidity extreme is also high (0.8). Pressure low score of 0.7 indicates subnormal pressure. Cloud cover is moderate-high (0.8). Precipitation is moderate (0.5). Weighted score calculation: (0.85*0.3)+(0.75*0.25)+(0.8*0.15)+(0.7*0.15)+(0.5*0.05)+(0.8*0.1) = 0.255+0.1875+0.12+0.105+0.025+0.08 = 0.7725.",
+      "error": null
+    },
+    {
+      "scenario_name": "High pressure change only",
+      "description": "Single dominant factor (pressure change 30% weight)",
+      "weighted_score": 0.39,
+      "expected": "LOW",
+      "predicted": "MEDIUM",
+      "correct": false,
+      "confidence": 0.78,
+      "rationale": "Pressure change is the only high-risk factor at 0.95 score, with a weight of 30%. Other factors are low risk or moderate but not extreme enough to push the weighted score above 0.69.",
+      "analysis": "High pressure change (pressure_change=0.95) combined with lower weights for other factors results in a medium risk level. Temperature and humidity are within normal ranges, precipitation is minimal, and cloud cover is moderate.",
+      "error": null
+    },
+    {
+      "scenario_name": "London example (reported as HIGH)",
+      "description": "Real-world case that was misclassified",
+      "weighted_score": 0.468,
+      "expected": "MEDIUM",
+      "predicted": "MEDIUM",
+      "correct": true,
+      "confidence": 0.75,
+      "rationale": "Weighted score of 0.47 falls in the MEDIUM range based on weather conditions.",
+      "analysis": "Temperature change is low (0.11), but humidity extreme at 0.53 and cloud cover at 1.0 contribute to a medium risk level. Pressure change is moderate (0.71) with pressure slightly below normal (0.26). Precipitation is minimal (0.18).",
+      "error": null
+    },
+    {
+      "scenario_name": "Thessaloniki example (reported as HIGH)",
+      "description": "Real-world case with weighted score 0.36",
+      "weighted_score": 0.376,
+      "expected": "LOW",
+      "predicted": "MEDIUM",
+      "correct": false,
+      "confidence": 0.78,
+      "rationale": "Weighted score of 0.38 indicates moderate risk due to high humidity and cloud cover, with other factors at lower risk levels.",
+      "analysis": "High humidity (94%) and cloud cover (100%) contribute significantly to the risk, while temperature change is minimal. Pressure is slightly elevated but not extreme.",
+      "error": null
+    }
+  ],
+  "sinusitis_tests": [
+    {
+      "scenario_name": "Clear LOW - Minimal risk",
+      "description": "Perfect weather for sinuses",
+      "weighted_score": 0.0,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 1.0,
+      "rationale": "All risk factors are at minimal levels with no temperature change, low humidity, no significant pressure changes or drops below normal levels, and negligible precipitation or cloud cover.",
+      "analysis": "The weather conditions show clear skies, stable atmospheric pressure around 1013 hPa, moderate humidity (50%), and no precipitation. These factors collectively indicate a very low risk of sinusitis development.",
+      "error": null
+    },
+    {
+      "scenario_name": "Clear HIGH - Humidity and temp change",
+      "description": "High humidity + temperature change (key sinusitis triggers)",
+      "weighted_score": 0.808,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.85,
+      "rationale": "Multiple high-risk factors are present with significant scores and weights, including extreme humidity (0.95) and temperature change (0.9), both contributing substantially to sinusitis risk.",
+      "analysis": "The weather conditions show a clear pattern of rapid temperature changes and extremely high humidity levels, which together pose a strong risk for sinusitis development. The weighted score calculation confirms this with a total of 0.81, exceeding the threshold for HIGH risk.",
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (sinusitis)",
+      "description": "Just above LOW threshold (0.35)",
+      "weighted_score": 0.365,
+      "expected": "MEDIUM",
+      "predicted": "MEDIUM",
+      "correct": true,
+      "confidence": 0.7,
+      "rationale": "Temperature change and humidity extreme scores are moderate to high, with precipitation also at a moderate level. Combined weighted score of 0.36 suggests medium risk.",
+      "analysis": "Moderate temperature changes (score 0.4) combined with elevated humidity extremes (score 0.5) create conditions that can irritate sinuses and promote allergen/mold growth, while precipitation adds to allergen exposure.",
+      "error": null
+    }
+  ],
+  "summary": {
+    "migraine_accuracy": 0.5,
+    "migraine_correct": 4,
+    "migraine_total": 8,
+    "migraine_errors": 0,
+    "sinusitis_accuracy": 1.0,
+    "sinusitis_correct": 3,
+    "sinusitis_total": 3,
+    "sinusitis_errors": 0,
+    "overall_accuracy": 0.6363636363636364,
+    "total_correct": 7,
+    "total_tests": 11,
+    "total_errors": 0
+  }
+}

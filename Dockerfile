@@ -6,7 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libaudit1 cron supervisor gettext && \
+    apt-get install -y --no-install-recommends libaudit1 cron gettext && \
     rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir -r requirements.txt
 
@@ -31,11 +31,23 @@ RUN echo "0 */2 * * * cd /app && /usr/local/bin/python manage.py collect_weather
     echo "0 * * * * cd /app && /usr/local/bin/python manage.py send_digest_notifications >> /var/log/cron.log 2>&1" >> /etc/cron.d/migraine_pipeline
 RUN chmod 0644 /etc/cron.d/migraine_pipeline && \
     crontab /etc/cron.d/migraine_pipeline && \
-    touch /var/log/cron.log && \
-    echo "[supervisord]\nnodaemon=true\n\n[program:django]\ncommand=/bin/bash -c 'python manage.py migrate && gunicorn migraine_project.wsgi:application -c gunicorn.conf.py'\ndirectory=/app\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n\n[program:cron]\ncommand=cron -f\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0" > /etc/supervisor/conf.d/supervisord.conf
+    touch /var/log/cron.log
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Start cron in the background\n\
+echo "Starting cron..."\n\
+cron\n\
+\n\
+# Start gunicorn in the foreground\n\
+echo "Starting gunicorn..."\n\
+exec gunicorn migraine_project.wsgi:application -c gunicorn.conf.py\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose port
 EXPOSE 8889
 
-# Start supervisor (which will start both Django and cron)
-CMD ["/usr/bin/supervisord"]
+# Start both cron and gunicorn
+CMD ["/app/start.sh"]

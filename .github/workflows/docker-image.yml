@@ -110,7 +110,7 @@ jobs:
       cancel-in-progress: false
     steps:
       -
-        name: Deploy to Raspberry Pi
+        name: Stop current application and backup database
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -119,6 +119,37 @@ jobs:
           script: |
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting deployment of alexandrosm77/migraine_forecast:latest..."
 
+            # Stop existing container if it exists
+            if docker ps -a --format '{{.Names}}' | grep -q "^migraine$"; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Stopping existing container..."
+              docker stop migraine
+            fi
+
+            # Backup database
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Backing up database..."
+            BACKUP_DIR="/home/alexandros/migraine/backups"
+            mkdir -p "$BACKUP_DIR"
+            BACKUP_FILE="$BACKUP_DIR/db.sqlite3.backup.$(date '+%Y%m%d_%H%M%S')"
+
+            if [ -f /home/alexandros/migraine/db.sqlite3 ]; then
+              cp /home/alexandros/migraine/db.sqlite3 "$BACKUP_FILE"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Database backed up to: $BACKUP_FILE"
+
+              # Keep only the last 10 backups
+              ls -t "$BACKUP_DIR"/db.sqlite3.backup.* 2>/dev/null | tail -n +11 | xargs -r rm
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Old backups cleaned up (keeping last 10)"
+            else
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - No existing database found, skipping backup"
+            fi
+
+      -
+        name: Pull latest image and run migrations
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
             # Docker Hub login
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Authenticating with Docker Hub..."
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
@@ -127,10 +158,32 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Pulling the latest image..."
             docker pull alexandrosm77/migraine_forecast:latest
 
-            # Stop and remove existing container if it exists
+            # Run migrations in a temporary container
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Running database migrations..."
+            docker run --rm \
+              -v /home/alexandros/migraine/db.sqlite3:/app/db.sqlite3 \
+              alexandrosm77/migraine_forecast:latest \
+              python manage.py migrate --noinput
+
+            if [ $? -eq 0 ]; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Migrations completed successfully"
+            else
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Migrations failed!"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Database backup is available in /home/alexandros/migraine/backups/ for manual recovery if needed"
+              exit 1
+            fi
+
+      -
+        name: Deploy application
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Remove old container if it exists
             if docker ps -a --format '{{.Names}}' | grep -q "^migraine$"; then
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Stopping and removing existing container..."
-              docker stop migraine
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Removing old container..."
               docker rm migraine
             fi
 
@@ -152,10 +205,12 @@ jobs:
             # Check if the container started successfully
             if docker ps --format '{{.Names}}' | grep -q "^migraine$"; then
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Deployment successful! Container is running."
-              echo "$(date '+%Y-%m-%d %H:%M:%S') - Container logs (last 5 lines):"
-              docker logs migraine --tail 5
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Container logs (last 10 lines):"
+              docker logs migraine --tail 10
             else
               echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Container failed to start."
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Check logs with: docker logs migraine"
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Database backup is available in /home/alexandros/migraine/backups/ for manual recovery if needed"
               exit 1
             fi
 
