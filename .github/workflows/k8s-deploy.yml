@@ -178,18 +178,46 @@ jobs:
               exit 0
             fi
 
+            # Check if PVCs are bound
+            echo "Checking PVC status..."
+            sudo kubectl get pvc -n migraine-forecast
+
             # Run backup job immediately (don't wait for scheduled time)
-            sudo kubectl create job --from=cronjob/migraine-db-backup migraine-backup-$(date +%s) -n migraine-forecast
+            JOB_NAME="migraine-backup-$(date +%s)"
+            sudo kubectl create job --from=cronjob/migraine-db-backup $JOB_NAME -n migraine-forecast
 
             # Wait for backup to complete (max 60 seconds)
             for i in {1..12}; do
-              if sudo kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --field-selector status.successful=1 2>/dev/null | grep -q migraine-backup; then
+              # Check job status
+              JOB_STATUS=$(sudo kubectl get job $JOB_NAME -n migraine-forecast -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null)
+              JOB_FAILED=$(sudo kubectl get job $JOB_NAME -n migraine-forecast -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null)
+
+              if [ "$JOB_STATUS" = "True" ]; then
                 echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup completed successfully"
                 break
+              elif [ "$JOB_FAILED" = "True" ]; then
+                echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup job failed!"
+                echo "Job logs:"
+                sudo kubectl logs job/$JOB_NAME -n migraine-forecast
+                echo "Pod status:"
+                sudo kubectl get pods -n migraine-forecast -l job-name=$JOB_NAME
+                exit 1
               fi
+
               echo "Waiting for backup to complete... ($i/12)"
               sleep 5
             done
+
+            # If we got here and backup didn't complete, show debug info
+            if [ "$JOB_STATUS" != "True" ]; then
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - Backup timed out!"
+              echo "Job status:"
+              sudo kubectl get job $JOB_NAME -n migraine-forecast -o yaml
+              echo "Pod status:"
+              sudo kubectl get pods -n migraine-forecast -l job-name=$JOB_NAME
+              echo "Pod logs:"
+              sudo kubectl logs -n migraine-forecast -l job-name=$JOB_NAME --all-containers=true
+            fi
 
       -
         name: Run database migrations
@@ -276,26 +304,36 @@ jobs:
           # Get all tags except 'latest' and the current version
           CURRENT_VERSION="${{ needs.build.outputs.version }}"
 
-          # Use Docker Hub API to get all tags (using python to parse JSON)
+          # Use Docker Hub API to get all tags (using python with built-in urllib)
           python3 << 'EOF'
-          import requests
+          import urllib.request
+          import urllib.parse
           import json
 
           # Login to Docker Hub
-          login_data = {
+          login_data = json.dumps({
               "username": "${{ vars.DOCKERHUB_USERNAME }}",
               "password": "${{ secrets.DOCKERHUB_TOKEN }}"
-          }
-          response = requests.post("https://hub.docker.com/v2/users/login/", json=login_data)
-          token = response.json()["token"]
+          }).encode('utf-8')
+
+          req = urllib.request.Request(
+              "https://hub.docker.com/v2/users/login/",
+              data=login_data,
+              headers={"Content-Type": "application/json"}
+          )
+
+          with urllib.request.urlopen(req) as response:
+              token = json.loads(response.read().decode('utf-8'))["token"]
 
           # Get all tags
-          headers = {"Authorization": f"JWT {token}"}
-          response = requests.get(
+          req = urllib.request.Request(
               "https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/migraine_forecast/tags/?page_size=100",
-              headers=headers
+              headers={"Authorization": f"JWT {token}"}
           )
-          tags = [tag["name"] for tag in response.json()["results"]]
+
+          with urllib.request.urlopen(req) as response:
+              data = json.loads(response.read().decode('utf-8'))
+              tags = [tag["name"] for tag in data["results"]]
 
           # Filter out 'latest' and current version
           current_version = "${{ needs.build.outputs.version }}"
@@ -315,11 +353,21 @@ jobs:
           for tag in tags_to_delete:
               print(f"Deleting tag: {tag}")
               delete_url = f"https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/migraine_forecast/tags/{tag}/"
-              response = requests.delete(delete_url, headers=headers)
-              if response.status_code == 204:
-                  print(f"  ✓ Deleted {tag}")
-              else:
-                  print(f"  ✗ Failed to delete {tag}: {response.status_code}")
+
+              req = urllib.request.Request(
+                  delete_url,
+                  method="DELETE",
+                  headers={"Authorization": f"JWT {token}"}
+              )
+
+              try:
+                  with urllib.request.urlopen(req) as response:
+                      if response.status == 204:
+                          print(f"  ✓ Deleted {tag}")
+                      else:
+                          print(f"  ✗ Failed to delete {tag}: {response.status}")
+              except urllib.error.HTTPError as e:
+                  print(f"  ✗ Failed to delete {tag}: {e.code}")
 
           print("Docker Hub cleanup complete")
           EOF
