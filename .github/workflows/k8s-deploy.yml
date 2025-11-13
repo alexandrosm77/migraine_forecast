@@ -282,6 +282,13 @@ jobs:
           cat k8s/service.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
 
+          # Force restart to pick up new image
+          echo "Restarting deployments to pick up new image..."
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "sudo kubectl rollout restart deployment/migraine-forecast-web -n migraine-forecast && \
+             sudo kubectl rollout restart deployment/migraine-forecast-cron -n migraine-forecast"
+
           # Wait for web deployment to complete
           echo "Waiting for web deployment to complete..."
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
