@@ -147,9 +147,14 @@ jobs:
 
       -
         name: Copy Kubernetes manifests to Pi
-        run: |
-          # Copy k8s manifests to a temporary directory on the Pi
-          scp -r k8s/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/tmp/k8s-manifests/
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "k8s/*"
+          target: "/tmp/k8s-manifests/"
+          strip_components: 0
 
       -
         name: Deploy infrastructure (PVs, CronJob)
