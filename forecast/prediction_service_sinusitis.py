@@ -263,6 +263,7 @@ class SinusitisPredictionService:
                             "avg_forecast_cloud_cover": round(float(np.mean(cloud_covers)), 0),
                             "min_forecast_cloud_cover": round(float(min(cloud_covers)), 0),
                             "max_forecast_cloud_cover": round(float(max(cloud_covers)), 0),
+                            "cloud_cover_range": round(float(max(cloud_covers) - min(cloud_covers)), 0),
                             # Precipitation
                             "max_precipitation": round(float(max(precipitations)), 1) if precipitations else 0,
                             "total_precipitation": round(float(sum(precipitations)), 1) if precipitations else 0,

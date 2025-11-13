@@ -42,8 +42,8 @@
                                 <tr>
                                     <td><strong>Temperature Change:</strong></td>
                                     <td>
-                                        {{ weather_factor_values.temperature_change.change }}<br>
-                                        <small class="text-muted">{{ weather_factor_values.temperature_change.range }}</small>
+                                        {{ weather_factor_values.temperature_change.change }} from previous period<br>
+                                        <small class="text-muted">Range in window: {{ weather_factor_values.temperature_change.range }}</small>
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -52,8 +52,8 @@
                                 <tr>
                                     <td><strong>Pressure Change:</strong></td>
                                     <td>
-                                        {{ weather_factor_values.pressure_change.change }}<br>
-                                        <small class="text-muted">{{ weather_factor_values.pressure_change.range }}</small>
+                                        {{ weather_factor_values.pressure_change.change }} from previous period<br>
+                                        <small class="text-muted">Range in window: {{ weather_factor_values.pressure_change.range }}</small>
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -62,8 +62,8 @@
                                 <tr>
                                     <td><strong>Humidity Change:</strong></td>
                                     <td>
-                                        {{ weather_factor_values.humidity_extreme.change }}<br>
-                                        <small class="text-muted">{{ weather_factor_values.humidity_extreme.range }}</small>
+                                        {{ weather_factor_values.humidity_extreme.change }} from previous period<br>
+                                        <small class="text-muted">Range in window: {{ weather_factor_values.humidity_extreme.range }}</small>
                                     </td>
                                 </tr>
                                 {% endif %}

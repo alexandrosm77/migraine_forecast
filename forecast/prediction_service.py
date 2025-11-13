@@ -211,6 +211,9 @@ class MigrainePredictionService:
                             ),
                             "min_forecast_cloud_cover": (round(float(min(cloud_covers)), 0) if cloud_covers else None),
                             "max_forecast_cloud_cover": (round(float(max(cloud_covers)), 0) if cloud_covers else None),
+                            "cloud_cover_range": (
+                                round(float(max(cloud_covers) - min(cloud_covers)), 0) if cloud_covers else None
+                            ),
                             # Precipitation
                             "max_precipitation": (round(float(max(precipitations)), 1) if precipitations else 0),
                             "total_precipitation": (round(float(sum(precipitations)), 1) if precipitations else 0),
@@ -218,28 +221,22 @@ class MigrainePredictionService:
                         "changes": {
                             "temperature_change": round(
                                 float(
-                                    abs(
-                                        (np.mean([f.temperature for f in fc_list]) if fc_list else 0)
-                                        - (np.mean([f.temperature for f in prev_list]) if prev_list else 0)
-                                    )
+                                    (np.mean([f.temperature for f in fc_list]) if fc_list else 0)
+                                    - (np.mean([f.temperature for f in prev_list]) if prev_list else 0)
                                 ),
                                 1,
                             ),
                             "pressure_change": round(
                                 float(
-                                    abs(
-                                        (np.mean([f.pressure for f in fc_list]) if fc_list else 0)
-                                        - (np.mean([f.pressure for f in prev_list]) if prev_list else 0)
-                                    )
+                                    (np.mean([f.pressure for f in fc_list]) if fc_list else 0)
+                                    - (np.mean([f.pressure for f in prev_list]) if prev_list else 0)
                                 ),
                                 1,
                             ),
                             "humidity_change": round(
                                 float(
-                                    abs(
-                                        (np.mean([f.humidity for f in fc_list]) if fc_list else 0)
-                                        - (np.mean([f.humidity for f in prev_list]) if prev_list else 0)
-                                    )
+                                    (np.mean([f.humidity for f in fc_list]) if fc_list else 0)
+                                    - (np.mean([f.humidity for f in prev_list]) if prev_list else 0)
                                 ),
                                 1,
                             ),
