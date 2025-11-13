@@ -249,6 +249,11 @@ jobs:
         run: |
           echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying application..."
 
+          # Delete old monolithic deployment if it exists (migration from single to split deployment)
+          ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "sudo kubectl delete deployment migraine-forecast -n migraine-forecast --ignore-not-found=true"
+
           # Deploy the application and service via stdin
           cat k8s/deployment.yaml | ssh -i <(echo "${{ secrets.SSH_PRIVATE_KEY }}") -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
