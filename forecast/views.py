@@ -240,21 +240,78 @@ def prediction_detail(request, prediction_id):
         ).order_by("-target_time")[:6]
 
         if forecasts:
+            temps = [f.temperature for f in forecasts]
+            pressures = [f.pressure for f in forecasts]
+            humidities = [f.humidity for f in forecasts]
+            precipitations = [f.precipitation for f in forecasts]
+            cloud_covers = [f.cloud_cover for f in forecasts]
+
+            # Temperature range and change
+            temp_min, temp_max = min(temps), max(temps)
+            temp_range = temp_max - temp_min
             if previous_forecasts:
-                temp_change = abs(
-                    np.mean([f.temperature for f in forecasts]) - np.mean([f.temperature for f in previous_forecasts])
-                )
-                weather_factor_values["temperature_change"] = f"{temp_change:.1f}°C"
+                prev_avg_temp = np.mean([f.temperature for f in previous_forecasts])
+                avg_temp = np.mean(temps)
+                temp_change = avg_temp - prev_avg_temp
+                weather_factor_values["temperature_change"] = {
+                    "change": f"{temp_change:+.1f}°C",
+                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
+                }
+            else:
+                weather_factor_values["temperature_change"] = {
+                    "change": "N/A",
+                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
+                }
 
-                pressure_change = abs(
-                    np.mean([f.pressure for f in forecasts]) - np.mean([f.pressure for f in previous_forecasts])
-                )
-                weather_factor_values["pressure_change"] = f"{pressure_change:.1f} hPa"
+            # Pressure change and range
+            pressure_min, pressure_max = min(pressures), max(pressures)
+            pressure_range = pressure_max - pressure_min
+            if previous_forecasts:
+                prev_avg_pressure = np.mean([f.pressure for f in previous_forecasts])
+                avg_pressure = np.mean(pressures)
+                pressure_change = avg_pressure - prev_avg_pressure
+                weather_factor_values["pressure_change"] = {
+                    "change": f"{pressure_change:+.1f} hPa",
+                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
+                }
+            else:
+                weather_factor_values["pressure_change"] = {
+                    "change": "N/A",
+                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
+                }
 
-            weather_factor_values["humidity_extreme"] = f"{np.mean([f.humidity for f in forecasts]):.0f}%"
-            weather_factor_values["pressure_low"] = f"{np.mean([f.pressure for f in forecasts]):.1f} hPa"
-            weather_factor_values["precipitation"] = f"{max([f.precipitation for f in forecasts], default=0):.1f} mm"
-            weather_factor_values["cloud_cover"] = f"{np.mean([f.cloud_cover for f in forecasts]):.0f}%"
+            # Humidity range and change
+            humidity_min, humidity_max = min(humidities), max(humidities)
+            humidity_range = humidity_max - humidity_min
+            if previous_forecasts:
+                prev_avg_humidity = np.mean([f.humidity for f in previous_forecasts])
+                avg_humidity = np.mean(humidities)
+                humidity_change = avg_humidity - prev_avg_humidity
+                weather_factor_values["humidity_extreme"] = {
+                    "change": f"{humidity_change:+.0f}%",
+                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
+                }
+            else:
+                weather_factor_values["humidity_extreme"] = {
+                    "change": "N/A",
+                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
+                }
+
+            # Precipitation
+            total_precip = sum(precipitations)
+            max_precip = max(precipitations)
+            weather_factor_values["precipitation"] = {
+                "total": f"{total_precip:.1f} mm",
+                "max": f"{max_precip:.1f} mm/hour"
+            }
+
+            # Cloud cover range
+            cloud_min, cloud_max = min(cloud_covers), max(cloud_covers)
+            avg_cloud = np.mean(cloud_covers)
+            weather_factor_values["cloud_cover"] = {
+                "average": f"{avg_cloud:.0f}%",
+                "range": f"{cloud_min:.0f}% to {cloud_max:.0f}%"
+            }
     except Exception:
         pass
 
@@ -324,21 +381,78 @@ def sinusitis_prediction_detail(request, prediction_id):
         ).order_by("-target_time")[:6]
 
         if forecasts:
+            temps = [f.temperature for f in forecasts]
+            pressures = [f.pressure for f in forecasts]
+            humidities = [f.humidity for f in forecasts]
+            precipitations = [f.precipitation for f in forecasts]
+            cloud_covers = [f.cloud_cover for f in forecasts]
+
+            # Temperature range and change
+            temp_min, temp_max = min(temps), max(temps)
+            temp_range = temp_max - temp_min
             if previous_forecasts:
-                temp_change = abs(
-                    np.mean([f.temperature for f in forecasts]) - np.mean([f.temperature for f in previous_forecasts])
-                )
-                weather_factor_values["temperature_change"] = f"{temp_change:.1f}°C"
+                prev_avg_temp = np.mean([f.temperature for f in previous_forecasts])
+                avg_temp = np.mean(temps)
+                temp_change = avg_temp - prev_avg_temp
+                weather_factor_values["temperature_change"] = {
+                    "change": f"{temp_change:+.1f}°C",
+                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
+                }
+            else:
+                weather_factor_values["temperature_change"] = {
+                    "change": "N/A",
+                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
+                }
 
-                pressure_change = abs(
-                    np.mean([f.pressure for f in forecasts]) - np.mean([f.pressure for f in previous_forecasts])
-                )
-                weather_factor_values["pressure_change"] = f"{pressure_change:.1f} hPa"
+            # Pressure change and range
+            pressure_min, pressure_max = min(pressures), max(pressures)
+            pressure_range = pressure_max - pressure_min
+            if previous_forecasts:
+                prev_avg_pressure = np.mean([f.pressure for f in previous_forecasts])
+                avg_pressure = np.mean(pressures)
+                pressure_change = avg_pressure - prev_avg_pressure
+                weather_factor_values["pressure_change"] = {
+                    "change": f"{pressure_change:+.1f} hPa",
+                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
+                }
+            else:
+                weather_factor_values["pressure_change"] = {
+                    "change": "N/A",
+                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
+                }
 
-            weather_factor_values["humidity_extreme"] = f"{np.mean([f.humidity for f in forecasts]):.0f}%"
-            weather_factor_values["pressure_low"] = f"{np.mean([f.pressure for f in forecasts]):.1f} hPa"
-            weather_factor_values["precipitation"] = f"{max([f.precipitation for f in forecasts], default=0):.1f} mm"
-            weather_factor_values["cloud_cover"] = f"{np.mean([f.cloud_cover for f in forecasts]):.0f}%"
+            # Humidity range and change
+            humidity_min, humidity_max = min(humidities), max(humidities)
+            humidity_range = humidity_max - humidity_min
+            if previous_forecasts:
+                prev_avg_humidity = np.mean([f.humidity for f in previous_forecasts])
+                avg_humidity = np.mean(humidities)
+                humidity_change = avg_humidity - prev_avg_humidity
+                weather_factor_values["humidity_extreme"] = {
+                    "change": f"{humidity_change:+.0f}%",
+                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
+                }
+            else:
+                weather_factor_values["humidity_extreme"] = {
+                    "change": "N/A",
+                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
+                }
+
+            # Precipitation
+            total_precip = sum(precipitations)
+            max_precip = max(precipitations)
+            weather_factor_values["precipitation"] = {
+                "total": f"{total_precip:.1f} mm",
+                "max": f"{max_precip:.1f} mm/hour"
+            }
+
+            # Cloud cover range
+            cloud_min, cloud_max = min(cloud_covers), max(cloud_covers)
+            avg_cloud = np.mean(cloud_covers)
+            weather_factor_values["cloud_cover"] = {
+                "average": f"{avg_cloud:.0f}%",
+                "range": f"{cloud_min:.0f}% to {cloud_max:.0f}%"
+            }
     except Exception:
         pass
 
