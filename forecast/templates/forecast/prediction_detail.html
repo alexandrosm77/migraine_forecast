@@ -32,51 +32,51 @@
                     </p>
                     <p><strong>Notification Sent:</strong> {{ prediction.notification_sent|yesno:"Yes,No" }}</p>
 
-                    {% if prediction.weather_factors %}
+                    {% if weather_factor_values %}
                     <hr>
                     <h6 class="mb-3">Weather Factors</h6>
                     <div class="table-responsive">
                         <table class="table table-sm">
                             <tbody>
-                                {% if prediction.weather_factors.cloud_cover is not None %}
-                                <tr>
-                                    <td><strong>Cloud Cover:</strong></td>
-                                    <td>{{ prediction.weather_factors.cloud_cover }}</td>
-                                </tr>
-                                {% endif %}
-
-                                {% if prediction.weather_factors.humidity_extreme is not None %}
-                                <tr>
-                                    <td><strong>Humidity Extreme:</strong></td>
-                                    <td>{{ prediction.weather_factors.humidity_extreme }}</td>
-                                </tr>
-                                {% endif %}
-
-                                {% if prediction.weather_factors.precipitation is not None %}
-                                <tr>
-                                    <td><strong>Precipitation:</strong></td>
-                                    <td>{{ prediction.weather_factors.precipitation }}</td>
-                                </tr>
-                                {% endif %}
-
-                                {% if prediction.weather_factors.pressure_change is not None %}
-                                <tr>
-                                    <td><strong>Pressure Change:</strong></td>
-                                    <td>{{ prediction.weather_factors.pressure_change }}</td>
-                                </tr>
-                                {% endif %}
-
-                                {% if prediction.weather_factors.pressure_low is not None %}
-                                <tr>
-                                    <td><strong>Pressure Low:</strong></td>
-                                    <td>{{ prediction.weather_factors.pressure_low }}</td>
-                                </tr>
-                                {% endif %}
-
-                                {% if prediction.weather_factors.temperature_change is not None %}
+                                {% if weather_factor_values.temperature_change %}
                                 <tr>
                                     <td><strong>Temperature Change:</strong></td>
-                                    <td>{{ prediction.weather_factors.temperature_change }}</td>
+                                    <td>{{ weather_factor_values.temperature_change }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if weather_factor_values.pressure_change %}
+                                <tr>
+                                    <td><strong>Pressure Change:</strong></td>
+                                    <td>{{ weather_factor_values.pressure_change }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if weather_factor_values.pressure_low %}
+                                <tr>
+                                    <td><strong>Barometric Pressure:</strong></td>
+                                    <td>{{ weather_factor_values.pressure_low }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if weather_factor_values.humidity_extreme %}
+                                <tr>
+                                    <td><strong>Humidity:</strong></td>
+                                    <td>{{ weather_factor_values.humidity_extreme }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if weather_factor_values.precipitation %}
+                                <tr>
+                                    <td><strong>Precipitation:</strong></td>
+                                    <td>{{ weather_factor_values.precipitation }}</td>
+                                </tr>
+                                {% endif %}
+
+                                {% if weather_factor_values.cloud_cover %}
+                                <tr>
+                                    <td><strong>Cloud Cover:</strong></td>
+                                    <td>{{ weather_factor_values.cloud_cover }}</td>
                                 </tr>
                                 {% endif %}
                             </tbody>

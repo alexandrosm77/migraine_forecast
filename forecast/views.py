@@ -223,11 +223,47 @@ def prediction_detail(request, prediction_id):
         detailed_factors = {"factors": [], "total_score": 0, "contributing_factors_count": 0}
     wf = prediction.weather_factors or {}
 
+    # Calculate human-readable weather factor values from forecasts
+    from forecast.models import WeatherForecast
+    import numpy as np
+
+    weather_factor_values = {}
+    try:
+        forecasts = WeatherForecast.objects.filter(
+            location=prediction.location,
+            target_time__gte=prediction.target_time_start,
+            target_time__lte=prediction.target_time_end,
+        ).order_by("target_time")
+
+        previous_forecasts = WeatherForecast.objects.filter(
+            location=prediction.location, target_time__lt=prediction.target_time_start
+        ).order_by("-target_time")[:6]
+
+        if forecasts:
+            if previous_forecasts:
+                temp_change = abs(
+                    np.mean([f.temperature for f in forecasts]) - np.mean([f.temperature for f in previous_forecasts])
+                )
+                weather_factor_values["temperature_change"] = f"{temp_change:.1f}°C"
+
+                pressure_change = abs(
+                    np.mean([f.pressure for f in forecasts]) - np.mean([f.pressure for f in previous_forecasts])
+                )
+                weather_factor_values["pressure_change"] = f"{pressure_change:.1f} hPa"
+
+            weather_factor_values["humidity_extreme"] = f"{np.mean([f.humidity for f in forecasts]):.0f}%"
+            weather_factor_values["pressure_low"] = f"{np.mean([f.pressure for f in forecasts]):.1f} hPa"
+            weather_factor_values["precipitation"] = f"{max([f.precipitation for f in forecasts], default=0):.1f} mm"
+            weather_factor_values["cloud_cover"] = f"{np.mean([f.cloud_cover for f in forecasts]):.0f}%"
+    except Exception:
+        pass
+
     context = {
         "prediction": prediction,
         "detailed_factors": detailed_factors,
         "llm_analysis_text": wf.get("llm_analysis_text"),
         "llm_prevention_tips": wf.get("llm_prevention_tips") or [],
+        "weather_factor_values": weather_factor_values,
     }
 
     return render(request, "forecast/prediction_detail.html", context)
@@ -266,16 +302,52 @@ def sinusitis_prediction_detail(request, prediction_id):
     # Build detailed factors similar to email, and expose LLM analysis/tips
     notif = NotificationService()
     try:
-        detailed_factors = notif._get_detailed_sinusitis_factors(prediction)
+        detailed_factors = notif._get_detailed_sinusitus_factors(prediction)
     except Exception:
         detailed_factors = {"factors": [], "total_score": 0, "contributing_factors_count": 0}
     wf = prediction.weather_factors or {}
+
+    # Calculate human-readable weather factor values from forecasts
+    from forecast.models import WeatherForecast
+    import numpy as np
+
+    weather_factor_values = {}
+    try:
+        forecasts = WeatherForecast.objects.filter(
+            location=prediction.location,
+            target_time__gte=prediction.target_time_start,
+            target_time__lte=prediction.target_time_end,
+        ).order_by("target_time")
+
+        previous_forecasts = WeatherForecast.objects.filter(
+            location=prediction.location, target_time__lt=prediction.target_time_start
+        ).order_by("-target_time")[:6]
+
+        if forecasts:
+            if previous_forecasts:
+                temp_change = abs(
+                    np.mean([f.temperature for f in forecasts]) - np.mean([f.temperature for f in previous_forecasts])
+                )
+                weather_factor_values["temperature_change"] = f"{temp_change:.1f}°C"
+
+                pressure_change = abs(
+                    np.mean([f.pressure for f in forecasts]) - np.mean([f.pressure for f in previous_forecasts])
+                )
+                weather_factor_values["pressure_change"] = f"{pressure_change:.1f} hPa"
+
+            weather_factor_values["humidity_extreme"] = f"{np.mean([f.humidity for f in forecasts]):.0f}%"
+            weather_factor_values["pressure_low"] = f"{np.mean([f.pressure for f in forecasts]):.1f} hPa"
+            weather_factor_values["precipitation"] = f"{max([f.precipitation for f in forecasts], default=0):.1f} mm"
+            weather_factor_values["cloud_cover"] = f"{np.mean([f.cloud_cover for f in forecasts]):.0f}%"
+    except Exception:
+        pass
 
     context = {
         "prediction": prediction,
         "detailed_factors": detailed_factors,
         "llm_analysis_text": wf.get("llm_analysis_text"),
         "llm_prevention_tips": wf.get("llm_prevention_tips") or [],
+        "weather_factor_values": weather_factor_values,
     }
 
     return render(request, "forecast/sinusitis_prediction_detail.html", context)
