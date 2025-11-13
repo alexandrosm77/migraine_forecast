@@ -288,87 +288,47 @@ jobs:
             echo "Cleaning up old migration jobs..."
             sudo kubectl delete jobs -n migraine-forecast -l job-name=migraine-migration --field-selector status.successful=1 --ignore-not-found=true
 
-            echo "Cleaning up old backup jobs (keep last 3)..."
-            sudo kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --sort-by=.metadata.creationTimestamp -o name 2>/dev/null | head -n -3 | xargs -r sudo kubectl delete -n migraine-forecast
+            echo "Cleaning up old backup jobs (keep last 5)..."
+            sudo kubectl get jobs -n migraine-forecast -l job-name=migraine-backup-* --sort-by=.metadata.creationTimestamp -o name 2>/dev/null | head -n -5 | xargs -r sudo kubectl delete -n migraine-forecast
 
             echo "Kubernetes cleanup complete"
 
       -
-        name: Clean up old Docker Hub images
+        name: Clean up untagged Docker images locally
+        continue-on-error: true
         run: |
-          echo "Cleaning up old Docker images from Docker Hub..."
+          echo "Cleaning up untagged/dangling Docker images locally..."
 
-          # Login to Docker Hub
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
+          # Remove dangling images (untagged)
+          docker image prune -f
 
-          # Get all tags except 'latest' and the current version
-          CURRENT_VERSION="${{ needs.build.outputs.version }}"
+          # Show disk usage after cleanup
+          echo ""
+          echo "Docker disk usage after cleanup:"
+          docker system df
 
-          # Use Docker Hub API to get all tags (using python with built-in urllib)
-          python3 << 'EOF'
-          import urllib.request
-          import urllib.parse
-          import json
+          echo ""
+          echo "Local Docker cleanup complete"
 
-          # Login to Docker Hub
-          login_data = json.dumps({
-              "username": "${{ vars.DOCKERHUB_USERNAME }}",
-              "password": "${{ secrets.DOCKERHUB_TOKEN }}"
-          }).encode('utf-8')
+      -
+        name: Clean up inactive images in Docker Hub
+        continue-on-error: true
+        run: |
+          echo "Cleaning up inactive images in Docker Hub registry..."
 
-          req = urllib.request.Request(
-              "https://hub.docker.com/v2/users/login/",
-              data=login_data,
-              headers={"Content-Type": "application/json"}
-          )
+          # Docker Hub doesn't have "untagged" images like local Docker
+          # But we can enable "Automated Builds Cleanup" via API
+          # This requires a Personal Access Token with delete permissions
 
-          with urllib.request.urlopen(req) as response:
-              token = json.loads(response.read().decode('utf-8'))["token"]
+          # Note: Docker Hub automatically garbage collects unreferenced layers
+          # Manual cleanup is only needed for old tags, which you want to keep
 
-          # Get all tags
-          req = urllib.request.Request(
-              "https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/migraine_forecast/tags/?page_size=100",
-              headers={"Authorization": f"JWT {token}"}
-          )
-
-          with urllib.request.urlopen(req) as response:
-              data = json.loads(response.read().decode('utf-8'))
-              tags = [tag["name"] for tag in data["results"]]
-
-          # Filter out 'latest' and current version
-          current_version = "${{ needs.build.outputs.version }}"
-          version_tags = [t for t in tags if t != "latest" and t != current_version]
-
-          # Sort by version (simple string sort, works for semantic versioning)
-          version_tags.sort(reverse=True)
-
-          # Keep last 5, delete the rest
-          tags_to_delete = version_tags[5:]
-
-          print(f"Current tags: {tags}")
-          print(f"Keeping: latest, {current_version}, {version_tags[:5]}")
-          print(f"Deleting: {tags_to_delete}")
-
-          # Delete old tags
-          for tag in tags_to_delete:
-              print(f"Deleting tag: {tag}")
-              delete_url = f"https://hub.docker.com/v2/repositories/${{ vars.DOCKERHUB_USERNAME }}/migraine_forecast/tags/{tag}/"
-
-              req = urllib.request.Request(
-                  delete_url,
-                  method="DELETE",
-                  headers={"Authorization": f"JWT {token}"}
-              )
-
-              try:
-                  with urllib.request.urlopen(req) as response:
-                      if response.status == 204:
-                          print(f"  ✓ Deleted {tag}")
-                      else:
-                          print(f"  ✗ Failed to delete {tag}: {response.status}")
-              except urllib.error.HTTPError as e:
-                  print(f"  ✗ Failed to delete {tag}: {e.code}")
-
-          print("Docker Hub cleanup complete")
-          EOF
+          echo "Docker Hub automatically garbage collects unreferenced image layers."
+          echo "All your tagged images will be kept."
+          echo ""
+          echo "If you need to free up space on Docker Hub, you can:"
+          echo "1. Enable 'Inactive Image Cleanup' in repository settings"
+          echo "2. Manually delete old tags from: https://hub.docker.com/r/${{ vars.DOCKERHUB_USERNAME }}/migraine_forecast/tags"
+          echo ""
+          echo "Docker Hub cleanup skipped (all tags preserved)"
 

@@ -36,9 +36,9 @@ spec:
                 cp /db/db.sqlite3 "$BACKUP_FILE"
                 echo "Database backed up to: $BACKUP_FILE"
                 
-                # Keep only the last 10 backups
-                ls -t /backups/db.sqlite3.backup.* 2>/dev/null | tail -n +11 | xargs -r rm
-                echo "Old backups cleaned up (keeping last 10)"
+                # Keep only the last 5 backups
+                ls -t /backups/db.sqlite3.backup.* 2>/dev/null | tail -n +6 | xargs -r rm
+                echo "Old backups cleaned up (keeping last 5)"
                 
                 # Show backup info
                 ls -lh "$BACKUP_FILE"
