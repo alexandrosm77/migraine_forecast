@@ -12,19 +12,18 @@
 
 set -e
 
-# Check if bump-my-version or bumpversion is installed
-if command -v bump-my-version &> /dev/null; then
-    BUMP_CMD="bump-my-version"
+# Check if bump2version/bumpversion is installed
+if command -v bump2version &> /dev/null; then
+    BUMP_CMD="bump2version"
+    echo "Using: bump2version"
 elif command -v bumpversion &> /dev/null; then
     BUMP_CMD="bumpversion"
+    echo "Using: bumpversion"
 else
-    echo "Error: Neither bump-my-version nor bumpversion is installed"
-    echo "Install one with: pip install bump-my-version"
-    echo "             or: pip install bump2version"
+    echo "Error: bump2version is not installed"
+    echo "Install with: pip install bump2version"
     exit 1
 fi
-
-echo "Using: $BUMP_CMD"
 
 # Check if argument is provided
 if [ $# -eq 0 ]; then
@@ -48,7 +47,7 @@ echo "Current version: $CURRENT_VERSION"
 
 # Bump version
 echo "Bumping $VERSION_PART version..."
-$BUMP_CMD bump "$VERSION_PART"
+$BUMP_CMD "$VERSION_PART"
 
 # Show new version
 NEW_VERSION=$(python3 -c "import sys; sys.path.insert(0, '.'); from forecast.__version__ import __version__; print(__version__)")
