@@ -334,21 +334,33 @@ jobs:
             echo "Kubernetes cleanup complete"
 
       -
-        name: Clean up untagged Docker images locally
+        name: Clean up untagged Docker images on Pi
         continue-on-error: true
         run: |
-          echo "Cleaning up untagged/dangling Docker images locally..."
+          echo "Cleaning up untagged/dangling Docker images on Pi..."
 
-          # Remove dangling images (untagged)
-          docker image prune -f
+          # Create temporary SSH key file
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
 
-          # Show disk usage after cleanup
+          # Remove dangling images on Pi
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "echo 'Before cleanup:' && \
+             sudo docker system df && \
+             echo '' && \
+             echo 'Removing dangling images...' && \
+             sudo docker image prune -f && \
+             echo '' && \
+             echo 'After cleanup:' && \
+             sudo docker system df"
+
+          # Clean up key
+          rm -f ~/.ssh/deploy_key
+
           echo ""
-          echo "Docker disk usage after cleanup:"
-          docker system df
-
-          echo ""
-          echo "Local Docker cleanup complete"
+          echo "Pi Docker cleanup complete"
 
       -
         name: Clean up inactive images in Docker Hub
