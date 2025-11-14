@@ -37,6 +37,18 @@ RUN chmod 0644 /etc/cron.d/migraine_pipeline && \
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
+# Export environment variables to cron environment\n\
+# Cron does not inherit environment variables from the container\n\
+echo "Exporting environment variables to cron..."\n\
+printenv | grep -E "^(SENTRY_|DJANGO_|LLM_)" | sed "s/^\\(.*\\)$/export \\1/g" > /etc/environment_vars.sh\n\
+chmod +x /etc/environment_vars.sh\n\
+\n\
+# Update crontab to source environment variables before each command\n\
+crontab -l > /tmp/current_cron\n\
+sed -i "s|cd /app &&|cd /app \\&\\& . /etc/environment_vars.sh \\&\\&|g" /tmp/current_cron\n\
+crontab /tmp/current_cron\n\
+rm /tmp/current_cron\n\
+\n\
 # Start cron in the background\n\
 echo "Starting cron..."\n\
 cron\n\

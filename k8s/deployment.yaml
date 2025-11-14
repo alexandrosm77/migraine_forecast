@@ -135,6 +135,22 @@ spec:
         args:
           - |
             echo "Starting cron daemon..."
+
+            # Export environment variables to cron environment
+            # Cron doesn't inherit environment variables from the container
+            # so we need to explicitly write them to the crontab
+            echo "Exporting environment variables to cron..."
+            printenv | grep -E '^(SENTRY_|DJANGO_|LLM_)' | sed 's/^\(.*\)$/export \1/g' > /etc/environment_vars.sh
+            chmod +x /etc/environment_vars.sh
+
+            # Update crontab to source environment variables before each command
+            crontab -l > /tmp/current_cron
+            sed -i 's|cd /app &&|cd /app \&\& . /etc/environment_vars.sh \&\&|g' /tmp/current_cron
+            crontab /tmp/current_cron
+            rm /tmp/current_cron
+
+            echo "Environment variables exported to cron"
+            echo "Starting cron daemon..."
             cron
             echo "Cron started. Tailing logs..."
             tail -f /var/log/cron.log
