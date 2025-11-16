@@ -13,7 +13,12 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
 django.setup()
 
-from migraine_project.settings import sentry_traces_sampler, sentry_before_send
+from migraine_project.settings import (
+    sentry_traces_sampler,
+    sentry_before_send,
+    sentry_before_breadcrumb,
+    HealthProbeLogFilter,
+)  # noqa
 
 
 def test_traces_sampler():
@@ -117,22 +122,97 @@ def test_before_send():
     print("\nAll before_send tests passed! ✓\n")
 
 
+def test_breadcrumb_filter():
+    """Test that the breadcrumb filter drops health probe breadcrumbs."""
+    print("Testing sentry_before_breadcrumb...")
+
+    # Test 1: Breadcrumb with kube-probe in message should be dropped
+    kube_probe_breadcrumb = {
+        "category": "httplib",
+        "message": "GET / with kube-probe/1.33",
+        "data": {},
+    }
+    result = sentry_before_breadcrumb(kube_probe_breadcrumb, {})
+    assert result is None, f"Expected None for kube-probe breadcrumb, got {result}"
+    print("✓ Kubernetes health probe breadcrumb dropped (message)")
+
+    # Test 2: Breadcrumb with kube-probe in data should be dropped
+    kube_probe_breadcrumb_data = {
+        "category": "httplib",
+        "message": "GET /",
+        "data": {"user_agent": "kube-probe/1.33"},
+    }
+    result = sentry_before_breadcrumb(kube_probe_breadcrumb_data, {})
+    assert result is None, f"Expected None for kube-probe breadcrumb, got {result}"
+    print("✓ Kubernetes health probe breadcrumb dropped (data)")
+
+    # Test 3: Normal breadcrumb should pass through
+    normal_breadcrumb = {
+        "category": "httplib",
+        "message": "GET /dashboard/",
+        "data": {"user_agent": "Mozilla/5.0"},
+    }
+    result = sentry_before_breadcrumb(normal_breadcrumb, {})
+    assert result is not None, "Expected breadcrumb to pass through"
+    print("✓ Normal breadcrumb passed through")
+
+    print("\nAll breadcrumb filter tests passed! ✓\n")
+
+
+def test_log_filter():
+    """Test that the log filter drops health probe logs."""
+    print("Testing HealthProbeLogFilter...")
+
+    import logging
+
+    # Create a mock log record
+    class MockLogRecord:
+        def __init__(self, message):
+            self.msg = message
+            self.args = ()
+
+        def getMessage(self):
+            return self.msg
+
+    log_filter = HealthProbeLogFilter()
+
+    # Test 1: Log with kube-probe should be filtered
+    kube_probe_log = MockLogRecord('10.42.0.1 - - [16/Nov/2025:14:26:44 +0000] "GET / HTTP/1.1" 200 4562 "-" "kube-probe/1.33" 4038')
+    result = log_filter.filter(kube_probe_log)
+    assert result is False, f"Expected False for kube-probe log, got {result}"
+    print("✓ Kubernetes health probe log filtered")
+
+    # Test 2: Normal log should pass through
+    normal_log = MockLogRecord('10.42.0.1 - - [16/Nov/2025:14:26:44 +0000] "GET /dashboard/ HTTP/1.1" 200 4562 "-" "Mozilla/5.0" 4038')
+    result = log_filter.filter(normal_log)
+    assert result is True, f"Expected True for normal log, got {result}"
+    print("✓ Normal log passed through")
+
+    print("\nAll log filter tests passed! ✓\n")
+
+
 def main():
     print("=" * 60)
     print("Sentry Health Probe Filter Test")
     print("=" * 60)
     print()
-    
+
     test_traces_sampler()
     test_before_send()
-    
+    test_breadcrumb_filter()
+    test_log_filter()
+
     print("=" * 60)
     print("All tests passed! ✓")
     print("=" * 60)
     print("\nKubernetes health probes will now be filtered from Sentry.")
-    print("Deploy your application and check Sentry to verify.")
+    print("This includes:")
+    print("  - Transactions (performance monitoring)")
+    print("  - Errors")
+    print("  - Breadcrumbs")
+    print("  - Log messages (including Gunicorn access logs)")
+    print("\nDeploy your application and check Sentry to verify.")
 
 
 if __name__ == "__main__":
     main()
-

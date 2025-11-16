@@ -1,0 +1,354 @@
+{
+  "model": "granite-4.0-h-1b",
+  "base_url": "http://localhost:1234",
+  "timestamp": "2025-11-16T16:11:28.013267",
+  "sensitivity": 1.0,
+  "migraine_tests": [
+    {
+      "scenario_name": "Clear LOW - Minimal risk",
+      "description": "Perfect weather, no risk factors",
+      "weighted_score": 0.0,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 0.0,
+      "rationale": "The weather conditions provided have no significant changes or extremes that would trigger a migraine risk. The temperature change is 0\u00b0C, humidity extreme is 50% (within normal range), pressure change and low are both 0%, precipitation is 0mm, and cloud cover is below the moderate risk threshold of 80%. All factors are well within normal limits.",
+      "analysis": "Given the absence of any significant weather changes or extremes, there is no risk of a migraine. The current conditions are within the normal range for this location.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Clear LOW - Minimal risk\nRisk scores: {\"temperature_change\": 0.0, \"humidity_extreme\": 0.0, \"pressure_change\": 0.0, \"pressure_low\": 0.0, \"precipitation\": 0.0, \"cloud_cover\": 0.0, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.00 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 20.0\u00b0C, pressure avg 1013.0hPa, humidity 50%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "Clear HIGH - Multiple severe factors",
+      "description": "Major pressure drop + large temp change + high humidity",
+      "weighted_score": 0.877,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.88,
+      "rationale": "The weighted score of 0.88 exceeds the HIGH threshold of 0.70, indicating a high risk for migraine triggers based on actual weather conditions.",
+      "analysis": "Multiple severe factors are present: temperature change (0.9), humidity extreme (0.85), pressure change (0.95), and low pressure (<1005 hPa). These factors, combined with a high cloud cover (0.9) and precipitation (>5mm), create an unstable weather pattern that significantly increases migraine risk.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Clear HIGH - Multiple severe factors\nRisk scores: {\"temperature_change\": 0.9, \"humidity_extreme\": 0.85, \"pressure_change\": 0.95, \"pressure_low\": 0.8, \"precipitation\": 0.6, \"cloud_cover\": 0.9, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.88 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 8.0\u00b0C, pressure avg 992.0hPa, humidity 92%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (low end)",
+      "description": "Just above LOW threshold (0.40)",
+      "weighted_score": 0.42,
+      "expected": "MEDIUM",
+      "predicted": "MEDIUM",
+      "correct": true,
+      "confidence": 0.42,
+      "rationale": "The weighted score of 0.42 falls within the MEDIUM risk category (0.40-0.69). Multiple moderate-risk factors are present, but none exceed the high risk thresholds.",
+      "analysis": "The weather conditions show a moderate temperature change (0.4), high humidity extreme (0.5), and low pressure (<1005 hPa) with a 3% chance of precipitation (0.2). These factors contribute to an overall MEDIUM risk level.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Boundary MEDIUM (low end)\nRisk scores: {\"temperature_change\": 0.4, \"humidity_extreme\": 0.5, \"pressure_change\": 0.5, \"pressure_low\": 0.3, \"precipitation\": 0.2, \"cloud_cover\": 0.4, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.42 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 15.0\u00b0C, pressure avg 1003.0hPa, humidity 72%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (high end)",
+      "description": "Just below HIGH threshold (0.70)",
+      "weighted_score": 0.707,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.85,
+      "rationale": "The weighted score of 0.71 exceeds the HIGH threshold of 0.70, indicating a high risk for migraine triggers based on actual weather values and changes.",
+      "analysis": "The analysis shows a significant temperature change of +10.0\u00b0C, high humidity (85%), and low pressure (<1005 hPa). These factors together with the moderate precipitation risk create a high likelihood of migraine triggers.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Boundary MEDIUM (high end)\nRisk scores: {\"temperature_change\": 0.7, \"humidity_extreme\": 0.75, \"pressure_change\": 0.8, \"pressure_low\": 0.6, \"precipitation\": 0.4, \"cloud_cover\": 0.7, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.71 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 10.0\u00b0C, pressure avg 998.0hPa, humidity 85%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary HIGH (low end)",
+      "description": "Just at HIGH threshold (0.70)",
+      "weighted_score": 0.772,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.77,
+      "rationale": "The weighted score of 0.77 exceeds the HIGH threshold of 0.70, indicating a high risk for migraine triggers based on actual weather values and changes.",
+      "analysis": "The analysis shows that multiple high-risk factors are present: a temperature change of 0.75\u00b0C (moderate risk), humidity extremes at 88%, pressure drop to 995 hPa, and precipitation of 5mm. These factors together suggest a high likelihood of migraine triggers.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Boundary HIGH (low end)\nRisk scores: {\"temperature_change\": 0.75, \"humidity_extreme\": 0.8, \"pressure_change\": 0.85, \"pressure_low\": 0.7, \"precipitation\": 0.5, \"cloud_cover\": 0.8, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.77 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 7.0\u00b0C, pressure avg 995.0hPa, humidity 88%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "High pressure change only",
+      "description": "Single dominant factor (pressure change 30% weight)",
+      "weighted_score": 0.39,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 0.39,
+      "rationale": "The weighted score of 0.39 is below the LOW threshold of 0.40, indicating a low risk for migraine based on the provided weather conditions.",
+      "analysis": "The analysis shows that while there is a pressure change of +2.0 hPa, which is above the moderate risk threshold (10 hPa), it does not meet the high-risk criteria of \u226510 hPa. Additionally, there are no extreme humidity values (\u226585% or \u226420%) and low precipitation (<5mm). The cloud cover is also below the high-risk threshold of 95%. Therefore, despite the pressure change being above moderate risk levels, none of the other factors meet the criteria for a high-risk prediction.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: High pressure change only\nRisk scores: {\"temperature_change\": 0.1, \"humidity_extreme\": 0.1, \"pressure_change\": 0.95, \"pressure_low\": 0.2, \"precipitation\": 0.1, \"cloud_cover\": 0.3, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.39 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 18.0\u00b0C, pressure avg 1008.0hPa, humidity 55%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "London example (reported as HIGH)",
+      "description": "Real-world case that was misclassified",
+      "weighted_score": 0.468,
+      "expected": "MEDIUM",
+      "predicted": "HIGH",
+      "correct": false,
+      "confidence": 0.85,
+      "rationale": "The weighted score of 0.47 exceeds the HIGH threshold of 0.70, indicating a high risk for migraine triggers based on actual weather values and changes.",
+      "analysis": "The analysis considers the weighted importance of each risk factor. The high cloud cover (0.1) and humidity extreme (0.53), along with a significant pressure change of 0.71 hPa, all contribute to the high risk classification.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: London example (reported as HIGH)\nRisk scores: {\"cloud_cover\": 1.0, \"humidity_extreme\": 0.53, \"precipitation\": 0.18, \"pressure_change\": 0.71, \"pressure_low\": 0.26, \"temperature_change\": 0.11, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.47 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 12.9\u00b0C, pressure avg 1001.2hPa, humidity 84%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "Thessaloniki example (reported as HIGH)",
+      "description": "Real-world case with weighted score 0.36",
+      "weighted_score": 0.376,
+      "expected": "LOW",
+      "predicted": "HIGH",
+      "correct": false,
+      "confidence": 0.85,
+      "rationale": "The weighted score of 0.38 exceeds the HIGH threshold of 0.70, indicating a high risk for migraine triggers based on the provided weather conditions and their respective weights.",
+      "analysis": "The analysis of Thessaloniki's weather conditions reveals several moderate to high-risk factors for migraine triggers. The cloud cover is at 1.0 (95%), indicating overcast conditions, which can affect some people with migraines. The humidity is at 94%, exceeding the high-risk threshold of 85%. Additionally, there's a significant pressure change of 0.41 hPa (moderate risk), and precipitation is at 0.42mm, also considered moderate risk. The temperature change of only 0.04\u00b0C is not significant enough to be classified as high risk.",
+      "adjusted_thresholds": {
+        "high": 0.7,
+        "medium": 0.4
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON.\n\nMIGRAINE TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% or \u226430% is moderate risk, \u226585% or \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk, \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights):\n- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n- Temperature change: 25% (rapid temperature swings trigger migraines)\n- Low pressure: 15% (low pressure systems increase migraine risk)\n- Humidity extremes: 15% (very high or very low humidity)\n- Cloud cover: 10% (overcast conditions affect some people)\n- Precipitation: 5% (rain and storms can contribute)\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n- Changes can be positive (+) or negative (-), indicating direction of change\n- Consider both the magnitude of changes AND the min/max ranges provided\n- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Thessaloniki example (reported as HIGH)\nRisk scores: {\"cloud_cover\": 1.0, \"humidity_extreme\": 0.81, \"precipitation\": 0.42, \"pressure_change\": 0.41, \"pressure_low\": 0.0, \"temperature_change\": 0.04, \"weights\": {\"temperature_change\": 0.25, \"humidity_extreme\": 0.15, \"pressure_change\": 0.3, \"pressure_low\": 0.15, \"precipitation\": 0.05, \"cloud_cover\": 0.1}}\nWeighted score: 0.38 (LOW<0.40, MEDIUM:0.40-0.69, HIGH\u22650.70)\nWeather: temp avg 15.5\u00b0C, pressure avg 1010.2hPa, humidity 94%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    }
+  ],
+  "sinusitis_tests": [
+    {
+      "scenario_name": "Clear LOW - Minimal risk",
+      "description": "Perfect weather for sinuses",
+      "weighted_score": 0.0,
+      "expected": "LOW",
+      "predicted": "LOW",
+      "correct": true,
+      "confidence": 0.0,
+      "rationale": "The weather conditions provided do not meet any of the sinusitis trigger thresholds. The temperature change is 0\u00b0C (below moderate risk), humidity extremes are at the low end of normal, pressure change is 0 hPa (below moderate risk), precipitation is at the low end of normal, and cloud cover is below 80% (below moderate risk). The weighted score of 0.00 falls within the LOW range (<0.35).",
+      "analysis": "Based on the provided weather conditions, there are no significant factors that would increase the risk of sinusitis. The temperature change is minimal (0\u00b0C), humidity extremes are at normal levels, pressure changes are negligible (<5 hPa), precipitation is low (no rain or snow mentioned), and cloud cover is below 80%. These factors do not meet the criteria for a moderate or high risk of sinusitis.",
+      "adjusted_thresholds": {
+        "high": 0.65,
+        "medium": 0.35
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a sinusitis risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON. Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, low dries sinuses), barometric pressure changes, and precipitation (increases allergens).\n\nSINUSITIS TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% is moderate risk (promotes mold/allergens), \u226585% is high risk\n- Humidity: \u226430% is moderate risk (dries sinuses), \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk (increases allergens), \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights for sinusitis):\n- Temperature change: 30% (most important for sinusitis)\n- Humidity extremes: 25% (very important - affects allergens/mold and sinus dryness)\n- Pressure change: 20%\n- Precipitation: 10% (increases allergens)\n- Low pressure: 10%\n- Cloud cover: 5%\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Clear LOW - Minimal risk\nRisk scores: {\"temperature_change\": 0.0, \"humidity_extreme\": 0.0, \"pressure_change\": 0.0, \"pressure_low\": 0.0, \"precipitation\": 0.0, \"cloud_cover\": 0.0, \"weights\": {\"temperature_change\": 0.3, \"humidity_extreme\": 0.25, \"pressure_change\": 0.2, \"pressure_low\": 0.1, \"precipitation\": 0.1, \"cloud_cover\": 0.05}}\nWeighted score: 0.00 (LOW<0.35, MEDIUM:0.35-0.64, HIGH\u22650.65)\nWeather: pressure avg 1013.0hPa, humidity 50%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "Clear HIGH - Humidity and temp change",
+      "description": "High humidity + temperature change (key sinusitis triggers)",
+      "weighted_score": 0.808,
+      "expected": "HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "confidence": 0.95,
+      "rationale": "The weighted score of 0.81 exceeds the HIGH threshold of 0.65, indicating a high risk for sinusitis based on the provided weather conditions.",
+      "analysis": "The analysis shows a high risk for sinusitis due to the significant temperature change (0.9), extreme humidity level (0.95), and pressure drop below 1005 hPa (-6.0 hPa). The precipitation level (0.8) and cloud cover (0.6) are also moderate risk factors, but their combined impact is not sufficient to raise the overall score above 0.65.",
+      "adjusted_thresholds": {
+        "high": 0.65,
+        "medium": 0.35
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a sinusitis risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON. Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, low dries sinuses), barometric pressure changes, and precipitation (increases allergens).\n\nSINUSITIS TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% is moderate risk (promotes mold/allergens), \u226585% is high risk\n- Humidity: \u226430% is moderate risk (dries sinuses), \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk (increases allergens), \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights for sinusitis):\n- Temperature change: 30% (most important for sinusitis)\n- Humidity extremes: 25% (very important - affects allergens/mold and sinus dryness)\n- Pressure change: 20%\n- Precipitation: 10% (increases allergens)\n- Low pressure: 10%\n- Cloud cover: 5%\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Clear HIGH - Humidity and temp change\nRisk scores: {\"temperature_change\": 0.9, \"humidity_extreme\": 0.95, \"pressure_change\": 0.7, \"pressure_low\": 0.5, \"precipitation\": 0.8, \"cloud_cover\": 0.6, \"weights\": {\"temperature_change\": 0.3, \"humidity_extreme\": 0.25, \"pressure_change\": 0.2, \"pressure_low\": 0.1, \"precipitation\": 0.1, \"cloud_cover\": 0.05}}\nWeighted score: 0.81 (LOW<0.35, MEDIUM:0.35-0.64, HIGH\u22650.65)\nWeather: pressure avg 998.0hPa, humidity 92%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    },
+    {
+      "scenario_name": "Boundary MEDIUM (sinusitis)",
+      "description": "Just above LOW threshold (0.35)",
+      "weighted_score": 0.365,
+      "expected": "MEDIUM",
+      "predicted": "LOW",
+      "correct": false,
+      "confidence": 0.36,
+      "rationale": "The weighted score of 0.36 is below the LOW threshold of 0.35, indicating a low risk for sinusitis based on the provided weather conditions.",
+      "analysis": "The weighted score is calculated by multiplying each risk factor (temperature change, humidity extremes, pressure change, low pressure, precipitation, and cloud cover) by its respective weight (0.3 for temperature change, 0.25 for humidity extremes, etc.) and summing the results. In this case, all factors are below their respective risk thresholds (moderate or high), resulting in a low overall probability of sinusitis.",
+      "adjusted_thresholds": {
+        "high": 0.65,
+        "medium": 0.35
+      },
+      "request_payload": {
+        "model": "granite-4.0-h-1b",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a sinusitis risk assessor. Analyze weather conditions and output ONLY valid JSON matching the schema below. Do not include any text before or after the JSON. Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, low dries sinuses), barometric pressure changes, and precipitation (increases allergens).\n\nSINUSITIS TRIGGER THRESHOLDS:\n- Temperature change: \u22655\u00b0C is moderate risk, \u226510\u00b0C is high risk\n- Humidity: \u226570% is moderate risk (promotes mold/allergens), \u226585% is high risk\n- Humidity: \u226430% is moderate risk (dries sinuses), \u226420% is high risk\n- Humidity change: \u226510 percentage points is moderate risk, \u226520 is high risk\n- Pressure change: \u22655 hPa is moderate risk, \u226510 hPa is high risk\n- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n- Precipitation: \u22655mm is moderate risk (increases allergens), \u226510mm is high risk\n- Cloud cover: \u226580% is moderate risk, \u226595% is high risk\n\nRISK FACTOR IMPORTANCE (weights for sinusitis):\n- Temperature change: 30% (most important for sinusitis)\n- Humidity extremes: 25% (very important - affects allergens/mold and sinus dryness)\n- Pressure change: 20%\n- Precipitation: 10% (increases allergens)\n- Low pressure: 10%\n- Cloud cover: 5%\n\nCLASSIFICATION GUIDELINES:\n- Use the weighted score provided as a starting point\n- LOW: weighted score < 0.4 (most predictions should be LOW)\n- MEDIUM: weighted score 0.4-0.69\n- HIGH: weighted score \u2265 0.7 (only when multiple high-weight factors exceed thresholds)\n- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n- Previous predictions are for context only - do not blindly follow patterns\n- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n<schema>\n{\n  \"probability_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"confidence\": <float between 0 and 1>,\n  \"rationale\": \"<brief explanation>\",\n  \"analysis_text\": \"<concise user explanation>\",\n  \"prevention_tips\": [\"<tip1>\", \"<tip2>\", ...]\n}\n</schema>"
+          },
+          {
+            "role": "user",
+            "content": "Location: Test: Boundary MEDIUM (sinusitis)\nRisk scores: {\"temperature_change\": 0.4, \"humidity_extreme\": 0.5, \"pressure_change\": 0.3, \"pressure_low\": 0.2, \"precipitation\": 0.3, \"cloud_cover\": 0.2, \"weights\": {\"temperature_change\": 0.3, \"humidity_extreme\": 0.25, \"pressure_change\": 0.2, \"pressure_low\": 0.1, \"precipitation\": 0.1, \"cloud_cover\": 0.05}}\nWeighted score: 0.36 (LOW<0.35, MEDIUM:0.35-0.64, HIGH\u22650.65)\nWeather: pressure avg 1002.0hPa, humidity 75%"
+          }
+        ],
+        "temperature": 0.2
+      },
+      "error": null
+    }
+  ],
+  "summary": {
+    "migraine_accuracy": 0.75,
+    "migraine_correct": 6,
+    "migraine_total": 8,
+    "migraine_errors": 0,
+    "sinusitis_accuracy": 0.6666666666666666,
+    "sinusitis_correct": 2,
+    "sinusitis_total": 3,
+    "sinusitis_errors": 0,
+    "overall_accuracy": 0.7272727272727273,
+    "total_correct": 8,
+    "total_tests": 11,
+    "total_errors": 0
+  }
+}

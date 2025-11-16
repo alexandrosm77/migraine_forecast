@@ -32,14 +32,16 @@ import json
 import django
 from datetime import datetime
 from pathlib import Path
-from forecast.llm_client import LLMClient
-from forecast.prediction_service import MigrainePredictionService
-from forecast.prediction_service_sinusitis import SinusitisPredictionService
 
-# Setup Django
+# Setup Django BEFORE importing forecast modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
 django.setup()
+
+# Import forecast modules AFTER Django setup
+from forecast.llm_client import LLMClient  # noqa
+from forecast.prediction_service import MigrainePredictionService  # noqa
+from forecast.prediction_service_sinusitis import SinusitisPredictionService  # noqa
 
 # Test scenarios with expected outcomes
 MIGRAINE_TEST_SCENARIOS = [
@@ -367,6 +369,23 @@ def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_
     # Call LLM
     location_label = f"Test: {scenario['name']}"
 
+    # Calculate adjusted thresholds based on user sensitivity (same logic as in llm_client.py)
+    if prediction_type == "migraine":
+        high_thr = 0.7
+        med_thr = 0.4
+    else:
+        high_thr = 0.65
+        med_thr = 0.35
+
+    if sensitivity_overall != 1.0:
+        shift = (sensitivity_overall - 1.0) * 0.15
+        if prediction_type == "migraine":
+            high_thr = min(max(high_thr - shift, 0.5), 0.9)
+            med_thr = min(max(med_thr - shift, 0.25), 0.7)
+        else:
+            high_thr = min(max(high_thr - shift, 0.45), 0.85)
+            med_thr = min(max(med_thr - shift, 0.20), 0.65)
+
     try:
         if prediction_type == "migraine":
             level, detail = client.predict_probability(
@@ -387,12 +406,17 @@ def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_
         rationale = None
         confidence = None
         analysis = None
+        request_payload = None
 
         if detail and "raw" in detail:
             raw = detail["raw"]
             rationale = raw.get("rationale", "")
             confidence = raw.get("confidence", None)
             analysis = raw.get("analysis_text", "")
+
+        # Extract request payload if available (for debugging)
+        if detail and "request_payload" in detail:
+            request_payload = detail["request_payload"]
 
         return {
             "scenario_name": scenario["name"],
@@ -404,6 +428,11 @@ def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_
             "confidence": confidence,
             "rationale": rationale,
             "analysis": analysis,
+            "adjusted_thresholds": {
+                "high": high_thr,
+                "medium": med_thr,
+            },
+            "request_payload": request_payload,
             "error": None,
         }
 
@@ -418,11 +447,16 @@ def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_
             "confidence": None,
             "rationale": None,
             "analysis": None,
+            "adjusted_thresholds": {
+                "high": high_thr,
+                "medium": med_thr,
+            },
+            "request_payload": None,
             "error": str(e),
         }
 
 
-def run_test_suite(model_name, base_url, api_key=None, timeout=120):
+def run_test_suite(model_name, base_url, api_key=None, timeout=120, verbose=False, sensitivity=1.0):
     """
     Run the complete test suite for a given LLM model.
 
@@ -431,6 +465,8 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120):
         base_url: Base URL for the LLM API
         api_key: API key (optional for local models)
         timeout: Request timeout in seconds
+        verbose: If True, print detailed request/response information
+        sensitivity: User sensitivity multiplier (default 1.0)
 
     Returns:
         Dictionary with complete test results
@@ -441,6 +477,10 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120):
     print(f"\nModel: {model_name}")
     print(f"Base URL: {base_url}")
     print(f"Timestamp: {datetime.now().isoformat()}")
+    if sensitivity != 1.0:
+        print(f"User Sensitivity: {sensitivity:.1f}x")
+    if verbose:
+        print("Verbose mode: ON")
     print("\n" + "=" * 80)
 
     # Create LLM client
@@ -455,6 +495,7 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120):
         "model": model_name,
         "base_url": base_url,
         "timestamp": datetime.now().isoformat(),
+        "sensitivity": sensitivity,
         "migraine_tests": [],
         "sinusitis_tests": [],
         "summary": {},
@@ -469,18 +510,39 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120):
         print(f"\n[{i}/{len(MIGRAINE_TEST_SCENARIOS)}] Testing: {scenario['name']}")
         print(f"    Description: {scenario['description']}")
 
-        result = run_test_scenario(client, scenario, "migraine")
+        result = run_test_scenario(client, scenario, "migraine", sensitivity_overall=sensitivity)
         results["migraine_tests"].append(result)
 
         # Print result
         status = "✓ PASS" if result["correct"] else "✗ FAIL"
+        thresholds = result.get("adjusted_thresholds", {})
         print(f"    Weighted Score: {result['weighted_score']:.3f}")
+        print(
+            f"    Thresholds: LOW<{thresholds.get('medium', 0.4):.2f}, "
+            f"MEDIUM:{thresholds.get('medium', 0.4):.2f}-{thresholds.get('high', 0.7)-0.01:.2f}, "
+            f"HIGH≥{thresholds.get('high', 0.7):.2f}"
+        )
         print(f"    Expected: {result['expected']} | Predicted: {result['predicted']} | {status}")
 
         if result["confidence"] is not None:
             print(f"    Confidence: {result['confidence']:.2f}")
         if result["error"]:
             print(f"    ERROR: {result['error']}")
+
+        # Print verbose information if requested
+        if verbose and result.get("request_payload"):
+            print("\n    --- Request Payload ---")
+            payload = result["request_payload"]
+            if "messages" in payload:
+                for msg in payload["messages"]:
+                    role = msg.get("role", "unknown")
+                    content = msg.get("content", "")
+                    # Truncate long content for readability
+                    if len(content) > 500:
+                        content = content[:500] + "..."
+                    print(f"    [{role.upper()}]: {content}")
+            print(f"    Temperature: {payload.get('temperature', 'N/A')}")
+            print("    --- End Request Payload ---\n")
 
     # Test sinusitis scenarios
     print("\n" + "=" * 80)
@@ -491,18 +553,39 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120):
         print(f"\n[{i}/{len(SINUSITIS_TEST_SCENARIOS)}] Testing: {scenario['name']}")
         print(f"    Description: {scenario['description']}")
 
-        result = run_test_scenario(client, scenario, "sinusitis")
+        result = run_test_scenario(client, scenario, "sinusitis", sensitivity_overall=sensitivity)
         results["sinusitis_tests"].append(result)
 
         # Print result
         status = "✓ PASS" if result["correct"] else "✗ FAIL"
+        thresholds = result.get("adjusted_thresholds", {})
         print(f"    Weighted Score: {result['weighted_score']:.3f}")
+        print(
+            f"    Thresholds: LOW<{thresholds.get('medium', 0.35):.2f}, "
+            f"MEDIUM:{thresholds.get('medium', 0.35):.2f}-{thresholds.get('high', 0.65)-0.01:.2f}, "
+            f"HIGH≥{thresholds.get('high', 0.65):.2f}"
+        )
         print(f"    Expected: {result['expected']} | Predicted: {result['predicted']} | {status}")
 
         if result["confidence"] is not None:
             print(f"    Confidence: {result['confidence']:.2f}")
         if result["error"]:
             print(f"    ERROR: {result['error']}")
+
+        # Print verbose information if requested
+        if verbose and result.get("request_payload"):
+            print("\n    --- Request Payload ---")
+            payload = result["request_payload"]
+            if "messages" in payload:
+                for msg in payload["messages"]:
+                    role = msg.get("role", "unknown")
+                    content = msg.get("content", "")
+                    # Truncate long content for readability
+                    if len(content) > 500:
+                        content = content[:500] + "..."
+                    print(f"    [{role.upper()}]: {content}")
+            print(f"    Temperature: {payload.get('temperature', 'N/A')}")
+            print("    --- End Request Payload ---\n")
 
     # Calculate summary statistics
     migraine_correct = sum(1 for r in results["migraine_tests"] if r["correct"])
@@ -673,6 +756,12 @@ Examples:
   # Test with custom base URL
   python run_llm_tests.py --base-url "http://192.168.0.171:1234"
 
+  # Test with verbose output (shows request payloads)
+  python run_llm_tests.py --verbose
+
+  # Test with different user sensitivity
+  python run_llm_tests.py --sensitivity 1.3
+
   # Compare multiple result files
   python run_llm_tests.py --compare llm_results/model1_*.json llm_results/model2_*.json
 
@@ -691,6 +780,15 @@ Examples:
     parser.add_argument("--timeout", type=int, default=120, help="Request timeout in seconds (default: 120)")
     parser.add_argument("--compare", nargs="+", help="Compare multiple result files instead of running tests")
     parser.add_argument("--no-save", action="store_true", help="Don't save results to file")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Print detailed request/response information for each test"
+    )
+    parser.add_argument(
+        "--sensitivity",
+        type=float,
+        default=1.0,
+        help="User sensitivity multiplier (default: 1.0, range: 0.5-1.5)",
+    )
 
     args = parser.parse_args()
 
@@ -721,7 +819,14 @@ Examples:
         print(f"  Base URL: {args.base_url}")
 
     # Run test suite
-    results = run_test_suite(model_name=args.model, base_url=args.base_url, api_key=args.api_key, timeout=args.timeout)
+    results = run_test_suite(
+        model_name=args.model,
+        base_url=args.base_url,
+        api_key=args.api_key,
+        timeout=args.timeout,
+        verbose=args.verbose,
+        sensitivity=args.sensitivity,
+    )
 
     # Save results unless --no-save specified
     if not args.no_save:

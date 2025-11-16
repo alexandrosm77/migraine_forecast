@@ -174,10 +174,32 @@ try:
 except ImportError:
     pass
 
+# Custom log filter to exclude Kubernetes health probe logs
+class HealthProbeLogFilter:
+    """
+    Filter out Kubernetes health probe requests from logs.
+    This prevents them from being sent to Sentry via LoggingIntegration.
+    """
+    def filter(self, record):
+        # Get the log message
+        message = record.getMessage()
+
+        # Filter out logs containing kube-probe user agent
+        if "kube-probe/" in message:
+            return False  # Don't log this message
+
+        return True  # Log all other messages
+
+
 # Logging configuration
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "health_probe_filter": {
+            "()": "migraine_project.settings.HealthProbeLogFilter",
+        },
+    },
     "formatters": {
         "verbose": {
             "format": "{levelname} {asctime} {module} {message}",
@@ -189,15 +211,18 @@ LOGGING = {
             "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "filters": ["health_probe_filter"],  # Apply filter to console logs
         },
         "file": {
             "level": "INFO",
             "class": "logging.FileHandler",
             "filename": os.path.join(BASE_DIR, "migraine_forecast.log"),
             "formatter": "verbose",
+            "filters": ["health_probe_filter"],  # Apply filter to file logs
         },
         # Sentry handler is automatically added by LoggingIntegration
         # It will capture ERROR level and above logs
+        # The filter will prevent health probe logs from reaching Sentry
     },
     "loggers": {
         "django": {
@@ -215,6 +240,13 @@ LOGGING = {
             "handlers": ["console"],
             "level": "ERROR",
             "propagate": False,
+        },
+        # Gunicorn access logs - also apply filter
+        "gunicorn.access": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+            "filters": ["health_probe_filter"],
         },
     },
 }
@@ -264,11 +296,31 @@ def sentry_traces_sampler(sampling_context):
     return SENTRY_TRACES_SAMPLE_RATE
 
 
+def sentry_before_breadcrumb(crumb, hint):
+    """
+    Filter breadcrumbs before they are added to Sentry events.
+    This prevents health probe breadcrumbs from being created at all.
+    """
+    # Check if this breadcrumb is related to a health probe request
+    if crumb.get("category") == "httplib":
+        # Check the data for kube-probe user agent
+        data = crumb.get("data", {})
+        if "kube-probe/" in str(data):
+            return None  # Drop the breadcrumb
+
+    # Check message for kube-probe
+    message = crumb.get("message", "")
+    if "kube-probe/" in message:
+        return None  # Drop the breadcrumb
+
+    return crumb  # Keep the breadcrumb
+
+
 def sentry_before_send(event, hint):
     """
     Filter events before sending to Sentry.
     This is a fallback filter for events that weren't caught by the sampler.
-    Also filters out health probe errors and breadcrumbs.
+    Also filters out health probe errors, breadcrumbs, and log messages.
     """
     # Check if this is a transaction (performance monitoring)
     if event.get("type") == "transaction":
@@ -294,6 +346,25 @@ def sentry_before_send(event, hint):
         # Drop errors from health probes
         if user_agent.startswith("kube-probe/"):
             return None
+
+    # Filter out breadcrumbs containing kube-probe
+    breadcrumbs = event.get("breadcrumbs", {}).get("values", [])
+    if breadcrumbs:
+        filtered_breadcrumbs = [
+            bc for bc in breadcrumbs
+            if "kube-probe/" not in str(bc.get("message", ""))
+            and "kube-probe/" not in str(bc.get("data", {}))
+        ]
+        if len(filtered_breadcrumbs) != len(breadcrumbs):
+            event["breadcrumbs"]["values"] = filtered_breadcrumbs
+
+    # Filter out log messages containing kube-probe
+    # This catches any logs that weren't filtered by the logging filter
+    log_entry = event.get("logentry", {})
+    if log_entry:
+        message = log_entry.get("message", "")
+        if "kube-probe/" in message:
+            return None  # Drop the event
 
     return event  # Send the event to Sentry
 
@@ -332,6 +403,7 @@ if SENTRY_ENABLED and SENTRY_DSN:
         max_request_body_size="medium",  # Capture request bodies (small/medium/always)
         # Breadcrumbs
         max_breadcrumbs=50,  # Number of breadcrumbs to keep
+        before_breadcrumb=sentry_before_breadcrumb,  # Filter breadcrumbs before creation
         # Before send hook to filter/modify events before sending
         before_send=sentry_before_send,
     )
