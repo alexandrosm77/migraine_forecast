@@ -241,6 +241,63 @@ SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "development" if DEBUG else
 SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0"))  # 1.0 = 100% of transactions
 SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "1.0"))  # 1.0 = 100% of transactions
 
+
+def sentry_traces_sampler(sampling_context):
+    """
+    Custom sampler to control which transactions are sent to Sentry.
+    This is more efficient than before_send as it prevents transactions from being created at all.
+    Filters out Kubernetes health probe requests.
+    """
+    # Get the WSGI environ from the sampling context
+    wsgi_environ = sampling_context.get("wsgi_environ", {})
+
+    # Get the path and user agent
+    path = wsgi_environ.get("PATH_INFO", "")
+    user_agent = wsgi_environ.get("HTTP_USER_AGENT", "")
+
+    # Don't sample Kubernetes health check probes
+    # They hit the root path "/" with user agent "kube-probe/x.xx"
+    if path == "/" and user_agent.startswith("kube-probe/"):
+        return 0.0  # Don't sample (0% sampling rate)
+
+    # For all other requests, use the configured sample rate
+    return SENTRY_TRACES_SAMPLE_RATE
+
+
+def sentry_before_send(event, hint):
+    """
+    Filter events before sending to Sentry.
+    This is a fallback filter for events that weren't caught by the sampler.
+    Also filters out health probe errors and breadcrumbs.
+    """
+    # Check if this is a transaction (performance monitoring)
+    if event.get("type") == "transaction":
+        # Get the transaction name (URL path)
+        transaction_name = event.get("transaction", "")
+
+        # Get request data to check user agent
+        request_data = event.get("request", {})
+        headers = request_data.get("headers", {})
+        user_agent = headers.get("User-Agent", "") or headers.get("user-agent", "")
+
+        # Filter out health check endpoints from Kubernetes probes
+        if transaction_name in ("/", "GET /") and user_agent.startswith("kube-probe/"):
+            return None  # Drop the event
+
+    # For error events, also filter out if they're from health probes
+    # This prevents noise from probe-related errors
+    if event.get("type") in ("error", "default"):
+        request_data = event.get("request", {})
+        headers = request_data.get("headers", {})
+        user_agent = headers.get("User-Agent", "") or headers.get("user-agent", "")
+
+        # Drop errors from health probes
+        if user_agent.startswith("kube-probe/"):
+            return None
+
+    return event  # Send the event to Sentry
+
+
 if SENTRY_ENABLED and SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
@@ -257,8 +314,9 @@ if SENTRY_ENABLED and SENTRY_DSN:
                 event_level="ERROR",  # Send ERROR and above as events to Sentry
             ),
         ],
-        # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring
-        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        # Use custom sampler to filter out health check transactions
+        # This is more efficient than traces_sample_rate as it prevents transaction creation
+        traces_sampler=sentry_traces_sampler,
         # Set profiles_sample_rate to 1.0 to profile 100% of sampled transactions
         profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
         # Environment name
@@ -275,7 +333,7 @@ if SENTRY_ENABLED and SENTRY_DSN:
         # Breadcrumbs
         max_breadcrumbs=50,  # Number of breadcrumbs to keep
         # Before send hook to filter/modify events before sending
-        # before_send=lambda event, hint: event if not DEBUG else None,
+        before_send=sentry_before_send,
     )
 
 SESSION_COOKIE_NAME = "forecast_sessionid"
