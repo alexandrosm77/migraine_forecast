@@ -399,6 +399,16 @@ class MigraineAdminSite(admin.AdminSite):
                 self.admin_view(self.execute_prediction_check),
                 name="execute_prediction_check",
             ),
+            path(
+                "run-prediction-check/logs/",
+                self.admin_view(self.view_prediction_logs),
+                name="view_prediction_logs",
+            ),
+            path(
+                "run-prediction-check/cancel/",
+                self.admin_view(self.cancel_prediction_check),
+                name="cancel_prediction_check",
+            ),
         ]
         return custom_urls + urls
 
@@ -422,250 +432,434 @@ class MigraineAdminSite(admin.AdminSite):
         return render(request, "admin/run_prediction_check.html", context)
 
     def execute_prediction_check(self, request):
-        """Execute the prediction check command and stream output."""
+        """Execute the prediction check command in background."""
         if not request.user.is_superuser:
             from django.core.exceptions import PermissionDenied
 
             raise PermissionDenied("Only superusers can access this page.")
 
+        import os
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+
         # Get parameters from request
         test_notification = request.GET.get("test_notification", "")
         test_type = request.GET.get("test_type", "both")
-        notify_only = request.GET.get("notify_only", "") == "on"
+        update_weather = request.GET.get("update_weather", "") == "on"
+        get_predictions = request.GET.get("get_predictions", "") == "on"
+        send_notifications = request.GET.get("send_notifications", "") == "on"
 
-        def stream_output():
-            """Generator function to stream command output."""
-            # Build commands using the new decoupled pipeline
-            commands = []
+        # Build command
+        log_file = os.path.join(settings.BASE_DIR, "prediction_check.log")
 
-            if test_notification:
-                # Test mode: use legacy command for test notifications
-                cmd = [sys.executable, "manage.py", "check_migraine_probability"]
-                cmd.extend(["--test-notification", test_notification])
-                cmd.extend(["--test-type", test_type])
-                commands.append(("Test Notification", cmd))
+        # Clear the log file first
+        try:
+            with open(log_file, 'w') as f:
+                f.write(f"=== Prediction Check Started at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n\n")
+        except Exception:
+            pass
+
+        # Create a shell script to run in background
+        script_lines = ["#!/bin/bash", ""]
+
+        if test_notification:
+            script_lines.append(f"{sys.executable} manage.py check_migraine_probability --test-notification {test_notification} --test-type {test_type}")
+        else:
+            if update_weather:
+                script_lines.append("echo '=== Task 1: Collecting Weather Data ==='")
+                script_lines.append(f"{sys.executable} manage.py collect_weather_data")
+                script_lines.append("echo ''")
+            if get_predictions:
+                script_lines.append("echo '=== Task 2: Generating Predictions ==='")
+                script_lines.append(f"{sys.executable} manage.py generate_predictions")
+                script_lines.append("echo ''")
+            if send_notifications:
+                script_lines.append("echo '=== Task 3: Processing Notifications ==='")
+                script_lines.append(f"{sys.executable} manage.py process_notifications")
+                script_lines.append("echo ''")
+            if update_weather or get_predictions or send_notifications:
+                script_lines.append("echo \"=== All Tasks Completed at $(date '+%Y-%m-%d %H:%M:%S') ===\"")
             else:
-                # Normal mode: use decoupled pipeline
-                if not notify_only:
-                    # Task 1: Collect weather data
-                    commands.append(
-                        ("Task 1: Collect Weather Data", [sys.executable, "manage.py", "collect_weather_data"])
-                    )
-                    # Task 2: Generate predictions
-                    commands.append(
-                        ("Task 2: Generate Predictions", [sys.executable, "manage.py", "generate_predictions"])
-                    )
+                script_lines.append("echo 'No tasks selected. Please select at least one pipeline step.'")
+                script_lines.append("echo \"=== Completed at $(date '+%Y-%m-%d %H:%M:%S') ===\"")
 
-                # Task 3: Process notifications (always run in normal mode)
-                commands.append(
-                    ("Task 3: Process Notifications", [sys.executable, "manage.py", "process_notifications"])
-                )
+        # Write script to temp file
+        script_file = os.path.join(settings.BASE_DIR, "prediction_check_runner.sh")
+        try:
+            with open(script_file, 'w') as f:
+                f.write('\n'.join(script_lines))
+            os.chmod(script_file, 0o755)
+        except Exception as e:
+            # Fallback: write error to log
+            with open(log_file, 'a') as f:
+                f.write(f"Error creating script: {str(e)}\n")
+            return HttpResponseRedirect(reverse('admin:view_prediction_logs'))
 
-            # Yield initial HTML with updated title
-            total_commands = len(commands)
-            yield """<!DOCTYPE html>
+        # Execute script in background, redirecting output to log file
+        subprocess.Popen(
+            ['/bin/bash', script_file],
+            stdout=open(log_file, 'a'),
+            stderr=subprocess.STDOUT,
+            cwd=settings.BASE_DIR,
+            start_new_session=True  # Detach from parent process
+        )
+
+        # Redirect to log viewer with auto-refresh
+        return HttpResponseRedirect(reverse('admin:view_prediction_logs') + '?auto_refresh=true')
+
+    def view_prediction_logs(self, request):
+        """View to display prediction check logs with auto-refresh."""
+        if not request.user.is_superuser:
+            from django.core.exceptions import PermissionDenied
+
+            raise PermissionDenied("Only superusers can access this page.")
+
+        import os
+        from django.http import HttpResponse
+
+        log_file = os.path.join(settings.BASE_DIR, "prediction_check.log")
+        auto_refresh = request.GET.get("auto_refresh", "false") == "true"
+        refresh_interval = int(request.GET.get("refresh_interval", "3"))  # seconds
+        message = request.GET.get("message", "")
+
+        # Read log file
+        log_content = ""
+        file_exists = os.path.exists(log_file)
+
+        if file_exists:
+            try:
+                with open(log_file, "r") as f:
+                    log_content = f.read()
+                    if not log_content:
+                        log_content = "Log file is empty. Waiting for output..."
+            except Exception as e:
+                log_content = f"Error reading log file: {str(e)}"
+        else:
+            log_content = "Log file not found. Start a prediction check to create it."
+
+        # Check if process is still running
+        process_running = False
+        try:
+            result = subprocess.run(
+                ["pgrep", "-f", "manage.py (collect_weather_data|generate_predictions|process_notifications|check_migraine_probability)"],
+                capture_output=True,
+                text=True
+            )
+            process_running = bool(result.stdout.strip())
+        except Exception:
+            pass
+
+        html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>Running Prediction Check</title>
+    <title>Prediction Check Logs</title>
+    <meta charset="utf-8">
+    {'<meta http-equiv="refresh" content="' + str(refresh_interval) + '">' if auto_refresh and process_running else ''}
     <style>
-        body {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #1e1e1e;
             color: #d4d4d4;
             padding: 20px;
             margin: 0;
-        }
-        .task-header {
+        }}
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+        }}
+        .header {{
             background-color: #2d2d30;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
             border-left: 4px solid #007acc;
-            padding: 15px;
-            margin: 20px 0 10px 0;
-            border-radius: 4px;
-        }
-        .task-header h2 {
-            margin: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }}
+        h1 {{
             color: #4ec9b0;
-            font-size: 18px;
-        }
-        .task-number {
-            color: #007acc;
-            font-weight: bold;
-        }
-        .header {
-            background-color: #2d2d30;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid #007acc;
-        }
-        .header h1 {
-            margin: 0 0 10px 0;
-            color: #007acc;
+            margin: 0;
             font-size: 24px;
-        }
-        .command {
-            background-color: #252526;
-            padding: 10px;
-            border-radius: 3px;
-            font-size: 12px;
-            color: #ce9178;
-            margin-top: 10px;
-        }
-        .output {
-            background-color: #1e1e1e;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #3e3e42;
-            white-space: pre-wrap;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-        .success { color: #4ec9b0; }
-        .warning { color: #dcdcaa; }
-        .error { color: #f48771; }
-        .info { color: #9cdcfe; }
-        .timestamp { color: #858585; }
-        .back-link {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
+        }}
+        .controls {{
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }}
+        .button {{
             background-color: #007acc;
             color: white;
+            padding: 10px 20px;
             text-decoration: none;
-            border-radius: 3px;
-        }
-        .back-link:hover {
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        .button:hover {{
             background-color: #005a9e;
-        }
-        .spinner {
+        }}
+        .button.secondary {{
+            background-color: #3e3e42;
+        }}
+        .button.secondary:hover {{
+            background-color: #505053;
+        }}
+        .button.success {{
+            background-color: #28a745;
+        }}
+        .button.success:hover {{
+            background-color: #218838;
+        }}
+        .status-badge {{
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }}
+        .status-badge.running {{
+            background-color: #28a745;
+            color: white;
+            animation: pulse 2s infinite;
+        }}
+        .status-badge.stopped {{
+            background-color: #6c757d;
+            color: white;
+        }}
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.6; }}
+        }}
+        .log-container {{
+            background-color: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 0 0 8px 8px;
+            padding: 20px;
+            min-height: 400px;
+            max-height: 800px;
+            overflow-y: auto;
+        }}
+        .log-content {{
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #d4d4d4;
+        }}
+        .info-box {{
+            background-color: #2d2d30;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }}
+        .refresh-controls {{
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }}
+        select {{
+            background-color: #3e3e42;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }}
+        .spinner {{
             display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 2px solid #3e3e42;
-            border-top: 2px solid #007acc;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-right: 8px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .status {
-            padding: 5px 10px;
-            border-radius: 3px;
-            display: inline-block;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-        .status.running {
-            background-color: #1a472a;
-            color: #4ec9b0;
-        }
-        .status.complete {
-            background-color: #1a472a;
-            color: #4ec9b0;
-        }
+        }}
+        @keyframes spin {{
+            to {{ transform: rotate(360deg); }}
+        }}
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1><span class="spinner"></span>Running Prediction Check <span class="status running">RUNNING</span></h1>
-        <div class="command">Executing """ + str(
-                total_commands
-            ) + """ task(s) in decoupled pipeline</div>
-    </div>"""
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📋 Prediction Check Logs</h1>
+                <div style="margin-top: 5px;">
+                    <span class="status-badge {'running' if process_running else 'stopped'}">
+                        {'🟢 RUNNING' if process_running else '⚪ STOPPED'}
+                    </span>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="refresh-controls">
+                    <label style="color: #d4d4d4; font-size: 14px;">
+                        Auto-refresh:
+                        <select id="refreshToggle" onchange="toggleRefresh()">
+                            <option value="false" {'selected' if not auto_refresh else ''}>Off</option>
+                            <option value="true" {'selected' if auto_refresh else ''}>On</option>
+                        </select>
+                    </label>
+                    <label style="color: #d4d4d4; font-size: 14px;">
+                        Interval:
+                        <select id="refreshInterval" onchange="updateInterval()" {'disabled' if not auto_refresh else ''}>
+                            <option value="2" {'selected' if refresh_interval == 2 else ''}>2s</option>
+                            <option value="3" {'selected' if refresh_interval == 3 else ''}>3s</option>
+                            <option value="5" {'selected' if refresh_interval == 5 else ''}>5s</option>
+                            <option value="10" {'selected' if refresh_interval == 10 else ''}>10s</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="button" onclick="window.location.reload()">
+                    🔄 Refresh Now
+                </button>
+                {'<button class="button" style="background-color: #dc3545;" onclick="cancelProcess()">⏹ Cancel Process</button>' if process_running else ''}
+                <a href="/admin/run-prediction-check/" class="button secondary">
+                    ← Back
+                </a>
+            </div>
+        </div>
 
-            # Run all commands sequentially and stream output
-            all_successful = True
-            try:
-                for idx, (task_name, cmd) in enumerate(commands, 1):
-                    # Task header
-                    yield f"""
-    <div class="task-header">
-        <h2><span class="task-number">Task {idx}/{total_commands}:</span> {task_name}</h2>
-        <div style="color: #858585; font-size: 12px; margin-top: 5px;">Command: {" ".join(cmd)}</div>
+        {f'''<div style="background-color: #28a745; color: white; padding: 15px; margin: 20px 0; border-radius: 4px; border-left: 4px solid #1e7e34;">
+            <strong>✓ {message}</strong>
+        </div>''' if message else ''}
+
+        <div class="log-container">
+            <div class="log-content">{log_content if log_content else 'No logs available yet.'}</div>
+        </div>
     </div>
-    <div class="output">"""
 
-                    # Run the command
-                    process = subprocess.Popen(
-                        cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        universal_newlines=True,
-                        bufsize=1,
-                        cwd=settings.BASE_DIR,
-                    )
-
-                    for line in iter(process.stdout.readline, ""):
-                        if line:
-                            # Color code the output based on content
-                            line_html = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-                            if "SUCCESS" in line or "✓" in line:
-                                line_html = f'<span class="success">{line_html}</span>'
-                            elif "WARNING" in line or "TEST MODE" in line:
-                                line_html = f'<span class="warning">{line_html}</span>'
-                            elif "ERROR" in line or "✗" in line or "Failed" in line:
-                                line_html = f'<span class="error">{line_html}</span>'
-                            elif "[" in line and "]" in line:
-                                # Highlight timestamps
-                                import re
-
-                                line_html = re.sub(r"\[(.*?)\]", r'<span class="timestamp">[\1]</span>', line_html)
-
-                            yield line_html
-                            time.sleep(0.01)  # Small delay to ensure smooth streaming
-
-                    process.wait()
-
-                    yield "</div>"  # Close output div
-
-                    if process.returncode == 0:
-                        yield f"""
-    <div style="padding: 10px; margin: 10px 0; background-color: #1a472a; border-left: 4px solid #4ec9b0; border-radius: 4px;">
-        <span style="color: #4ec9b0; font-weight: bold;">✓ {task_name} completed successfully</span>
-    </div>"""
-                    else:
-                        all_successful = False
-                        yield f"""
-    <div style="padding: 10px; margin: 10px 0; background-color: #5a1a1a; border-left: 4px solid #f48771; border-radius: 4px;">
-        <span style="color: #f48771; font-weight: bold;">✗ {task_name} failed (Exit Code: {process.returncode})</span>
-    </div>"""
-                        # Don't stop on error, continue with remaining tasks
-
-                # Final summary
-                if all_successful:
-                    yield """
-    <div class="header" style="border-left-color: #4ec9b0; margin-top: 20px;">
-        <h1 style="color: #4ec9b0;">✓ All Tasks Completed Successfully <span class="status complete">COMPLETE</span></h1>
-    </div>"""
-                else:
-                    yield """
-    <div class="header" style="border-left-color: #f48771; margin-top: 20px;">
-        <h1 style="color: #f48771;">⚠ Some Tasks Failed</h1>
-    </div>"""
-
-            except Exception as e:
-                yield f"""<span class="error">Error executing commands: {str(e)}</span>
-    <div class="header" style="border-left-color: #f48771; margin-top: 20px;">
-        <h1 style="color: #f48771;">✗ Execution Error</h1>
-    </div>"""
-
-            yield """
-    <a href="/admin/run-prediction-check/" class="back-link">← Back to Prediction Check</a>
-    <a href="/admin/" class="back-link">← Back to Admin Home</a>
     <script>
-        // Auto-scroll to bottom
-        window.scrollTo(0, document.body.scrollHeight);
-        // Remove spinner when complete
-        document.querySelector('.spinner').style.display = 'none';
+        // Auto-scroll to bottom immediately and on load
+        function scrollToBottom() {{
+            const logContainer = document.querySelector('.log-container');
+            if (logContainer) {{
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }}
+            // Also scroll window to bottom
+            window.scrollTo(0, document.body.scrollHeight);
+        }}
+
+        // Scroll immediately (before page fully loads)
+        scrollToBottom();
+
+        // Scroll again after page fully loads (in case content loaded late)
+        window.addEventListener('load', scrollToBottom);
+
+        // Scroll after a short delay to catch any late-loading content
+        setTimeout(scrollToBottom, 100);
+
+        function toggleRefresh() {{
+            const enabled = document.getElementById('refreshToggle').value;
+            const interval = document.getElementById('refreshInterval').value;
+            const url = new URL(window.location);
+            url.searchParams.set('auto_refresh', enabled);
+            url.searchParams.set('refresh_interval', interval);
+            window.location.href = url.toString();
+        }}
+
+        function updateInterval() {{
+            const interval = document.getElementById('refreshInterval').value;
+            const url = new URL(window.location);
+            url.searchParams.set('refresh_interval', interval);
+            window.location.href = url.toString();
+        }}
+
+        function cancelProcess() {{
+            if (confirm('Are you sure you want to cancel the running prediction check?\\n\\nThis will terminate all running tasks.')) {{
+                window.location.href = '/admin/run-prediction-check/cancel/';
+            }}
+        }}
     </script>
 </body>
 </html>"""
 
-        return StreamingHttpResponse(stream_output(), content_type="text/html")
+        return HttpResponse(html)
+
+    def cancel_prediction_check(self, request):
+        """Cancel running prediction check process."""
+        if not request.user.is_superuser:
+            from django.core.exceptions import PermissionDenied
+
+            raise PermissionDenied("Only superusers can access this page.")
+
+        import os
+        import signal
+        from django.http import HttpResponse, HttpResponseRedirect
+        from django.urls import reverse
+
+        log_file = os.path.join(settings.BASE_DIR, "prediction_check.log")
+
+        # Find and kill the running processes
+        killed_count = 0
+        try:
+            # Find processes running the management commands
+            result = subprocess.run(
+                ["pgrep", "-f", "manage.py (collect_weather_data|generate_predictions|process_notifications|check_migraine_probability)"],
+                capture_output=True,
+                text=True
+            )
+
+            if result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    try:
+                        os.kill(int(pid), signal.SIGTERM)  # Graceful termination
+                        killed_count += 1
+                    except ProcessLookupError:
+                        pass  # Process already finished
+                    except Exception as e:
+                        pass  # Ignore other errors
+
+                # Also kill the bash script runner if it exists
+                result = subprocess.run(
+                    ["pgrep", "-f", "prediction_check_runner.sh"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.stdout.strip():
+                    pids = result.stdout.strip().split('\n')
+                    for pid in pids:
+                        try:
+                            os.kill(int(pid), signal.SIGTERM)
+                            killed_count += 1
+                        except:
+                            pass
+
+                # Log the cancellation
+                try:
+                    with open(log_file, 'a') as f:
+                        f.write(f"\n\n=== Process Cancelled by {request.user.username} at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                        f.write(f"Terminated {killed_count} process(es)\n")
+                except Exception:
+                    pass
+
+                message = f"Successfully cancelled prediction check ({killed_count} process(es) terminated)"
+            else:
+                message = "No running prediction check process found"
+                try:
+                    with open(log_file, 'a') as f:
+                        f.write(f"\n\n=== Cancel attempted but no process running at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                except Exception:
+                    pass
+
+        except Exception as e:
+            message = f"Error cancelling process: {str(e)}"
+            try:
+                with open(log_file, 'a') as f:
+                    f.write(f"\n\n=== Error during cancellation: {str(e)} ===\n")
+            except Exception:
+                pass
+
+        # Redirect back to logs with message
+        return HttpResponseRedirect(reverse('admin:view_prediction_logs') + f'?message={message}')
 
 
 # Replace the default admin site

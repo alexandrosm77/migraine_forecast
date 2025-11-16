@@ -4,126 +4,218 @@
 {% block title %}Run Prediction Check{% endblock %}
 
 {% block content %}
-<div style="max-width: 800px; margin: 0 auto;">
-    <h1>Run Prediction Check</h1>
-    
-    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #007bff;">
-        <h3 style="margin-top: 0;">About This Tool</h3>
-        <p>This tool allows you to manually trigger the migraine and sinusitis prediction check process using the <strong>decoupled pipeline architecture</strong>. You can:</p>
-        <ul>
-            <li><strong>Run full pipeline:</strong> Executes all 3 tasks sequentially:
-                <ol style="margin-top: 5px;">
-                    <li>Collect weather data (with upsert to prevent duplicates)</li>
-                    <li>Generate predictions from stored forecasts</li>
-                    <li>Process and send notifications</li>
-                </ol>
-            </li>
-            <li><strong>Notify only:</strong> Skip tasks 1 & 2, only process notifications from existing predictions</li>
-            <li><strong>Test mode:</strong> Send test notifications with fake predictions for testing purposes</li>
-        </ul>
-        <p><strong>Note:</strong> The output will be displayed in real-time as each task executes.</p>
-    </div>
+<div style="max-width: 900px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #333; margin-bottom: 10px;">🔮 Run Prediction Check</h1>
+    <p style="color: #666; margin-bottom: 30px;">Manually trigger the prediction pipeline or send test notifications</p>
 
-    <form method="get" action="{% url 'admin:execute_prediction_check' %}" target="_blank" style="background-color: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        
-        <div style="margin-bottom: 20px;">
-            <h3 style="margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 10px;">Normal Mode</h3>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: flex; align-items: center; cursor: pointer;">
-                    <input type="checkbox" name="notify_only" style="margin-right: 10px;">
-                    <span><strong>Notify Only</strong> - Skip forecast updates, only send notifications for existing predictions</span>
+    <form method="get" action="{% url 'admin:execute_prediction_check' %}" id="prediction-form" style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <!-- Mode Selection -->
+        <div style="margin-bottom: 25px;">
+            <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 18px; font-weight: 600;">Mode Selection</h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <!-- Normal Mode Card -->
+                <div class="mode-card" onclick="selectMode('normal')" id="normal-card" style="border: 3px solid #0066cc; background-color: #ffffff; padding: 15px; border-radius: 6px; cursor: pointer;">
+                    <input type="radio" name="mode" value="normal" id="mode-normal" checked style="margin-right: 8px;">
+                    <label for="mode-normal" style="cursor: pointer; font-weight: bold; color: #0066cc; font-size: 16px;">
+                        🔄 Normal Mode
+                    </label>
+                    <p style="margin: 8px 0 0 0; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
+                        Run full pipeline: collect weather, generate predictions, send notifications
+                    </p>
+                </div>
+
+                <!-- Test Mode Card -->
+                <div class="mode-card" onclick="selectMode('test')" id="test-card" style="border: 2px solid #ddd; background-color: #ffffff; padding: 15px; border-radius: 6px; cursor: pointer;">
+                    <input type="radio" name="mode" value="test" id="mode-test" style="margin-right: 8px;">
+                    <label for="mode-test" style="cursor: pointer; font-weight: bold; color: #cc6600; font-size: 16px;">
+                        🧪 Test Mode
+                    </label>
+                    <p style="margin: 8px 0 0 0; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
+                        Send test notifications with fake predictions (for testing)
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Normal Mode Options -->
+        <div id="normal-options" style="margin-bottom: 25px;">
+            <!-- Hidden field to always run in async mode -->
+            <input type="hidden" name="async" value="on">
+
+            <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 18px; font-weight: 600;">Pipeline Steps</h3>
+
+            <div style="background-color: #f5f5f5; padding: 18px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px;">
+                <label style="display: flex; align-items: flex-start; cursor: pointer;">
+                    <input type="checkbox" name="update_weather" id="update-weather-check" style="margin-right: 10px; margin-top: 3px; width: 18px; height: 18px;" checked>
+                    <div>
+                        <strong style="color: #1a1a1a; font-size: 15px;">Update Weather Data</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
+                            Collect latest weather forecasts from API (Task 1)
+                        </p>
+                    </div>
+                </label>
+            </div>
+
+            <div style="background-color: #f5f5f5; padding: 18px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 15px;">
+                <label style="display: flex; align-items: flex-start; cursor: pointer;">
+                    <input type="checkbox" name="get_predictions" id="get-predictions-check" style="margin-right: 10px; margin-top: 3px; width: 18px; height: 18px;" checked>
+                    <div>
+                        <strong style="color: #1a1a1a; font-size: 15px;">Get LLM Predictions</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
+                            Generate migraine/sinusitis predictions using LLM (Task 2 - slow)
+                        </p>
+                    </div>
+                </label>
+            </div>
+
+            <div style="background-color: #f5f5f5; padding: 18px; border-radius: 6px; border: 1px solid #ddd;">
+                <label style="display: flex; align-items: flex-start; cursor: pointer;">
+                    <input type="checkbox" name="send_notifications" id="send-notifications-check" style="margin-right: 10px; margin-top: 3px; width: 18px; height: 18px;">
+                    <div>
+                        <strong style="color: #1a1a1a; font-size: 15px;">Send Notifications</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
+                            Process and send email notifications to users (Task 3)
+                        </p>
+                    </div>
                 </label>
             </div>
         </div>
 
-        <div style="margin-bottom: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;">
-            <h3 style="margin-top: 0; border-bottom: 2px solid #ffc107; padding-bottom: 10px;">Test Mode</h3>
-            <p style="color: #856404; background-color: #fff3cd; padding: 10px; border-radius: 3px; border-left: 4px solid #ffc107;">
-                <strong>⚠️ Test Mode:</strong> Send fake notifications for testing. This will create test predictions and send actual emails.
-            </p>
-            
+        <!-- Test Mode Options -->
+        <div id="test-options" style="margin-bottom: 25px; display: none;">
+            <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 18px; font-weight: 600;">Test Configuration</h3>
+
+            <div style="background-color: #fff8e6; padding: 15px; border-radius: 6px; border-left: 4px solid #cc6600; margin-bottom: 15px;">
+                <strong style="color: #1a1a1a;">⚠️ Warning:</strong> <span style="color: #1a1a1a;">Test mode will send actual emails to all configured users.</span>
+            </div>
+
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Test Notification Level:</label>
-                <select name="test_notification" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                    <option value="">-- None (Normal Mode) --</option>
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1a1a1a; font-size: 15px;">Risk Level:</label>
+                <select name="test_notification" id="test-notification" style="width: 100%; padding: 10px; border: 2px solid #999; border-radius: 4px; font-size: 15px; color: #1a1a1a; background-color: white;" disabled>
+                    <option value="">-- Select Risk Level --</option>
                     <option value="high">High Risk</option>
                     <option value="medium">Medium Risk</option>
                     <option value="low">Low Risk</option>
                     <option value="none">None (No notification)</option>
                 </select>
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                    Select a risk level to send test notifications. Leave empty for normal operation.
-                </small>
             </div>
 
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Test Type:</label>
-                <select name="test_type" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #1a1a1a; font-size: 15px;">Prediction Type:</label>
+                <select name="test_type" id="test-type" style="width: 100%; padding: 10px; border: 2px solid #999; border-radius: 4px; font-size: 15px; color: #1a1a1a; background-color: white;" disabled>
                     <option value="both">Both (Migraine + Sinusitis)</option>
                     <option value="migraine">Migraine Only</option>
                     <option value="sinusitis">Sinusitis Only</option>
                 </select>
-                <small style="color: #6c757d; display: block; margin-top: 5px;">
-                    Choose which type of test notification to send.
-                </small>
             </div>
         </div>
 
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef;">
-            <button type="submit" style="background-color: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold;">
+            <button type="submit" style="background-color: #0066cc; color: white; padding: 14px 35px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold;">
                 ▶ Run Prediction Check
             </button>
-            <a href="{% url 'admin:index' %}" style="margin-left: 15px; padding: 12px 30px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">
-                Cancel
+            <a href="{% url 'admin:view_prediction_logs' %}" style="margin-left: 15px; padding: 14px 35px; background-color: #666; color: white; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                📋 View Logs
+            </a>
+            <a href="{% url 'admin:index' %}" style="margin-left: 15px; padding: 14px 35px; background-color: #999; color: white; text-decoration: none; border-radius: 6px; display: inline-block;">
+                ← Back
             </a>
         </div>
     </form>
-
-    <div style="margin-top: 30px; padding: 15px; background-color: #e7f3ff; border-radius: 5px; border-left: 4px solid #007bff;">
-        <h4 style="margin-top: 0;">💡 Tips</h4>
-        <ul style="margin-bottom: 0;">
-            <li>The command will open in a new tab/window with real-time output</li>
-            <li>Test mode is useful for verifying email configuration and templates</li>
-            <li>Test notifications will be sent to all configured user locations</li>
-            <li>Normal mode will update weather forecasts, generate predictions, and send notifications</li>
-        </ul>
-    </div>
-
-    <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
-        <h4 style="margin-top: 0;">⚠️ Command Line Equivalent</h4>
-        <p style="margin-bottom: 5px;"><strong>Normal mode (decoupled pipeline):</strong></p>
-        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
-            python manage.py collect_weather_data<br>
-            python manage.py generate_predictions<br>
-            python manage.py process_notifications
-        </code>
-
-        <p style="margin-bottom: 5px;"><strong>Notify only mode:</strong></p>
-        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
-            python manage.py process_notifications
-        </code>
-
-        <p style="margin-bottom: 5px;"><strong>Test mode (high risk):</strong></p>
-        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px; margin-bottom: 10px;">
-            python manage.py check_migraine_probability --test-notification high --test-type both
-        </code>
-        
-        <p style="margin-bottom: 5px;"><strong>Notify only:</strong></p>
-        <code style="background-color: #f8f9fa; padding: 5px 10px; display: block; border-radius: 3px;">
-            python manage.py check_migraine_probability --notify-only
-        </code>
-    </div>
 </div>
 
 <style>
-    button:hover {
-        background-color: #218838 !important;
+    .mode-card {
+        transition: all 0.2s ease;
+    }
+    .mode-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    button[type="submit"]:hover {
+        background-color: #0052a3 !important;
     }
     select:focus, input[type="checkbox"]:focus {
-        outline: 2px solid #007bff;
+        outline: 2px solid #0066cc;
         outline-offset: 2px;
     }
 </style>
+
+<script>
+    function selectMode(mode) {
+        const normalCard = document.getElementById('normal-card');
+        const testCard = document.getElementById('test-card');
+        const normalOptions = document.getElementById('normal-options');
+        const testOptions = document.getElementById('test-options');
+        const testNotificationSelect = document.getElementById('test-notification');
+
+        if (mode === 'normal') {
+            // Update radio buttons
+            document.getElementById('mode-normal').checked = true;
+            document.getElementById('mode-test').checked = false;
+
+            // Update card styles
+            normalCard.style.border = '3px solid #0066cc';
+            normalCard.style.backgroundColor = '#ffffff';
+            testCard.style.border = '2px solid #ddd';
+            testCard.style.backgroundColor = '#ffffff';
+
+            // Show/hide options
+            normalOptions.style.display = 'block';
+            testOptions.style.display = 'none';
+
+            // Clear test notification value so it doesn't get submitted
+            testNotificationSelect.value = '';
+            testNotificationSelect.disabled = true;
+            document.getElementById('test-type').disabled = true;
+        } else {
+            // Update radio buttons
+            document.getElementById('mode-normal').checked = false;
+            document.getElementById('mode-test').checked = true;
+
+            // Update card styles
+            normalCard.style.border = '2px solid #ddd';
+            normalCard.style.backgroundColor = '#ffffff';
+            testCard.style.border = '3px solid #cc6600';
+            testCard.style.backgroundColor = '#ffffff';
+
+            // Show/hide options
+            normalOptions.style.display = 'none';
+            testOptions.style.display = 'block';
+
+            // Enable test fields and set default value
+            testNotificationSelect.disabled = false;
+            testNotificationSelect.value = 'high';
+            document.getElementById('test-type').disabled = false;
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        selectMode('normal');
+    });
+
+    // Handle form submission - remove disabled fields from submission
+    document.getElementById('prediction-form').addEventListener('submit', function(e) {
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+
+        if (mode === 'normal') {
+            // Remove test_notification from the form by clearing its name attribute
+            const testNotification = document.getElementById('test-notification');
+            const testType = document.getElementById('test-type');
+            testNotification.removeAttribute('name');
+            testType.removeAttribute('name');
+        } else {
+            // In test mode, remove pipeline step checkboxes
+            const updateWeather = document.getElementById('update-weather-check');
+            const getPredictions = document.getElementById('get-predictions-check');
+            const sendNotifications = document.getElementById('send-notifications-check');
+            updateWeather.removeAttribute('name');
+            getPredictions.removeAttribute('name');
+            sendNotifications.removeAttribute('name');
+        }
+    });
+</script>
 {% endblock %}
 
