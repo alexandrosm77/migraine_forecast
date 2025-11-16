@@ -13,12 +13,12 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
 django.setup()
 
-from migraine_project.settings import (
+from migraine_project.settings import (  # noqa
     sentry_traces_sampler,
     sentry_before_send,
     sentry_before_breadcrumb,
     HealthProbeLogFilter,
-)  # noqa
+)
 
 
 def test_traces_sampler():
@@ -163,8 +163,6 @@ def test_log_filter():
     """Test that the log filter drops health probe logs."""
     print("Testing HealthProbeLogFilter...")
 
-    import logging
-
     # Create a mock log record
     class MockLogRecord:
         def __init__(self, message):
@@ -177,13 +175,13 @@ def test_log_filter():
     log_filter = HealthProbeLogFilter()
 
     # Test 1: Log with kube-probe should be filtered
-    kube_probe_log = MockLogRecord('10.42.0.1 - - [16/Nov/2025:14:26:44 +0000] "GET / HTTP/1.1" 200 4562 "-" "kube-probe/1.33" 4038')
+    kube_probe_log = MockLogRecord('10.42.0.1 - - [16/Nov/2025:14:26:44 +0000] "GET / HTTP/1.1" 200 4562 "-" "kube-probe/1.33" 4038')  # noqa
     result = log_filter.filter(kube_probe_log)
     assert result is False, f"Expected False for kube-probe log, got {result}"
     print("✓ Kubernetes health probe log filtered")
 
     # Test 2: Normal log should pass through
-    normal_log = MockLogRecord('10.42.0.1 - - [16/Nov/2025:14:26:44 +0000] "GET /dashboard/ HTTP/1.1" 200 4562 "-" "Mozilla/5.0" 4038')
+    normal_log = MockLogRecord('10.42.0.1 - - [16/Nov/2025:14:26:44 +0000] "GET /dashboard/ HTTP/1.1" 200 4562 "-" "Mozilla/5.0" 4038')  # noqa
     result = log_filter.filter(normal_log)
     assert result is True, f"Expected True for normal log, got {result}"
     print("✓ Normal log passed through")
