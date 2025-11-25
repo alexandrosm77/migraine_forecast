@@ -150,8 +150,7 @@ class LLMClient:
 
         # System prompt with explicit JSON output instruction and schema
         sys_prompt = (
-            "You are a migraine risk assessor. Analyze weather conditions and output ONLY valid JSON matching "
-            "the schema below. Do not include any text before or after the JSON."
+            "You are a migraine risk assessor."
             f"{language_instruction}\n\n"
             "MIGRAINE TRIGGER THRESHOLDS:\n"
             "- Temperature change: ≥5°C is moderate risk, ≥10°C is high risk\n"
@@ -180,6 +179,7 @@ class LLMClient:
             "- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n"
             "- Previous predictions are for context only - do not blindly follow patterns\n"
             "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
+            "Analyze weather conditions and output ONLY valid JSON matching the schema below"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
@@ -418,8 +418,7 @@ class LLMClient:
 
         # System prompt for sinusitis with explicit JSON output instruction and schema
         sys_prompt = (
-            "You are a sinusitis risk assessor. Analyze weather conditions and output ONLY valid JSON matching "
-            "the schema below. Do not include any text before or after the JSON. "
+            "You are a sinusitis risk assessor.\n"
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
             f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens"
             f").{language_instruction}\n\n"
@@ -448,6 +447,7 @@ class LLMClient:
             "- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n"
             "- Previous predictions are for context only - do not blindly follow patterns\n"
             "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
+            "Analyze weather conditions and output ONLY valid JSON matching the schema below.\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
