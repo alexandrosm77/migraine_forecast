@@ -53,41 +53,22 @@ data:
       - url: http://192.168.0.11:3100/loki/api/v1/push
 
     scrape_configs:
-      # Scrape logs from all pods
+      # Scrape logs from all pods in migraine-forecast namespace
       - job_name: kubernetes-pods
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
-          # Only scrape pods in migraine-forecast namespace
-          - source_labels: [__meta_kubernetes_namespace]
-            action: keep
-            regex: migraine-forecast
-
-          # Use pod name as label
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-
-          # Use namespace as label
-          - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
-
-          # Use container name as label
-          - source_labels: [__meta_kubernetes_pod_container_name]
-            target_label: container
-
-          # Use component label (web/cron)
-          - source_labels: [__meta_kubernetes_pod_label_component]
-            target_label: component
-
-          # Use app label
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            target_label: app
-
-          # Set the log file path
-          - replacement: /var/log/pods/*$1/*.log
-            separator: /
-            source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
-            target_label: __path__
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: migraine-forecast
+              __path__: /var/log/pods/migraine-forecast_*/*/*.log
+        pipeline_stages:
+          - cri: {}
+          - regex:
+              expression: '/var/log/pods/(?P<namespace>[^_]+)_(?P<pod>[^_]+)-[^_]+_[^/]+/(?P<container>[^/]+)/.*\.log'
+          - labels:
+              namespace:
+              pod:
+              container:
 
 ---
 # DaemonSet - runs one Promtail pod per node
