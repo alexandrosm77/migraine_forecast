@@ -542,12 +542,25 @@ class MigraineAdminSite(admin.AdminSite):
         # Check if process is still running
         process_running = False
         try:
+            # First check for the bash script runner
             result = subprocess.run(
-                ["pgrep", "-f", "manage.py (collect_weather_data|generate_predictions|process_notifications|check_migraine_probability)"],
+                ["pgrep", "-f", "prediction_check_runner.sh"],
                 capture_output=True,
                 text=True
             )
-            process_running = bool(result.stdout.strip())
+            if result.stdout.strip():
+                process_running = True
+            else:
+                # Check for individual management commands (simpler patterns for macOS compatibility)
+                for cmd in ["collect_weather_data", "generate_predictions", "process_notifications", "check_migraine_probability"]:
+                    result = subprocess.run(
+                        ["pgrep", "-f", f"manage.py {cmd}"],
+                        capture_output=True,
+                        text=True
+                    )
+                    if result.stdout.strip():
+                        process_running = True
+                        break
         except Exception:
             pass
 
@@ -801,39 +814,36 @@ class MigraineAdminSite(admin.AdminSite):
 
         # Find and kill the running processes
         killed_count = 0
+        pids_to_kill = set()
         try:
-            # Find processes running the management commands
+            # First check for the bash script runner
             result = subprocess.run(
-                ["pgrep", "-f", "manage.py (collect_weather_data|generate_predictions|process_notifications|check_migraine_probability)"],
+                ["pgrep", "-f", "prediction_check_runner.sh"],
                 capture_output=True,
                 text=True
             )
-
             if result.stdout.strip():
-                pids = result.stdout.strip().split('\n')
-                for pid in pids:
+                pids_to_kill.update(result.stdout.strip().split('\n'))
+
+            # Check for individual management commands (simpler patterns for macOS compatibility)
+            for cmd in ["collect_weather_data", "generate_predictions", "process_notifications", "check_migraine_probability"]:
+                result = subprocess.run(
+                    ["pgrep", "-f", f"manage.py {cmd}"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.stdout.strip():
+                    pids_to_kill.update(result.stdout.strip().split('\n'))
+
+            if pids_to_kill:
+                for pid in pids_to_kill:
                     try:
                         os.kill(int(pid), signal.SIGTERM)  # Graceful termination
                         killed_count += 1
                     except ProcessLookupError:
                         pass  # Process already finished
-                    except Exception as e:
+                    except Exception:
                         pass  # Ignore other errors
-
-                # Also kill the bash script runner if it exists
-                result = subprocess.run(
-                    ["pgrep", "-f", "prediction_check_runner.sh"],
-                    capture_output=True,
-                    text=True
-                )
-                if result.stdout.strip():
-                    pids = result.stdout.strip().split('\n')
-                    for pid in pids:
-                        try:
-                            os.kill(int(pid), signal.SIGTERM)
-                            killed_count += 1
-                        except:
-                            pass
 
                 # Log the cancellation
                 try:
