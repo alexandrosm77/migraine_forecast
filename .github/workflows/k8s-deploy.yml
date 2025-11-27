@@ -148,7 +148,7 @@ jobs:
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Secrets and config updated successfully"
 
       -
-        name: Deploy infrastructure (PVs, CronJob)
+        name: Deploy infrastructure (PVs, CronJob, Promtail)
         run: |
           echo "$(date '+%Y-%m-%d %H:%M:%S') - Deploying infrastructure..."
 
@@ -166,6 +166,15 @@ jobs:
 
           cat k8s/backup-cronjob.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
+
+          # Deploy Promtail for log collection
+          cat k8s/promtail.yaml | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "sudo kubectl apply -f -"
+
+          # Restart Promtail to pick up config changes
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "sudo kubectl rollout restart daemonset/promtail -n migraine-forecast"
 
           # Clean up key
           rm -f ~/.ssh/deploy_key
