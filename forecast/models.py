@@ -501,6 +501,12 @@ class LLMConfiguration(models.Model):
         help_text="Minimum confidence level (0-1) required to accept LLM classification. "
                   "Predictions below this threshold are downgraded by one level (e.g., HIGH→MEDIUM)."
     )
+    extra_payload = JSONField(
+        default=dict,
+        blank=True,
+        help_text="Extra payload parameters to merge with LLM requests (e.g., temperature, top_p, max_tokens). "
+                  "These will override default values if there are conflicts."
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

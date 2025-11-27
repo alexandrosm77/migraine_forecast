@@ -173,6 +173,7 @@ class MigrainePredictionService:
                     api_key=llm_config.api_key,
                     model=llm_config.model,
                     timeout=llm_config.timeout,
+                    extra_payload=llm_config.extra_payload,
                 )
                 loc_label = f"{location.city}, {location.country}"
                 # Build minimal context with only essential aggregates and changes

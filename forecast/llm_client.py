@@ -18,11 +18,19 @@ class LLMClient:
     Base URL defaults should be provided by Django settings (e.g., http://localhost:8000).
     """
 
-    def __init__(self, base_url: str, api_key: str = "", model: str = "ibm/granite4:tiny-h", timeout: float = 8.0):
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str = "",
+        model: str = "ibm/granite4:tiny-h",
+        timeout: float = 8.0,
+        extra_payload: Optional[Dict[str, Any]] = None,
+    ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key or ""
         self.model = model
         self.timeout = timeout
+        self.extra_payload = extra_payload or {}
         self._session = requests.Session()
 
     def _headers(self) -> Dict[str, str]:
@@ -39,6 +47,8 @@ class LLMClient:
             "model": self.model,
             "messages": messages,
         }
+        # Merge extra_payload first, then kwargs (kwargs override extra_payload)
+        payload.update(self.extra_payload)
         payload.update(kwargs)
 
         # Add breadcrumb for LLM call

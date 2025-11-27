@@ -519,6 +519,73 @@ class LLMClientTest(TestCase):
         self.assertIsNotNone(payload)
         self.assertIn("raw", payload)
 
+    def test_initialization_with_extra_payload(self):
+        """Test LLMClient initialization with extra_payload"""
+        extra_payload = {"temperature": 0.5, "top_p": 0.9}
+        client = LLMClient(
+            base_url="http://localhost:8000",
+            api_key="test_key",
+            model="test_model",
+            timeout=10.0,
+            extra_payload=extra_payload,
+        )
+        self.assertEqual(client.extra_payload, extra_payload)
+
+    def test_initialization_extra_payload_defaults_to_empty(self):
+        """Test that extra_payload defaults to empty dict when not provided"""
+        client = LLMClient(base_url="http://localhost:8000")
+        self.assertEqual(client.extra_payload, {})
+
+    @patch("forecast.llm_client.requests.Session.post")
+    def test_chat_complete_merges_extra_payload(self, mock_post):
+        """Test that chat_complete merges extra_payload with request"""
+        extra_payload = {"temperature": 0.5, "top_p": 0.9}
+        client = LLMClient(
+            base_url="http://localhost:8000",
+            api_key="test_key",
+            model="test_model",
+            timeout=10.0,
+            extra_payload=extra_payload,
+        )
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"choices": []}
+        mock_post.return_value = mock_response
+
+        messages = [{"role": "user", "content": "test"}]
+        client.chat_complete(messages)
+
+        call_kwargs = mock_post.call_args[1]
+        # Check that extra_payload values are in the request
+        self.assertEqual(call_kwargs["json"]["temperature"], 0.5)
+        self.assertEqual(call_kwargs["json"]["top_p"], 0.9)
+
+    @patch("forecast.llm_client.requests.Session.post")
+    def test_chat_complete_kwargs_override_extra_payload(self, mock_post):
+        """Test that kwargs override extra_payload values"""
+        extra_payload = {"temperature": 0.5, "top_p": 0.9}
+        client = LLMClient(
+            base_url="http://localhost:8000",
+            api_key="test_key",
+            model="test_model",
+            timeout=10.0,
+            extra_payload=extra_payload,
+        )
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"choices": []}
+        mock_post.return_value = mock_response
+
+        messages = [{"role": "user", "content": "test"}]
+        # Override temperature from extra_payload
+        client.chat_complete(messages, temperature=0.8)
+
+        call_kwargs = mock_post.call_args[1]
+        # temperature should be overridden to 0.8
+        self.assertEqual(call_kwargs["json"]["temperature"], 0.8)
+        # top_p should still be from extra_payload
+        self.assertEqual(call_kwargs["json"]["top_p"], 0.9)
+
 
 class LLMConfigurationTest(TestCase):
     """Test cases for LLMConfiguration model"""
@@ -598,6 +665,33 @@ class LLMConfigurationTest(TestCase):
             name="High Token Config", model="test-model", is_active=True, high_token_budget=True
         )
         self.assertTrue(config.high_token_budget)
+
+    def test_extra_payload_default_empty(self):
+        """Test that extra_payload defaults to empty dict"""
+        config = LLMConfiguration.objects.create(name="Test Config", model="test-model", is_active=True)
+        self.assertEqual(config.extra_payload, {})
+
+    def test_extra_payload_can_be_set(self):
+        """Test that extra_payload can be set with custom values"""
+        extra_payload = {"temperature": 0.5, "top_p": 0.9, "max_tokens": 2000}
+        config = LLMConfiguration.objects.create(
+            name="Config with Payload", model="test-model", is_active=True, extra_payload=extra_payload
+        )
+        self.assertEqual(config.extra_payload, extra_payload)
+        self.assertEqual(config.extra_payload["temperature"], 0.5)
+        self.assertEqual(config.extra_payload["top_p"], 0.9)
+        self.assertEqual(config.extra_payload["max_tokens"], 2000)
+
+    def test_extra_payload_persists_in_database(self):
+        """Test that extra_payload is correctly persisted and retrieved from database"""
+        extra_payload = {"temperature": 0.3, "frequency_penalty": 0.5}
+        config = LLMConfiguration.objects.create(
+            name="Persistent Payload Config", model="test-model", is_active=True, extra_payload=extra_payload
+        )
+
+        # Retrieve from database
+        retrieved_config = LLMConfiguration.objects.get(name="Persistent Payload Config")
+        self.assertEqual(retrieved_config.extra_payload, extra_payload)
 
 
 class UserHealthProfileTest(TestCase):
