@@ -1,7 +1,6 @@
 """Base command class for management commands with JSON logging support."""
 
 import os
-from io import StringIO
 
 from django.core.management.base import BaseCommand
 
@@ -66,4 +65,3 @@ class SilentStdoutCommand(BaseCommand):
             @staticmethod
             def MIGRATE_LABEL(msg):
                 return msg
-
