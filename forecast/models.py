@@ -219,6 +219,14 @@ class WeatherForecast(models.Model):
     cloud_cover = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["location", "target_time"],
+                name="unique_location_target_time",
+            )
+        ]
+
     def __str__(self):
         return f"Forecast for {self.location} at {self.target_time}"
 
