@@ -586,6 +586,49 @@ class LLMClientTest(TestCase):
         # top_p should still be from extra_payload
         self.assertEqual(call_kwargs["json"]["top_p"], 0.9)
 
+    @patch("forecast.llm_client.requests.Session.post")
+    def test_predict_probability_request_payload_includes_extra_payload(self, mock_post):
+        """Test that request_payload stored in response includes extra_payload"""
+        extra_payload = {"temperature": 0.5, "top_p": 0.9, "max_tokens": 2000}
+        client = LLMClient(
+            base_url="http://localhost:8000",
+            api_key="test_key",
+            model="test_model",
+            timeout=10.0,
+            extra_payload=extra_payload,
+        )
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "probability_level": "HIGH",
+                                "confidence": 0.85,
+                                "rationale": "High risk",
+                                "analysis_text": "Risky conditions",
+                                "prevention_tips": ["Stay hydrated"],
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+        mock_post.return_value = mock_response
+
+        level, detail = client.predict_probability(
+            scores={},
+            location_label="Test City",
+        )
+
+        # Verify the request_payload in the returned detail includes extra_payload
+        request_payload = detail.get("request_payload", {})
+        self.assertEqual(request_payload.get("temperature"), 0.5)
+        self.assertEqual(request_payload.get("top_p"), 0.9)
+        self.assertEqual(request_payload.get("max_tokens"), 2000)
+
 
 class LLMConfigurationTest(TestCase):
     """Test cases for LLMConfiguration model"""

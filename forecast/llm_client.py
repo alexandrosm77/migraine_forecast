@@ -228,6 +228,8 @@ class LLMClient:
             "messages": messages,
             "temperature": 0.2,
         }
+        # Merge extra_payload to get the actual payload that will be sent
+        request_payload.update(self.extra_payload)
 
         # Log the full request for debugging
         logger.info(f"LLM Request for {location_label}:")
@@ -431,6 +433,8 @@ class LLMClient:
             "messages": messages,
             "temperature": 0.2,
         }
+        # Merge extra_payload to get the actual payload that will be sent
+        request_payload.update(self.extra_payload)
 
         try:
             result = self.chat_complete(
