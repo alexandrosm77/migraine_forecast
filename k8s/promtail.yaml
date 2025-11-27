@@ -67,6 +67,7 @@ data:
           # Extract pod metadata from log path
           # Format: /var/log/pods/<namespace>_<pod-name>_<pod-uid>/<container>/<file>.log
           - regex:
+              source: filename
               expression: '/var/log/pods/(?P<namespace>[^_]+)_(?P<pod>[^_]+)_[^/]+/(?P<container>[^/]+)/.*\.log'
           - labels:
               namespace:
