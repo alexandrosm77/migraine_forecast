@@ -14,11 +14,14 @@ Scenarios:
     3. Humidity Spike        - Sudden humidity increase (MEDIUM risk)
     4. Temperature Swing     - Large temperature change (MEDIUM-HIGH risk)
     5. Dry Cold Front        - Cold, dry air mass moving in (MEDIUM risk)
+    6. 24-Hour Forecast      - Full day forecast, tests downsampling (MEDIUM risk)
+    7. 3-Day Forecast        - 72-hour extended forecast, max downsampling (VARIABLE risk)
 """
 
 import os
 import argparse
 import logging
+import math
 
 # Setup Django first
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
@@ -32,7 +35,7 @@ logging.getLogger('forecast.llm_context_builder').setLevel(logging.CRITICAL)
 logging.getLogger('django').setLevel(logging.CRITICAL)
 logging.getLogger().setLevel(logging.CRITICAL)  # Root logger
 
-from datetime import timedelta  # noqa: E402
+from datetime import datetime, timedelta, timezone as dt_timezone  # noqa: E402
 from django.utils import timezone  # noqa: E402
 from forecast.llm_client import LLMClient  # noqa: E402
 from forecast.llm_context_builder import LLMContextBuilder  # noqa: E402
@@ -269,6 +272,103 @@ def create_dry_cold_scenario():
         "sensitivity_pressure": 1.2,
         "sensitivity_temperature": 1.3,
         "sensitivity_humidity": 1.4,
+    }
+
+    return location, forecasts, previous_forecasts, [], user_profile
+
+
+@scenario(6, "24-Hour Forecast", "MEDIUM",
+          "Full day forecast to test downsampling with longer windows")
+def create_24h_scenario():
+    """24-hour forecast - tests downsampling in high token mode."""
+    now = datetime.now(dt_timezone.utc)
+    location = MockLocation("Berlin", "Germany", 52.5, 13.4)
+
+    # Generate 24 hours of forecast data with realistic daily cycle
+    forecasts = []
+    base_temp = 8.0  # Morning low
+    for h in range(24):
+        hour = (now.hour + h + 3) % 24  # Start 3 hours from now
+        # Simulate daily temperature cycle (coldest at 6am, warmest at 3pm)
+        temp_offset = 6 * math.sin((hour - 6) * math.pi / 12) if 6 <= hour <= 18 else -2
+        temp = base_temp + temp_offset
+
+        # Pressure slowly dropping (front approaching)
+        pressure = 1018.0 - (h * 0.3)
+
+        # Humidity inverse of temperature
+        humidity = 70 - temp_offset * 3
+
+        # Light rain in afternoon
+        precip = 0.5 if 14 <= hour <= 18 else 0.0
+        cloud = 60 if 12 <= hour <= 20 else 30
+
+        forecasts.append(MockForecast(
+            now + timedelta(hours=h + 3),
+            temp, pressure, humidity, precip, cloud, 15
+        ))
+
+    # Previous 6 hours - stable
+    previous_forecasts = [
+        MockForecast(now - timedelta(hours=6-i), 7.0 + i*0.2, 1020.0, 65, 0, 25, 10)
+        for i in range(6)
+    ]
+
+    user_profile = {"sensitivity_overall": 1.0}
+
+    return location, forecasts, previous_forecasts, [], user_profile
+
+
+@scenario(7, "3-Day Forecast", "VARIABLE",
+          "72-hour extended forecast to test maximum downsampling")
+def create_72h_scenario():
+    """72-hour forecast - tests maximum downsampling in high token mode."""
+    now = datetime.now(dt_timezone.utc)
+    location = MockLocation("Tokyo", "Japan", 35.7, 139.7)
+
+    # Generate 72 hours of forecast data
+    forecasts = []
+    for h in range(72):
+        day = h // 24
+        hour = (now.hour + h + 3) % 24
+
+        # Day 1: Stable, Day 2: Storm, Day 3: Clearing
+        if day == 0:
+            base_temp, base_pressure, base_humidity = 18.0, 1015.0, 55
+        elif day == 1:
+            base_temp, base_pressure, base_humidity = 14.0, 1002.0, 85
+        else:
+            base_temp, base_pressure, base_humidity = 16.0, 1018.0, 50
+
+        # Daily cycle
+        temp_offset = 5 * math.sin((hour - 6) * math.pi / 12) if 6 <= hour <= 18 else -2
+        temp = base_temp + temp_offset
+
+        # Pressure transition
+        if day == 0 and h > 18:
+            pressure = base_pressure - (h - 18) * 0.8  # Dropping
+        elif day == 1:
+            pressure = base_pressure + (h - 24) * 0.3  # Slowly rising
+        else:
+            pressure = base_pressure
+
+        humidity = base_humidity + (10 if 0 <= hour <= 6 else 0)
+        precip = 2.0 if day == 1 and 6 <= hour <= 18 else 0.0
+        cloud = 90 if day == 1 else 40
+
+        forecasts.append(MockForecast(
+            now + timedelta(hours=h + 3),
+            temp, pressure, humidity, precip, cloud, 20
+        ))
+
+    previous_forecasts = [
+        MockForecast(now - timedelta(hours=6-i), 17.0, 1016.0, 50, 0, 30, 8)
+        for i in range(6)
+    ]
+
+    user_profile = {
+        "sensitivity_overall": 1.2,
+        "sensitivity_pressure": 1.4,
     }
 
     return location, forecasts, previous_forecasts, [], user_profile

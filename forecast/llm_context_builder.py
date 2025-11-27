@@ -345,30 +345,78 @@ class LLMContextBuilder:
         end_time = forecasts[-1].target_time.strftime("%H:%M")
 
         if self.high_token_budget:
+            # Determine downsampling rate based on window size
+            num_hours = len(forecasts)
+            if num_hours <= 6:
+                step = 1  # Show all hours
+            elif num_hours <= 12:
+                step = 2  # Every 2nd hour
+            elif num_hours <= 24:
+                step = 3  # Every 3rd hour
+            elif num_hours <= 48:
+                step = 6  # Every 6th hour
+            else:  # Up to 72 hours
+                step = 8  # Every 8th hour
+
+            # Downsample forecasts, always include first and last
+            sampled = forecasts[::step]
+            if forecasts[-1] not in sampled:
+                sampled.append(forecasts[-1])
+
+            # Format time span description
+            hours_span = num_hours
+            if hours_span <= 24:
+                span_desc = f"{hours_span}h"
+            else:
+                days = hours_span // 24
+                remaining_hours = hours_span % 24
+                if remaining_hours > 0:
+                    span_desc = f"{days}d {remaining_hours}h"
+                else:
+                    span_desc = f"{days}d"
+
+            step_desc = f", every {step}h" if step > 1 else ""
+
             # Full hourly table
-            lines = [f"## Hourly Forecast ({start_time}-{end_time} UTC)"]
-            lines.append("Hour  | Temp   | Pressure  | Humidity | Precip | Cloud")
+            lines = [f"## Forecast ({start_time}-{end_time} UTC, {span_desc}{step_desc})"]
+            lines.append("Time  | Temp   | Pressure  | Humidity | Precip | Cloud")
             lines.append("------|--------|-----------|----------|--------|------")
 
-            for fc in forecasts:
-                hour = fc.target_time.strftime("%H:%M")
+            for fc in sampled:
+                time_str = fc.target_time.strftime("%d %H:%M") if num_hours > 24 else fc.target_time.strftime("%H:%M")
                 temp = f"{fc.temperature:.1f}°C"
                 pressure = f"{fc.pressure:.1f}hPa"
                 humidity = f"{fc.humidity:.0f}%"
                 precip = f"{fc.precipitation:.1f}mm"
                 cloud = f"{fc.cloud_cover:.0f}%"
-                lines.append(f"{hour} | {temp:>6} | {pressure:>9} | {humidity:>8} | {precip:>6} | {cloud:>5}")
+                lines.append(f"{time_str} | {temp:>6} | {pressure:>9} | {humidity:>8} | {precip:>6} | {cloud:>5}")
 
             return "\n".join(lines)
         else:
             # Compact summary
+            num_hours = len(forecasts)
             temps = [f.temperature for f in forecasts]
             pressures = [f.pressure for f in forecasts]
             humidities = [f.humidity for f in forecasts]
             precip_total = sum(f.precipitation for f in forecasts)
 
+            # Format time span description
+            if num_hours <= 24:
+                span_desc = f"{start_time}-{end_time}"
+            else:
+                start_dt = forecasts[0].target_time
+                end_dt = forecasts[-1].target_time
+                days = num_hours // 24
+                remaining_hours = num_hours % 24
+                if remaining_hours > 0:
+                    span_desc = (
+                        f"{start_dt.strftime('%d %H:%M')}-{end_dt.strftime('%d %H:%M')} ({days}d {remaining_hours}h)"
+                    )
+                else:
+                    span_desc = f"{start_dt.strftime('%d %H:%M')}-{end_dt.strftime('%d %H:%M')} ({days}d)"
+
             return (
-                f"Forecast ({start_time}-{end_time}): "
+                f"Forecast ({span_desc}): "
                 f"Temp {min(temps):.1f}-{max(temps):.1f}°C, "
                 f"Pressure {min(pressures):.1f}-{max(pressures):.1f}hPa, "
                 f"Humidity {min(humidities):.0f}-{max(humidities):.0f}%, "
@@ -476,8 +524,10 @@ class LLMContextBuilder:
             lines.append(f"Overall trend: Temperature {trend_word(temp_trend)}, pressure {trend_word(pressure_trend)}")
             return "\n".join(lines)
         else:
-            return (f"Window stability: Δ{max_temp_change:.1f}°C/hr temp, Δ{max_pressure_change:.1f}hPa/hr pressure "
-                    f"({temp_stability})")
+            return (
+                f"Window stability: Δ{max_temp_change:.1f}°C/hr temp, Δ{max_pressure_change:.1f}hPa/hr pressure "
+                f"({temp_stability})"
+            )
 
     def _format_user_sensitivity(self, user_profile: Dict[str, Any]) -> str:
         """Format user sensitivity profile in natural language."""

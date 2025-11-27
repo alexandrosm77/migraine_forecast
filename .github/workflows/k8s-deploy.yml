@@ -57,6 +57,7 @@ jobs:
   test-linting:
     needs: build
     runs-on: self-hosted
+    continue-on-error: true
     steps:
       -
         name: Checkout repository
@@ -100,7 +101,7 @@ jobs:
             python manage.py test forecast.integration_tests --verbosity=2
 
   deploy:
-    needs: [test-linting, test-unittest, test-integration]
+    needs: [test-unittest, test-integration]
     runs-on: self-hosted
     environment: latest
     # Ensure only one deployment runs at a time

@@ -1690,7 +1690,7 @@ class LLMContextBuilderTest(TestCase):
         # Should contain location
         self.assertIn("London", context)
         # Should contain hourly table (high token)
-        self.assertIn("Hour", context)
+        self.assertIn("Time", context)  # Header changed from "Hour" to "Time"
         self.assertIn("Temp", context)
         self.assertIn("Press", context)
 
