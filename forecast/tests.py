@@ -1101,7 +1101,7 @@ class WeatherServiceTest(TestCase):
         """Test getting the latest forecast for a location"""
         now = timezone.now()
 
-        # Create multiple forecasts
+        # Create multiple forecasts with different target times
         forecast1 = WeatherForecast.objects.create(
             location=self.location,
             forecast_time=now - timedelta(hours=2),
@@ -1117,7 +1117,7 @@ class WeatherServiceTest(TestCase):
         forecast2 = WeatherForecast.objects.create(
             location=self.location,
             forecast_time=now,
-            target_time=now + timedelta(hours=1),
+            target_time=now + timedelta(hours=2),
             temperature=21.0,
             humidity=51.0,
             pressure=1014.0,
