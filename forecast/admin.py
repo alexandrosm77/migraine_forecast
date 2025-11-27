@@ -304,9 +304,11 @@ class LLMResponseAdmin(admin.ModelAdmin):
         "prediction_type",
         "get_prediction_link",
         "probability_level",
+        "original_probability_level",
         "confidence",
+        "confidence_adjusted",
     )
-    list_filter = ("prediction_type", "probability_level", "created_at", "location")
+    list_filter = ("prediction_type", "probability_level", "confidence_adjusted", "created_at", "location")
     search_fields = ("location__city", "location__country", "user__username")
     readonly_fields = ("created_at",)
     formfield_overrides = {
@@ -344,7 +346,7 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
     Supports multiple configurations with only one active at a time.
     """
 
-    list_display = ("name", "is_active", "model", "base_url", "timeout", "updated_at")
+    list_display = ("name", "is_active", "model", "base_url", "timeout", "confidence_threshold", "updated_at")
     list_filter = ("is_active",)
     search_fields = ("name", "model", "base_url")
     readonly_fields = ("created_at", "updated_at")
@@ -359,7 +361,7 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
         (
             "API Configuration",
             {
-                "fields": ("base_url", "model", "api_key", "timeout", "high_token_budget"),
+                "fields": ("base_url", "model", "api_key", "timeout", "high_token_budget", "confidence_threshold"),
                 "description": "Configure the LLM API endpoint and model",
             },
         ),

@@ -142,6 +142,8 @@ class MigrainePredictionService:
         llm_used = False
         llm_detail = None
         probability_level = None
+        original_probability_level = None  # Original LLM classification before confidence adjustment
+        confidence_adjusted = False  # Whether the level was downgraded due to low confidence
         total_score = None  # Will store the actual score used for classification
 
         # Get LLM configuration from database (with fallback to settings)
@@ -371,11 +373,11 @@ class MigrainePredictionService:
                 # Get recent predictions for context (with full objects, not just values)
                 recent_predictions = None
                 if user:
-                    recent_predictions = list(MigrainePrediction.objects.filter(
-                        user=user,
-                        location=location,
-                        prediction_time__gte=start_time - timedelta(hours=24)
-                    ).order_by("-prediction_time")[:5])
+                    recent_predictions = list(
+                        MigrainePrediction.objects.filter(
+                            user=user, location=location, prediction_time__gte=start_time - timedelta(hours=24)
+                        ).order_by("-prediction_time")[:5]
+                    )
 
                 llm_level, llm_detail = client.predict_probability(
                     scores=factors_payload,
@@ -390,14 +392,42 @@ class MigrainePredictionService:
                 )
                 if llm_level in {"LOW", "MEDIUM", "HIGH"}:
                     llm_used = True
-                    probability_level = llm_level
-                    logger.info(f"LLM prediction successful: {probability_level}")
+                    original_probability_level = llm_level
+
+                    # Apply confidence threshold - downgrade by one level if confidence is below threshold
+                    llm_confidence = (llm_detail or {}).get("raw", {}).get("confidence")
+                    confidence_threshold = llm_config.confidence_threshold
+
+                    if llm_confidence is not None and llm_confidence < confidence_threshold:
+                        # Downgrade by one level (LOW stays LOW)
+                        downgrade_map = {"HIGH": "MEDIUM", "MEDIUM": "LOW", "LOW": "LOW"}
+                        probability_level = downgrade_map[llm_level]
+                        if probability_level != llm_level:
+                            confidence_adjusted = True
+                            logger.info(
+                                f"LLM prediction downgraded due to low confidence: {llm_level} -> {probability_level} "
+                                f"(confidence: {llm_confidence:.2f}, threshold: {confidence_threshold:.2f})"
+                            )
+                        else:
+                            probability_level = llm_level
+                            logger.info(
+                                f"LLM prediction successful: {probability_level} (confidence: {llm_confidence:.2f})"
+                            )
+                    else:
+                        probability_level = llm_level
+                        confidence_str = f"{llm_confidence:.2f}" if llm_confidence is not None else "N/A"
+                        logger.info(f"LLM prediction successful: {probability_level} (confidence: {confidence_str})")
 
                     add_breadcrumb(
                         category="prediction",
                         message="LLM prediction successful",
                         level="info",
-                        data={"probability_level": probability_level},
+                        data={
+                            "probability_level": probability_level,
+                            "original_probability_level": original_probability_level,
+                            "confidence": llm_confidence,
+                            "confidence_adjusted": confidence_adjusted,
+                        },
                     )
                 else:
                     logger.warning("LLM returned invalid probability level, will fall back to manual calculation")
@@ -487,9 +517,10 @@ class MigrainePredictionService:
                             request_payload=(llm_detail or {}).get("request_payload", {}),
                             response_api_raw=(llm_detail or {}).get("api_raw"),
                             response_parsed=(llm_detail or {}).get("raw"),
-                            probability_level=(llm_detail or {}).get("raw", {}).get("probability_level")
-                            or probability_level,
+                            probability_level=probability_level,
+                            original_probability_level=original_probability_level or "",
                             confidence=(llm_detail or {}).get("raw", {}).get("confidence"),
+                            confidence_adjusted=confidence_adjusted,
                             rationale=(llm_detail or {}).get("raw", {}).get("rationale") or "",
                             analysis_text=(llm_detail or {}).get("raw", {}).get("analysis_text") or "",
                             prevention_tips=(llm_detail or {}).get("raw", {}).get("prevention_tips") or [],

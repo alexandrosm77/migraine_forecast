@@ -440,7 +440,16 @@ class LLMResponse(models.Model):
 
     # Extracted fields from LLM response
     probability_level = models.CharField(max_length=10, blank=True)
+    original_probability_level = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="Original LLM classification before confidence-based adjustment"
+    )
     confidence = models.FloatField(null=True, blank=True)
+    confidence_adjusted = models.BooleanField(
+        default=False,
+        help_text="Whether the probability level was downgraded due to low confidence"
+    )
     rationale = models.TextField(blank=True)
     analysis_text = models.TextField(blank=True)
     prevention_tips = JSONField(default=list, null=True, blank=True)
@@ -486,6 +495,11 @@ class LLMConfiguration(models.Model):
     high_token_budget = models.BooleanField(
         default=False,
         help_text="Use high token budget for LLM prompts (more detailed weather context, hourly tables)"
+    )
+    confidence_threshold = models.FloatField(
+        default=0.8,
+        help_text="Minimum confidence level (0-1) required to accept LLM classification. "
+                  "Predictions below this threshold are downgraded by one level (e.g., HIGH→MEDIUM)."
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

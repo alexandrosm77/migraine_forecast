@@ -198,6 +198,8 @@ class MigrainePredictionServiceTest(TestCase):
         mock_config.api_key = "test_key"
         mock_config.model = "test_model"
         mock_config.timeout = 10.0
+        mock_config.high_token_budget = False
+        mock_config.confidence_threshold = 0.8
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
@@ -789,6 +791,8 @@ class SinusitisPredictionServiceTest(TestCase):
         mock_config.api_key = "test_key"
         mock_config.model = "test_model"
         mock_config.timeout = 10.0
+        mock_config.high_token_budget = False
+        mock_config.confidence_threshold = 0.8
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
@@ -799,7 +803,7 @@ class SinusitisPredictionServiceTest(TestCase):
                 {
                     "raw": {
                         "probability_level": "MEDIUM",
-                        "confidence": 0.75,
+                        "confidence": 0.85,  # Above threshold (0.8) so no downgrade
                         "rationale": "Moderate risk conditions",
                         "analysis_text": "Some risk factors present",
                         "prevention_tips": ["Use humidifier"],
