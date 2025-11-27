@@ -101,6 +101,23 @@ class LLMClient:
             logger.error(f"LLM HTTP error: {e}")
             raise
 
+        except ValueError as e:
+            # JSON decode error - response body is empty or not valid JSON
+            set_context(
+                "llm_json_error",
+                {
+                    "model": self.model,
+                    "base_url": self.base_url,
+                    "error": str(e),
+                    "response_status": resp.status_code if 'resp' in locals() else None,
+                    "response_text": resp.text[:500] if 'resp' in locals() else None,
+                    "url": url,
+                },
+            )
+            capture_exception(e)
+            logger.error(f"LLM response is not valid JSON: {e}")
+            raise
+
         except Exception as e:
             set_context(
                 "llm_error",
