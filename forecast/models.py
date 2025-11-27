@@ -483,6 +483,10 @@ class LLMConfiguration(models.Model):
         max_length=500, blank=True, default="", help_text="API key for authentication (leave empty if not required)"
     )
     timeout = models.FloatField(default=240.0, help_text="Request timeout in seconds")
+    high_token_budget = models.BooleanField(
+        default=False,
+        help_text="Use high token budget for LLM prompts (more detailed weather context, hourly tables)"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

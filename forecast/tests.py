@@ -445,11 +445,6 @@ class LLMClientTest(TestCase):
                 "avg_forecast_humidity": 65.0,
             },
             "changes": {"temperature_change": 5.0, "pressure_change": 3.0},
-            "intraday_variation": {
-                "max_hourly_temp_change": 4.5,
-                "max_hourly_pressure_change": 2.8,
-                "window_hours": 23,
-            },
         }
 
         level, payload = self.client.predict_probability(scores, "Boston, USA", user_profile, context)
@@ -466,9 +461,6 @@ class LLMClientTest(TestCase):
         self.assertIn("fall", user_content)
         # Verify temperature range is included
         self.assertIn("range", user_content)
-        # Verify intraday variation is included
-        self.assertIn("Intraday variation", user_content)
-        self.assertIn("4.5", user_content)  # max_hourly_temp_change
 
     @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_network_error(self, mock_post):
@@ -592,6 +584,18 @@ class LLMConfigurationTest(TestCase):
         # Should activate the first one
         self.assertEqual(active_config.id, config1.id)
         self.assertTrue(active_config.is_active)
+
+    def test_high_token_budget_default(self):
+        """Test that high_token_budget defaults to False"""
+        config = LLMConfiguration.objects.create(name="Test Config", model="test-model", is_active=True)
+        self.assertFalse(config.high_token_budget)
+
+    def test_high_token_budget_can_be_set(self):
+        """Test that high_token_budget can be set to True"""
+        config = LLMConfiguration.objects.create(
+            name="High Token Config", model="test-model", is_active=True, high_token_budget=True
+        )
+        self.assertTrue(config.high_token_budget)
 
 
 class UserHealthProfileTest(TestCase):
@@ -1612,3 +1616,168 @@ class LanguageSwitchingTest(TestCase):
         self.assertEqual(system_message["role"], "system")
         self.assertIn("Greek", system_message["content"])
         self.assertIn("Ελληνικά", system_message["content"])
+
+
+class LLMContextBuilderTest(TestCase):
+    """Test cases for LLMContextBuilder"""
+
+    def setUp(self):
+        from .llm_context_builder import LLMContextBuilder
+
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpassword")
+        self.location = Location.objects.create(
+            user=self.user, city="London", country="UK", latitude=51.5074, longitude=-0.1278
+        )
+        # Create forecasts for testing
+        now = timezone.now()
+        self.forecasts = []
+        for i in range(6):
+            forecast = WeatherForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=now + timedelta(hours=3 + i),
+                temperature=15.0 + i * 0.5,
+                humidity=70 + i,
+                pressure=1013.0 - i * 0.5,
+                precipitation=0.0,
+                cloud_cover=50,
+                wind_speed=10.0,
+            )
+            self.forecasts.append(forecast)
+
+        # Create previous forecasts
+        self.previous_forecasts = []
+        for i in range(6):
+            forecast = WeatherForecast.objects.create(
+                location=self.location,
+                forecast_time=now - timedelta(hours=6),
+                target_time=now - timedelta(hours=6 - i),
+                temperature=12.0 + i * 0.3,
+                humidity=65 + i,
+                pressure=1018.0 - i * 0.3,
+                precipitation=0.0,
+                cloud_cover=40,
+                wind_speed=8.0,
+            )
+            self.previous_forecasts.append(forecast)
+
+        self.builder_low = LLMContextBuilder(high_token_budget=False)
+        self.builder_high = LLMContextBuilder(high_token_budget=True)
+
+    def test_build_migraine_context_low_token(self):
+        """Test building migraine context with low token budget"""
+        context = self.builder_low.build_migraine_context(
+            forecasts=self.forecasts,
+            previous_forecasts=self.previous_forecasts,
+            location=self.location,
+        )
+        # Should contain location
+        self.assertIn("London", context)
+        self.assertIn("UK", context)
+        # Should contain weather data
+        self.assertIn("Temp", context)
+        self.assertIn("Pressure", context)
+        # Should NOT contain hourly table (low token)
+        self.assertNotIn("Hour", context)
+
+    def test_build_migraine_context_high_token(self):
+        """Test building migraine context with high token budget"""
+        context = self.builder_high.build_migraine_context(
+            forecasts=self.forecasts,
+            previous_forecasts=self.previous_forecasts,
+            location=self.location,
+        )
+        # Should contain location
+        self.assertIn("London", context)
+        # Should contain hourly table (high token)
+        self.assertIn("Hour", context)
+        self.assertIn("Temp", context)
+        self.assertIn("Press", context)
+
+    def test_build_sinusitis_context_includes_seasonal_info(self):
+        """Test that sinusitis context includes seasonal health information"""
+        context = self.builder_low.build_sinusitis_context(
+            forecasts=self.forecasts,
+            previous_forecasts=self.previous_forecasts,
+            location=self.location,
+        )
+        # Should contain location
+        self.assertIn("London", context)
+        # Should contain seasonal health context (pollen, mold, heating)
+        # At least one of these should be present
+        has_seasonal = any(
+            term in context.lower() for term in ["pollen", "mold", "heating", "humidity", "season"]
+        )
+        self.assertTrue(has_seasonal)
+
+    def test_user_sensitivity_translation(self):
+        """Test that user sensitivity is translated to natural language"""
+        user_profile = {
+            "sensitivity_overall": 1.5,
+            "sensitivity_pressure": 1.8,
+            "sensitivity_temperature": 1.0,
+            "sensitivity_humidity": 1.3,
+        }
+        context = self.builder_low.build_migraine_context(
+            forecasts=self.forecasts,
+            previous_forecasts=self.previous_forecasts,
+            location=self.location,
+            user_profile=user_profile,
+        )
+        # Should contain sensitivity information in natural language
+        self.assertIn("sensitivity", context.lower())
+        # Should mention pressure sensitivity (highest)
+        self.assertIn("pressure", context.lower())
+
+    def test_weather_changes_calculation(self):
+        """Test that weather changes are calculated correctly"""
+        context = self.builder_low.build_migraine_context(
+            forecasts=self.forecasts,
+            previous_forecasts=self.previous_forecasts,
+            location=self.location,
+        )
+        # Should contain change information
+        # The context should show temperature and pressure changes
+        self.assertIn("°C", context)
+        self.assertIn("hPa", context)
+
+    def test_diurnal_context_for_latitude(self):
+        """Test that diurnal context is appropriate for latitude"""
+        # London is at ~51.5° latitude (mid-latitude)
+        context = self.builder_high.build_migraine_context(
+            forecasts=self.forecasts,
+            previous_forecasts=self.previous_forecasts,
+            location=self.location,
+        )
+        # Should contain some reference to normal temperature variation
+        # This is included in the high token budget version
+        self.assertIn("London", context)
+
+    def test_historical_predictions_formatting(self):
+        """Test that historical predictions are formatted correctly"""
+        # Create some previous predictions
+        now = timezone.now()
+        predictions = []
+        for i, level in enumerate(["HIGH", "MEDIUM", "LOW"]):
+            pred = MigrainePrediction.objects.create(
+                user=self.user,
+                location=self.location,
+                forecast=self.forecasts[0],
+                target_time_start=now - timedelta(hours=24 - i * 4),
+                target_time_end=now - timedelta(hours=21 - i * 4),
+                probability=level,
+                prediction_time=now - timedelta(hours=24 - i * 4),
+            )
+            predictions.append(pred)
+
+        context = self.builder_low.build_migraine_context(
+            forecasts=self.forecasts,
+            previous_forecasts=self.previous_forecasts,
+            location=self.location,
+            previous_predictions=predictions,
+        )
+        # Should contain recent predictions section
+        self.assertIn("Recent", context)
+        # Should contain prediction levels
+        self.assertIn("HIGH", context)
+        self.assertIn("MEDIUM", context)

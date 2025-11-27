@@ -1,9 +1,11 @@
 import json
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from sentry_sdk import capture_exception, set_context, add_breadcrumb, start_span
+
+from .llm_context_builder import LLMContextBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +128,11 @@ class LLMClient:
         location_label: str,
         user_profile: Optional[Dict[str, Any]] = None,
         context: Optional[Dict[str, Any]] = None,
+        forecasts: Optional[List[Any]] = None,
+        previous_forecasts: Optional[List[Any]] = None,
+        location: Optional[Any] = None,
+        previous_predictions: Optional[List[Any]] = None,
+        high_token_budget: bool = False,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
         Ask the LLM to output a JSON with keys:
@@ -133,6 +140,17 @@ class LLMClient:
           - confidence: float 0-1
           - rationale: short string
         Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
+
+        Args:
+            scores: Normalized weather scores (kept for fallback, not sent to LLM)
+            location_label: Human-readable location string
+            user_profile: User health profile with sensitivities
+            context: Legacy context dict (deprecated, use forecasts instead)
+            forecasts: List of WeatherForecast objects for prediction window
+            previous_forecasts: List of WeatherForecast objects from previous period
+            location: Location model instance
+            previous_predictions: List of recent MigrainePrediction objects
+            high_token_budget: Whether to use detailed context (default: False)
         """
         # Determine user's preferred language
         user_language = None
@@ -143,224 +161,52 @@ class LLMClient:
         language_instruction = ""
         if user_language == "el":
             language_instruction = (
-                " Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, " "prevention_tips)."
+                "\nReply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
             )
         elif user_language and user_language != "en":
-            language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
+            language_instruction = f"\nReply in the user's language ({user_language}) for all text fields."
 
-        # System prompt with explicit JSON output instruction and schema
-        old_sys_prompt = (  # noqa
-            "You are a migraine risk assessor."
-            f"{language_instruction}\n\n"
-            "MIGRAINE TRIGGER THRESHOLDS:\n"
-            "- Temperature change: ≥5°C is moderate risk, ≥10°C is high risk\n"
-            "- Humidity: ≥70% or ≤30% is moderate risk, ≥85% or ≤20% is high risk\n"
-            "- Humidity change: ≥10 percentage points is moderate risk, ≥20 is high risk\n"
-            "- Pressure change: ≥5 hPa is moderate risk, ≥10 hPa is high risk\n"
-            "- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n"
-            "- Precipitation: ≥5mm is moderate risk, ≥10mm is high risk\n"
-            "- Cloud cover: ≥80% is moderate risk, ≥95% is high risk\n\n"
-            "RISK FACTOR IMPORTANCE (weights):\n"
-            "- Pressure change: 30% (most important - rapid pressure changes are the strongest migraine trigger)\n"
-            "- Temperature change: 25% (rapid temperature swings trigger migraines)\n"
-            "- Low pressure: 15% (low pressure systems increase migraine risk)\n"
-            "- Humidity extremes: 15% (very high or very low humidity)\n"
-            "- Cloud cover: 10% (overcast conditions affect some people)\n"
-            "- Precipitation: 5% (rain and storms can contribute)\n\n"
-            "CLASSIFICATION GUIDELINES:\n"
-            "- Use the weighted score provided as a starting point\n"
-            "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
-            "- MEDIUM: weighted score 0.4-0.69\n"
-            "- HIGH: weighted score ≥ 0.7 (only when multiple high-weight factors exceed thresholds)\n"
-            "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
-            "- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n"
-            "- Changes can be positive (+) or negative (-), indicating direction of change\n"
-            "- Consider both the magnitude of changes AND the min/max ranges provided\n"
-            "- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n"
-            "- Previous predictions are for context only - do not blindly follow patterns\n"
-            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
-            "Analyze weather conditions and output ONLY valid JSON matching the schema below"
-            "<schema>\n"
-            "{\n"
-            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
-            '  "confidence": <float between 0 and 1>,\n'
-            '  "rationale": "<brief explanation>",\n'
-            '  "analysis_text": "<concise user explanation>",\n'
-            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
-            "}\n"
-            "</schema>"
-        )
-
+        # Simplified system prompt - let the model use its own medical/scientific reasoning
         sys_prompt = (
-            "You are a migraine risk assessor."
-            f"{language_instruction}\n\n"
-            "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
-            "- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n"
-            "- Changes can be positive (+) or negative (-), indicating direction of change\n"
-            "- Consider both the magnitude of changes AND the min/max ranges provided\n"
-            "- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n"
-            "- Previous predictions are for context only - do not blindly follow patterns\n"
-            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
-            "Analyze weather conditions and output ONLY valid JSON matching the schema below"
+            "You are a migraine risk assessor. Analyze the weather data provided and assess "
+            "migraine risk for the forecast window.\n\n"
+            "Consider known migraine triggers including:\n"
+            "- Rapid barometric pressure changes (especially drops)\n"
+            "- Significant temperature swings beyond normal diurnal variation\n"
+            "- Humidity extremes (very high or very low)\n"
+            "- Approaching weather fronts and storm systems\n\n"
+            "Use the user's sensitivity profile and recent prediction history as context for your assessment.\n"
+            f"{language_instruction}\n"
+            "Output ONLY valid JSON matching the schema below.\n"
             "<schema>\n"
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
             '  "confidence": <float between 0 and 1>,\n'
-            '  "rationale": "<brief explanation>",\n'
-            '  "analysis_text": "<concise user explanation>",\n'
+            '  "rationale": "<brief explanation of your reasoning>",\n'
+            '  "analysis_text": "<concise user-facing explanation>",\n'
             '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
             "}\n"
             "</schema>"
         )
 
-        # Build minimal user prompt with only essential data
-        user_prompt_parts = [
-            f"Location: {location_label}",
-            f"Risk scores: {json.dumps(scores)}",
-        ]
-
-        # Calculate and add weighted score if weights are available
-        if "weights" in scores:
-            weights = scores["weights"]
-            weighted_score = 0.0
-            for factor in [
-                "temperature_change",
-                "humidity_extreme",
-                "pressure_change",
-                "pressure_low",
-                "precipitation",
-                "cloud_cover",
-            ]:
-                if factor in scores and factor in weights:
-                    weighted_score += scores[factor] * weights[factor]
-
-            # Calculate adjusted thresholds based on user sensitivity
-            high_thr = 0.7
-            med_thr = 0.4
-            if user_profile is not None:
-                overall = user_profile.get("sensitivity_overall", 1.0)
-                # More sensitive → lower thresholds; less sensitive → higher thresholds
-                shift = (overall - 1.0) * 0.15
-                high_thr = min(max(high_thr - shift, 0.5), 0.9)
-                med_thr = min(max(med_thr - shift, 0.25), 0.7)
-
-            user_prompt_parts.append(
-                f"Weighted score: {weighted_score:.2f} "
-                f"(LOW<{med_thr:.2f}, MEDIUM:{med_thr:.2f}-{high_thr-0.01:.2f}, HIGH≥{high_thr:.2f})"
+        # Build user prompt using the new context builder if forecasts are provided
+        if forecasts and location:
+            context_builder = LLMContextBuilder(high_token_budget=high_token_budget)
+            user_prompt_str = context_builder.build_migraine_context(
+                forecasts=forecasts,
+                previous_forecasts=previous_forecasts or [],
+                location=location,
+                user_profile=user_profile,
+                previous_predictions=previous_predictions,
             )
-
-        # Add temporal context if available (compact format)
-        if context and "temporal_context" in context:
-            temporal = context["temporal_context"]
-            time_parts = []
-
-            # Current time and day
-            if temporal.get("current_time"):
-                time_parts.append(f"Now: {temporal['current_time']}")
-            if temporal.get("day_of_week"):
-                day_info = temporal["day_of_week"]
-                if temporal.get("is_weekend"):
-                    day_info += " (weekend)"
-                time_parts.append(day_info)
-            if temporal.get("season"):
-                time_parts.append(f"{temporal['season']}")
-
-            # Prediction window
-            if temporal.get("window_start_time") and temporal.get("window_end_time"):
-                time_parts.append(f"Window: {temporal['window_start_time']} to {temporal['window_end_time']}")
-            elif temporal.get("window_duration_hours"):
-                time_parts.append(f"Window: {temporal['window_duration_hours']:.1f}h ahead")
-
-            if time_parts:
-                user_prompt_parts.append(f"Timing: {' | '.join(time_parts)}")
-
-        # Add user sensitivity if available
-        if user_profile:
-            sensitivity = user_profile.get("sensitivity_overall", 1.0)
-            if sensitivity != 1.0:
-                user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
-
-        # Add key weather changes from context if available
-        if context and "aggregates" in context:
-            agg = context["aggregates"]
-            changes = context.get("changes", {})
-            weather_summary = []
-
-            # Temperature information
-            if agg.get("avg_forecast_temperature") is not None:
-                temp_info = f"temp avg {agg['avg_forecast_temperature']:.1f}°C"
-                if agg.get("temperature_range") is not None and agg["temperature_range"] > 0:
-                    temp_info += f" (range {agg['temperature_range']:.1f}°C: {agg.get('min_forecast_temperature', 0):.1f}°C-{agg.get('max_forecast_temperature', 0):.1f}°C)"  # noqa: E501
-                weather_summary.append(temp_info)
-            elif changes.get("temperature_change"):
-                weather_summary.append(f"temp Δ{changes['temperature_change']:.1f}°C")
-
-            # Pressure information
-            if agg.get("avg_forecast_pressure") is not None:
-                pressure_info = f"pressure avg {agg['avg_forecast_pressure']:.1f}hPa"
-                if agg.get("pressure_range") is not None and agg["pressure_range"] > 0:
-                    pressure_info += f" (range {agg['pressure_range']:.1f}hPa)"
-                weather_summary.append(pressure_info)
-            elif changes.get("pressure_change"):
-                weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
-
-            # Humidity
-            if agg.get("avg_forecast_humidity"):
-                weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
-
-            if weather_summary:
-                user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
-
-        # Add intraday variation for large windows
-        if context and "intraday_variation" in context:
-            intraday = context["intraday_variation"]
-            variation_parts = []
-
-            if intraday.get("max_hourly_temp_change"):
-                variation_parts.append(f"max temp change {intraday['max_hourly_temp_change']:.1f}°C/hr")
-            if intraday.get("max_hourly_pressure_change"):
-                variation_parts.append(f"max pressure change {intraday['max_hourly_pressure_change']:.1f}hPa/hr")
-
-            if variation_parts:
-                user_prompt_parts.append(f"Intraday variation: {', '.join(variation_parts)}")
-
-        # Add summarized previous predictions history if available
-        # Note: This is for context only - each prediction should be based on current weather data
-        if context and "previous_predictions" in context:
-            prev_summary = context["previous_predictions"]
-            if prev_summary.get("count", 0) > 0:
-                # Compact summary: just counts by level in last 24h
-                summary_parts = []
-                if prev_summary.get("high_count", 0) > 0:
-                    summary_parts.append(f"{prev_summary['high_count']}H")
-                if prev_summary.get("medium_count", 0) > 0:
-                    summary_parts.append(f"{prev_summary['medium_count']}M")
-                if prev_summary.get("low_count", 0) > 0:
-                    summary_parts.append(f"{prev_summary['low_count']}L")
-                if summary_parts:
-                    user_prompt_parts.append(
-                        f"Last 24h predictions (for context only, analyze "
-                        f"current data independently): {'/'.join(summary_parts)}"
-                    )
-
-        # Add weather trend information if available
-        if context and "weather_trend" in context:
-            trend = context["weather_trend"]
-            trend_parts = []
-            temp_trend = trend.get("temp_trend", 0)
-            pressure_trend = trend.get("pressure_trend", 0)
-
-            if temp_trend != 0:
-                direction = "rising" if temp_trend > 0 else "falling"
-                trend_parts.append(f"temp {direction} {abs(temp_trend):.1f}°C")
-            if pressure_trend != 0:
-                direction = "rising" if pressure_trend > 0 else "falling"
-                trend_parts.append(f"pressure {direction} {abs(pressure_trend):.1f}hPa")
-
-            if trend_parts:
-                user_prompt_parts.append(f"24h trend: {', '.join(trend_parts)}")
-
-        user_prompt_str = "\n".join(user_prompt_parts)
+        else:
+            # Fallback to legacy context building (for backwards compatibility)
+            user_prompt_str = self._build_legacy_migraine_prompt(
+                scores=scores,
+                location_label=location_label,
+                user_profile=user_profile,
+                context=context,
+            )
 
         # Build the actual request payload that will be sent to the LLM
         messages = [
@@ -410,140 +256,21 @@ class LLMClient:
             logger.exception("Failed to process LLM response")
             return None, {"raw": result, "request_payload": request_payload}
 
-    def predict_sinusitis_probability(
+    def _build_legacy_migraine_prompt(
         self,
         scores: Dict[str, float],
         location_label: str,
-        user_profile: Optional[Dict[str, Any]] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
-        """
-        Ask the LLM to output a JSON with keys for sinusitis risk assessment:
-          - probability_level: one of LOW, MEDIUM, HIGH
-          - confidence: float 0-1
-          - rationale: short string
-        Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
-        """
-        # Determine user's preferred language
-        user_language = None
-        if user_profile and "language" in user_profile:
-            user_language = user_profile["language"]
-
-        # Build language instruction for LLM
-        language_instruction = ""
-        if user_language == "el":
-            language_instruction = (
-                " Reply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, " "prevention_tips)."
-            )
-        elif user_language and user_language != "en":
-            language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
-
-        # System prompt for sinusitis with explicit JSON output instruction and schema
-        old_sys_prompt = (  # noqa
-            "You are a sinusitis risk assessor.\n"
-            "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
-            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens"
-            f").{language_instruction}\n\n"
-            "SINUSITIS TRIGGER THRESHOLDS:\n"
-            "- Temperature change: ≥5°C is moderate risk, ≥10°C is high risk\n"
-            "- Humidity: ≥70% is moderate risk (promotes mold/allergens), ≥85% is high risk\n"
-            "- Humidity: ≤30% is moderate risk (dries sinuses), ≤20% is high risk\n"
-            "- Humidity change: ≥10 percentage points is moderate risk, ≥20 is high risk\n"
-            "- Pressure change: ≥5 hPa is moderate risk, ≥10 hPa is high risk\n"
-            "- Low pressure: <1005 hPa is moderate risk, <995 hPa is high risk\n"
-            "- Precipitation: ≥5mm is moderate risk (increases allergens), ≥10mm is high risk\n"
-            "- Cloud cover: ≥80% is moderate risk, ≥95% is high risk\n\n"
-            "RISK FACTOR IMPORTANCE (weights for sinusitis):\n"
-            "- Temperature change: 30% (most important for sinusitis)\n"
-            "- Humidity extremes: 25% (very important - affects allergens/mold and sinus dryness)\n"
-            "- Pressure change: 20%\n"
-            "- Precipitation: 10% (increases allergens)\n"
-            "- Low pressure: 10%\n"
-            "- Cloud cover: 5%\n\n"
-            "CLASSIFICATION GUIDELINES:\n"
-            "- Use the weighted score provided as a starting point\n"
-            "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
-            "- MEDIUM: weighted score 0.4-0.69\n"
-            "- HIGH: weighted score ≥ 0.7 (only when multiple high-weight factors exceed thresholds)\n"
-            "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
-            "- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n"
-            "- Previous predictions are for context only - do not blindly follow patterns\n"
-            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
-            "Analyze weather conditions and output ONLY valid JSON matching the schema below.\n"
-            "<schema>\n"
-            "{\n"
-            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
-            '  "confidence": <float between 0 and 1>,\n'
-            '  "rationale": "<brief explanation>",\n'
-            '  "analysis_text": "<concise user explanation>",\n'
-            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
-            "}\n"
-            "</schema>"
-        )
-
-        sys_prompt = (
-            "You are a sinusitis risk assessor.\n"
-            "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
-            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens"
-            f").{language_instruction}\n\n"
-            "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
-            "- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n"
-            "- Previous predictions are for context only - do not blindly follow patterns\n"
-            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
-            "Analyze weather conditions and output ONLY valid JSON matching the schema below.\n"
-            "<schema>\n"
-            "{\n"
-            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
-            '  "confidence": <float between 0 and 1>,\n'
-            '  "rationale": "<brief explanation>",\n'
-            '  "analysis_text": "<concise user explanation>",\n'
-            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
-            "}\n"
-            "</schema>"
-        )
-
-        # Build minimal user prompt with only essential data
-        user_prompt_parts = [
-            f"Location: {location_label}",
-            f"Risk scores: {json.dumps(scores)}",
-        ]
-
-        # Calculate and add weighted score if weights are available
-        if "weights" in scores:
-            weights = scores["weights"]
-            weighted_score = 0.0
-            for factor in [
-                "temperature_change",
-                "humidity_extreme",
-                "pressure_change",
-                "pressure_low",
-                "precipitation",
-                "cloud_cover",
-            ]:
-                if factor in scores and factor in weights:
-                    weighted_score += scores[factor] * weights[factor]
-
-            # Calculate adjusted thresholds based on user sensitivity (sinusitis uses lower thresholds)
-            high_thr = 0.65  # Slightly lower than migraine
-            med_thr = 0.35  # Slightly lower than migraine
-            if user_profile is not None:
-                overall = user_profile.get("sensitivity_overall", 1.0)
-                # More sensitive → lower thresholds; less sensitive → higher thresholds
-                shift = (overall - 1.0) * 0.15
-                high_thr = min(max(high_thr - shift, 0.45), 0.85)
-                med_thr = min(max(med_thr - shift, 0.20), 0.65)
-
-            user_prompt_parts.append(
-                f"Weighted score: {weighted_score:.2f} "
-                f"(LOW<{med_thr:.2f}, MEDIUM:{med_thr:.2f}-{high_thr-0.01:.2f}, HIGH≥{high_thr:.2f})"
-            )
+        user_profile: Optional[Dict[str, Any]],
+        context: Optional[Dict[str, Any]],
+    ) -> str:
+        """Build user prompt using legacy context format (for backwards compatibility)."""
+        user_prompt_parts = [f"Location: {location_label}"]
 
         # Add temporal context if available (compact format)
         if context and "temporal_context" in context:
             temporal = context["temporal_context"]
             time_parts = []
 
-            # Current time and day
             if temporal.get("current_time"):
                 time_parts.append(f"Now: {temporal['current_time']}")
             if temporal.get("day_of_week"):
@@ -554,7 +281,6 @@ class LLMClient:
             if temporal.get("season"):
                 time_parts.append(f"{temporal['season']}")
 
-            # Prediction window
             if temporal.get("window_start_time") and temporal.get("window_end_time"):
                 time_parts.append(f"Window: {temporal['window_start_time']} to {temporal['window_end_time']}")
             elif temporal.get("window_duration_hours"):
@@ -563,93 +289,127 @@ class LLMClient:
             if time_parts:
                 user_prompt_parts.append(f"Timing: {' | '.join(time_parts)}")
 
-        # Add user sensitivity if available
-        if user_profile:
-            sensitivity = user_profile.get("sensitivity_overall", 1.0)
-            if sensitivity != 1.0:
-                user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
-
         # Add key weather changes from context if available
         if context and "aggregates" in context:
             agg = context["aggregates"]
             changes = context.get("changes", {})
             weather_summary = []
 
-            # Temperature information
-            if agg.get("avg_forecast_temp") is not None:
-                temp_info = f"temp avg {agg['avg_forecast_temp']:.1f}°C"
+            if agg.get("avg_forecast_temperature") is not None:
+                temp_info = f"temp avg {agg['avg_forecast_temperature']:.1f}°C"
                 if agg.get("temperature_range") is not None and agg["temperature_range"] > 0:
-                    temp_info += f" (range {agg['temperature_range']:.1f}°C: {agg.get('min_forecast_temp', 0):.1f}°C-{agg.get('max_forecast_temp', 0):.1f}°C)"  # noqa: E501
+                    temp_info += f" (range {agg['temperature_range']:.1f}°C)"
                 weather_summary.append(temp_info)
-            elif changes.get("temperature_change"):
-                weather_summary.append(f"temp Δ{changes['temperature_change']:.1f}°C")
 
-            # Pressure information
             if agg.get("avg_forecast_pressure") is not None:
                 pressure_info = f"pressure avg {agg['avg_forecast_pressure']:.1f}hPa"
                 if agg.get("pressure_range") is not None and agg["pressure_range"] > 0:
                     pressure_info += f" (range {agg['pressure_range']:.1f}hPa)"
                 weather_summary.append(pressure_info)
-            elif changes.get("pressure_change"):
+
+            if changes.get("pressure_change"):
                 weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
 
-            # Humidity
             if agg.get("avg_forecast_humidity"):
                 weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
 
             if weather_summary:
                 user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
 
-        # Add intraday variation for large windows
-        if context and "intraday_variation" in context:
-            intraday = context["intraday_variation"]
-            variation_parts = []
+        # Add user sensitivity if available
+        if user_profile:
+            sensitivity = user_profile.get("sensitivity_overall", 1.0)
+            if sensitivity != 1.0:
+                user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
 
-            if intraday.get("max_hourly_temp_change"):
-                variation_parts.append(f"max temp change {intraday['max_hourly_temp_change']:.1f}°C/hr")
-            if intraday.get("max_hourly_pressure_change"):
-                variation_parts.append(f"max pressure change {intraday['max_hourly_pressure_change']:.1f}hPa/hr")
+        return "\n".join(user_prompt_parts)
 
-            if variation_parts:
-                user_prompt_parts.append(f"Intraday variation: {', '.join(variation_parts)}")
+    def predict_sinusitis_probability(
+        self,
+        scores: Dict[str, float],
+        location_label: str,
+        user_profile: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,
+        forecasts: Optional[List[Any]] = None,
+        previous_forecasts: Optional[List[Any]] = None,
+        location: Optional[Any] = None,
+        previous_predictions: Optional[List[Any]] = None,
+        high_token_budget: bool = False,
+    ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+        """
+        Ask the LLM to output a JSON with keys for sinusitis risk assessment:
+          - probability_level: one of LOW, MEDIUM, HIGH
+          - confidence: float 0-1
+          - rationale: short string
+        Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
 
-        # Add summarized previous predictions history if available
-        # Note: This is for context only - each prediction should be based on current weather data
-        if context and "previous_predictions" in context:
-            prev_summary = context["previous_predictions"]
-            if prev_summary.get("count", 0) > 0:
-                # Compact summary: just counts by level in last 24h
-                summary_parts = []
-                if prev_summary.get("high_count", 0) > 0:
-                    summary_parts.append(f"{prev_summary['high_count']}H")
-                if prev_summary.get("medium_count", 0) > 0:
-                    summary_parts.append(f"{prev_summary['medium_count']}M")
-                if prev_summary.get("low_count", 0) > 0:
-                    summary_parts.append(f"{prev_summary['low_count']}L")
-                if summary_parts:
-                    user_prompt_parts.append(
-                        f"Last 24h predictions (for context only, analyze current data independently"
-                        f"): {'/'.join(summary_parts)}"
-                    )
+        Args:
+            scores: Normalized weather scores (kept for fallback, not sent to LLM)
+            location_label: Human-readable location string
+            user_profile: User health profile with sensitivities
+            context: Legacy context dict (deprecated, use forecasts instead)
+            forecasts: List of WeatherForecast objects for prediction window
+            previous_forecasts: List of WeatherForecast objects from previous period
+            location: Location model instance
+            previous_predictions: List of recent SinusitisPrediction objects
+            high_token_budget: Whether to use detailed context (default: False)
+        """
+        # Determine user's preferred language
+        user_language = None
+        if user_profile and "language" in user_profile:
+            user_language = user_profile["language"]
 
-        # Add weather trend information if available
-        if context and "weather_trend" in context:
-            trend = context["weather_trend"]
-            trend_parts = []
-            temp_trend = trend.get("temp_trend", 0)
-            pressure_trend = trend.get("pressure_trend", 0)
+        # Build language instruction for LLM
+        language_instruction = ""
+        if user_language == "el":
+            language_instruction = (
+                "\nReply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
+            )
+        elif user_language and user_language != "en":
+            language_instruction = f"\nReply in the user's language ({user_language}) for all text fields."
 
-            if temp_trend != 0:
-                direction = "rising" if temp_trend > 0 else "falling"
-                trend_parts.append(f"temp {direction} {abs(temp_trend):.1f}°C")
-            if pressure_trend != 0:
-                direction = "rising" if pressure_trend > 0 else "falling"
-                trend_parts.append(f"pressure {direction} {abs(pressure_trend):.1f}hPa")
+        # Simplified system prompt - let the model use its own medical/scientific reasoning
+        sys_prompt = (
+            "You are a sinusitis risk assessor. Analyze the weather data provided and assess "
+            "sinusitis flare-up risk for the forecast window.\n\n"
+            "Consider known sinusitis triggers including:\n"
+            "- Rapid temperature changes (especially beyond normal diurnal variation)\n"
+            "- Humidity extremes (high promotes mold/allergens, low dries sinuses)\n"
+            "- Barometric pressure changes\n"
+            "- Precipitation (increases allergens)\n"
+            "- Seasonal factors (pollen season, indoor heating drying air)\n\n"
+            "Use the user's sensitivity profile and recent prediction history as context for your assessment.\n"
+            f"{language_instruction}\n"
+            "Output ONLY valid JSON matching the schema below.\n"
+            "<schema>\n"
+            "{\n"
+            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
+            '  "confidence": <float between 0 and 1>,\n'
+            '  "rationale": "<brief explanation of your reasoning>",\n'
+            '  "analysis_text": "<concise user-facing explanation>",\n'
+            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
+            "}\n"
+            "</schema>"
+        )
 
-            if trend_parts:
-                user_prompt_parts.append(f"24h trend: {', '.join(trend_parts)}")
-
-        user_prompt_str = "\n".join(user_prompt_parts)
+        # Build user prompt using the new context builder if forecasts are provided
+        if forecasts and location:
+            context_builder = LLMContextBuilder(high_token_budget=high_token_budget)
+            user_prompt_str = context_builder.build_sinusitis_context(
+                forecasts=forecasts,
+                previous_forecasts=previous_forecasts or [],
+                location=location,
+                user_profile=user_profile,
+                previous_predictions=previous_predictions,
+            )
+        else:
+            # Fallback to legacy context building (for backwards compatibility)
+            user_prompt_str = self._build_legacy_sinusitis_prompt(
+                scores=scores,
+                location_label=location_label,
+                user_profile=user_profile,
+                context=context,
+            )
 
         # Build the actual request payload that will be sent to the LLM
         messages = [
@@ -688,3 +448,71 @@ class LLMClient:
         except Exception:
             logger.exception("Failed to process LLM sinusitis response")
             return None, {"raw": result, "request_payload": request_payload}
+
+    def _build_legacy_sinusitis_prompt(
+        self,
+        scores: Dict[str, float],
+        location_label: str,
+        user_profile: Optional[Dict[str, Any]],
+        context: Optional[Dict[str, Any]],
+    ) -> str:
+        """Build user prompt using legacy context format (for backwards compatibility)."""
+        user_prompt_parts = [f"Location: {location_label}"]
+
+        # Add temporal context if available (compact format)
+        if context and "temporal_context" in context:
+            temporal = context["temporal_context"]
+            time_parts = []
+
+            if temporal.get("current_time"):
+                time_parts.append(f"Now: {temporal['current_time']}")
+            if temporal.get("day_of_week"):
+                day_info = temporal["day_of_week"]
+                if temporal.get("is_weekend"):
+                    day_info += " (weekend)"
+                time_parts.append(day_info)
+            if temporal.get("season"):
+                time_parts.append(f"{temporal['season']}")
+
+            if temporal.get("window_start_time") and temporal.get("window_end_time"):
+                time_parts.append(f"Window: {temporal['window_start_time']} to {temporal['window_end_time']}")
+            elif temporal.get("window_duration_hours"):
+                time_parts.append(f"Window: {temporal['window_duration_hours']:.1f}h ahead")
+
+            if time_parts:
+                user_prompt_parts.append(f"Timing: {' | '.join(time_parts)}")
+
+        # Add key weather changes from context if available
+        if context and "aggregates" in context:
+            agg = context["aggregates"]
+            changes = context.get("changes", {})
+            weather_summary = []
+
+            if agg.get("avg_forecast_temp") is not None:
+                temp_info = f"temp avg {agg['avg_forecast_temp']:.1f}°C"
+                if agg.get("temperature_range") is not None and agg["temperature_range"] > 0:
+                    temp_info += f" (range {agg['temperature_range']:.1f}°C)"
+                weather_summary.append(temp_info)
+
+            if agg.get("avg_forecast_pressure") is not None:
+                pressure_info = f"pressure avg {agg['avg_forecast_pressure']:.1f}hPa"
+                if agg.get("pressure_range") is not None and agg["pressure_range"] > 0:
+                    pressure_info += f" (range {agg['pressure_range']:.1f}hPa)"
+                weather_summary.append(pressure_info)
+
+            if changes.get("pressure_change"):
+                weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
+
+            if agg.get("avg_forecast_humidity"):
+                weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
+
+            if weather_summary:
+                user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
+
+        # Add user sensitivity if available
+        if user_profile:
+            sensitivity = user_profile.get("sensitivity_overall", 1.0)
+            if sensitivity != 1.0:
+                user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
+
+        return "\n".join(user_prompt_parts)

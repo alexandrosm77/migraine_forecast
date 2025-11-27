@@ -368,11 +368,25 @@ class MigrainePredictionService:
                     logger.exception("Failed building LLM context payload")
                     context_payload = {}
 
+                # Get recent predictions for context (with full objects, not just values)
+                recent_predictions = None
+                if user:
+                    recent_predictions = list(MigrainePrediction.objects.filter(
+                        user=user,
+                        location=location,
+                        prediction_time__gte=start_time - timedelta(hours=24)
+                    ).order_by("-prediction_time")[:5])
+
                 llm_level, llm_detail = client.predict_probability(
                     scores=factors_payload,
                     location_label=loc_label,
                     user_profile=applied_profile,
                     context=context_payload,
+                    forecasts=list(forecasts),
+                    previous_forecasts=list(previous_forecasts),
+                    location=location,
+                    previous_predictions=recent_predictions,
+                    high_token_budget=llm_config.high_token_budget,
                 )
                 if llm_level in {"LOW", "MEDIUM", "HIGH"}:
                     llm_used = True
