@@ -149,7 +149,7 @@ class LLMClient:
             language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
 
         # System prompt with explicit JSON output instruction and schema
-        old_sys_prompt = (
+        old_sys_prompt = (  # noqa
             "You are a migraine risk assessor."
             f"{language_instruction}\n\n"
             "MIGRAINE TRIGGER THRESHOLDS:\n"
@@ -439,7 +439,7 @@ class LLMClient:
             language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
 
         # System prompt for sinusitis with explicit JSON output instruction and schema
-        old_sys_prompt = (
+        old_sys_prompt = (  # noqa
             "You are a sinusitis risk assessor.\n"
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
             f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens"
