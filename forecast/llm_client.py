@@ -149,7 +149,7 @@ class LLMClient:
             language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
 
         # System prompt with explicit JSON output instruction and schema
-        sys_prompt = (
+        old_sys_prompt = (
             "You are a migraine risk assessor."
             f"{language_instruction}\n\n"
             "MIGRAINE TRIGGER THRESHOLDS:\n"
@@ -172,6 +172,28 @@ class LLMClient:
             "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
             "- MEDIUM: weighted score 0.4-0.69\n"
             "- HIGH: weighted score ≥ 0.7 (only when multiple high-weight factors exceed thresholds)\n"
+            "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
+            "- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n"
+            "- Changes can be positive (+) or negative (-), indicating direction of change\n"
+            "- Consider both the magnitude of changes AND the min/max ranges provided\n"
+            "- Large ranges (e.g., temperature_range, pressure_range) indicate weather instability\n"
+            "- Previous predictions are for context only - do not blindly follow patterns\n"
+            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
+            "Analyze weather conditions and output ONLY valid JSON matching the schema below"
+            "<schema>\n"
+            "{\n"
+            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
+            '  "confidence": <float between 0 and 1>,\n'
+            '  "rationale": "<brief explanation>",\n'
+            '  "analysis_text": "<concise user explanation>",\n'
+            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
+            "}\n"
+            "</schema>"
+        )
+
+        sys_prompt = (
+            "You are a migraine risk assessor."
+            f"{language_instruction}\n\n"
             "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
             "- Weather CHANGES (pressure drops, temperature swings) are more important than absolute values\n"
             "- Changes can be positive (+) or negative (-), indicating direction of change\n"
@@ -417,7 +439,7 @@ class LLMClient:
             language_instruction = f" Reply in the user's language ({user_language}) for all text fields."
 
         # System prompt for sinusitis with explicit JSON output instruction and schema
-        sys_prompt = (
+        old_sys_prompt = (
             "You are a sinusitis risk assessor.\n"
             "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
             f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens"
@@ -443,6 +465,27 @@ class LLMClient:
             "- LOW: weighted score < 0.4 (most predictions should be LOW)\n"
             "- MEDIUM: weighted score 0.4-0.69\n"
             "- HIGH: weighted score ≥ 0.7 (only when multiple high-weight factors exceed thresholds)\n"
+            "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
+            "- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n"
+            "- Previous predictions are for context only - do not blindly follow patterns\n"
+            "- Be conservative: only predict HIGH when there's clear evidence of multiple risk factors\n\n"
+            "Analyze weather conditions and output ONLY valid JSON matching the schema below.\n"
+            "<schema>\n"
+            "{\n"
+            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
+            '  "confidence": <float between 0 and 1>,\n'
+            '  "rationale": "<brief explanation>",\n'
+            '  "analysis_text": "<concise user explanation>",\n'
+            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
+            "}\n"
+            "</schema>"
+        )
+
+        sys_prompt = (
+            "You are a sinusitis risk assessor.\n"
+            "Focus on sinusitis triggers: rapid temperature changes, humidity extremes (high promotes allergens/mold, "
+            f"low dries sinuses), barometric pressure changes, and precipitation (increases allergens"
+            f").{language_instruction}\n\n"
             "- Focus on ACTUAL WEATHER VALUES and CHANGES, not normalized scores\n"
             "- Weather CHANGES (humidity swings, temperature changes) are more important than absolute values\n"
             "- Previous predictions are for context only - do not blindly follow patterns\n"
