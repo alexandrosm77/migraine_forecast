@@ -1,4 +1,3 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -9,11 +8,12 @@ from datetime import timedelta
 import logging
 
 from forecast.models import MigrainePrediction, SinusitisPrediction, NotificationLog
+from forecast.management.commands.base import SilentStdoutCommand
 
 logger = logging.getLogger(__name__)
 
 
-class Command(BaseCommand):
+class Command(SilentStdoutCommand):
     help = "Send daily digest emails to users who have digest mode enabled"
 
     def add_arguments(self, parser):

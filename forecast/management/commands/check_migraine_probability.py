@@ -1,6 +1,5 @@
 import logging
 
-from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 
@@ -9,11 +8,12 @@ from forecast.weather_service import WeatherService
 from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
 from forecast.notification_service import NotificationService
+from forecast.management.commands.base import SilentStdoutCommand
 
 logger = logging.getLogger(__name__)
 
 
-class Command(BaseCommand):
+class Command(SilentStdoutCommand):
     help = "Check migraine and sinusitis probability and send notifications"
 
     def add_arguments(self, parser):

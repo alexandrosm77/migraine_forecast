@@ -1,9 +1,9 @@
-from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 
 from forecast.models import Location, MigrainePrediction, SinusitisPrediction
 from forecast.notification_service import NotificationService
+from forecast.management.commands.base import SilentStdoutCommand
 
 import logging
 from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, start_transaction, set_tag
@@ -11,7 +11,7 @@ from sentry_sdk import capture_exception, capture_message, set_context, add_brea
 logger = logging.getLogger(__name__)
 
 
-class Command(BaseCommand):
+class Command(SilentStdoutCommand):
     help = "Process and send pending notifications for high/medium risk predictions (Task 3 of decoupled pipeline)"
 
     def add_arguments(self, parser):
