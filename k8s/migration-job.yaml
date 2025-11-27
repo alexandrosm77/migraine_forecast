@@ -22,7 +22,12 @@ spec:
         - manage.py
         - migrate
         - --noinput
-        
+
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: migraine-config
+
         volumeMounts:
         - name: db-storage
           mountPath: /app/db.sqlite3
