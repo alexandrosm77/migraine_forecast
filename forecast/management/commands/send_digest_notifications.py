@@ -33,6 +33,7 @@ class Command(BaseCommand):
         specific_user = options.get("user")
 
         self.stdout.write(self.style.SUCCESS("Starting daily digest notification process..."))
+        logger.info("Starting daily digest notification process")
 
         # Get users with digest mode enabled
         users_query = User.objects.filter(
@@ -46,9 +47,11 @@ class Command(BaseCommand):
 
         if not users:
             self.stdout.write(self.style.WARNING("No users with digest mode enabled"))
+            logger.info("No users with digest mode enabled")
             return
 
         self.stdout.write(f"Found {len(users)} user(s) with digest mode enabled")
+        logger.info("Found %d user(s) with digest mode enabled", len(users))
 
         now = timezone.now()
         current_time = now.time()
@@ -148,9 +151,10 @@ class Command(BaseCommand):
 
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"Error processing digest for {user.username}: {e}"))
-                logger.error(f"Error processing digest for {user.username}: {e}", exc_info=True)
+                logger.error("Error processing digest for %s: %s", user.username, e, exc_info=True)
 
         self.stdout.write(self.style.SUCCESS(f"Digest notification process complete. Sent {digests_sent} digest(s)"))
+        logger.info("Digest notification process complete: sent=%d, total_users=%d", digests_sent, len(users))
 
     def send_digest_email(self, user, migraine_preds, sinusitis_preds):
         """Send a daily digest email to a user."""

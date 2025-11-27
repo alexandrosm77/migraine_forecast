@@ -53,6 +53,7 @@ class Command(BaseCommand):
 
             start_time = timezone.now()
             self.stdout.write(self.style.SUCCESS(f"[{start_time}] Starting prediction generation..."))
+            logger.info("Starting prediction generation")
 
             add_breadcrumb(
                 category="cron",
@@ -70,16 +71,19 @@ class Command(BaseCommand):
             locations = Location.objects.filter(id=options["location_id"])
             if not locations:
                 self.stdout.write(self.style.ERROR(f"Location with ID {options['location_id']} not found"))
+                logger.error("Location with ID %s not found", options["location_id"])
                 return
         else:
             locations = Location.objects.all()
 
             if not locations:
                 self.stdout.write(self.style.WARNING("No locations found in database"))
+                logger.warning("No locations found for prediction generation")
                 capture_message("No locations found for prediction generation", level="warning")
                 return
 
             self.stdout.write(f"Found {len(locations)} location(s) to process")
+            logger.info("Found %d location(s) to process", len(locations))
 
             add_breadcrumb(
                 category="cron",
@@ -248,9 +252,22 @@ class Command(BaseCommand):
 
             add_breadcrumb(category="cron", message="Prediction generation completed", level="info", data=summary_data)
 
+            # Log summary for Promtail/Loki
+            logger.info(
+                "Prediction generation completed: locations=%d, migraine=%d, sinusitis=%d, high_risk=%d, medium_risk=%d, errors=%d, duration=%.2fs",  # noqa: E501
+                len(locations),
+                total_migraine_predictions,
+                total_sinusitis_predictions,
+                high_risk_count,
+                medium_risk_count,
+                len(errors),
+                duration,
+            )
+
             # Alert on high-risk predictions
             if high_risk_count > 0:
                 set_tag("high_risk_predictions", high_risk_count)
+                logger.info("Generated %d HIGH risk prediction(s)", high_risk_count)
                 capture_message(f"Generated {high_risk_count} HIGH risk prediction(s)", level="info")
 
             if errors:
@@ -259,6 +276,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.ERROR(f"  - {error}"))
 
                 # Capture summary message with errors
+                logger.warning("Prediction generation completed with %d error(s)", len(errors))
                 capture_message(
                     f"Prediction generation completed with {len(errors)} error(s)",
                     level="error" if len(errors) > len(locations) / 2 else "warning",

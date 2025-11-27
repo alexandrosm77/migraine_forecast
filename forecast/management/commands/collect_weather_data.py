@@ -46,10 +46,9 @@ class Command(BaseCommand):
 
             start_time = timezone.now()
 
-            # Log to both stdout and logger for consistent ordering
-            start_msg = "Starting weather data collection..."
-            self.stdout.write(self.style.SUCCESS(f"[{start_time}] {start_msg}"))
-            logger.info(start_msg)
+            # Log to both stdout and logger
+            self.stdout.write(self.style.SUCCESS(f"[{start_time}] Starting weather data collection..."))
+            logger.info("Starting weather data collection")
 
             add_breadcrumb(
                 category="cron",
@@ -65,10 +64,12 @@ class Command(BaseCommand):
             locations = Location.objects.all()
             if not locations:
                 self.stdout.write(self.style.WARNING("No locations found in database"))
+                logger.warning("No locations found for weather data collection")
                 capture_message("No locations found for weather data collection", level="warning")
                 return
 
             self.stdout.write(f"Found {len(locations)} location(s) to update")
+            logger.info("Found %d location(s) to update", len(locations))
 
             add_breadcrumb(
                 category="cron",
@@ -154,12 +155,25 @@ class Command(BaseCommand):
                 category="cron", message="Weather data collection completed", level="info", data=summary_data
             )
 
+            # Log summary for Promtail/Loki
+            logger.info(
+                "Weather data collection completed: locations=%d, created=%d, updated=%d, errors=%d, duration=%.2fs",
+                len(locations),
+                total_forecasts_created,
+                total_forecasts_updated,
+                len(errors),
+                duration,
+            )
+
             if errors:
                 self.stdout.write("\nErrors encountered:")
                 for error in errors:
                     self.stdout.write(self.style.ERROR(f"  - {error}"))
 
                 # Capture summary message with errors
+                logger.warning(
+                    "Weather data collection completed with %d error(s)", len(errors)
+                )
                 capture_message(
                     f"Weather data collection completed with {len(errors)} error(s)",
                     level="error" if len(errors) > len(locations) / 2 else "warning",

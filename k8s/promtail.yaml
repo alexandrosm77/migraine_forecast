@@ -62,13 +62,30 @@ data:
               job: migraine-forecast
               __path__: /var/log/pods/migraine-forecast_*/*/*.log
         pipeline_stages:
+          # Parse CRI log format
           - cri: {}
+          # Extract pod metadata from log path
           - regex:
               expression: '/var/log/pods/(?P<namespace>[^_]+)_(?P<pod>[^_]+)-[^_]+_[^/]+/(?P<container>[^/]+)/.*\.log'
           - labels:
               namespace:
               pod:
               container:
+          # Parse JSON logs from Django application
+          - json:
+              expressions:
+                level: level
+                logger: logger
+                module: module
+                trace_id: trace_id
+                span_id: span_id
+          # Set log level as a label for filtering
+          - labels:
+              level:
+          # Drop trace fields from log line (they're now labels)
+          - labeldrop:
+              - trace_id
+              - span_id
 
 ---
 # DaemonSet - runs one Promtail pod per node

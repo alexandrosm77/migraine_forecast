@@ -46,6 +46,7 @@ class Command(BaseCommand):
 
             start_time = timezone.now()
             self.stdout.write(self.style.SUCCESS(f"[{start_time}] Starting notification processing..."))
+            logger.info("Starting notification processing")
 
             add_breadcrumb(
                 category="cron",
@@ -65,6 +66,7 @@ class Command(BaseCommand):
             locations = Location.objects.all()
             if not locations:
                 self.stdout.write(self.style.WARNING("No locations found in database"))
+                logger.warning("No locations found for notification processing")
                 capture_message("No locations found for notification processing", level="warning")
                 return
 
@@ -137,6 +139,12 @@ class Command(BaseCommand):
             self.stdout.write(f"Found {len(migraine_predictions)} pending migraine notification(s)")
             self.stdout.write(f"Found {len(sinusitis_predictions)} pending sinusitis notification(s)")
             self.stdout.write(f"Total unique locations with pending notifications: {total_pending}")
+            logger.info(
+                "Found pending notifications: migraine=%d, sinusitis=%d, total_locations=%d",
+                len(migraine_predictions),
+                len(sinusitis_predictions),
+                total_pending,
+            )
 
             add_breadcrumb(
                 category="cron",
@@ -151,6 +159,7 @@ class Command(BaseCommand):
 
             if total_pending == 0:
                 self.stdout.write(self.style.SUCCESS("No pending notifications to send"))
+                logger.info("No pending notifications to send")
                 capture_message("No pending notifications to send", level="info")
                 return
 
@@ -240,6 +249,16 @@ class Command(BaseCommand):
 
             add_breadcrumb(
                 category="cron", message="Notification processing completed", level="info", data=summary_data
+            )
+
+            # Log summary for Promtail/Loki
+            logger.info(
+                "Notification processing completed: pending_migraine=%d, pending_sinusitis=%d, sent=%d, duration=%.2fs, dry_run=%s",  # noqa: E501
+                len(migraine_predictions),
+                len(sinusitis_predictions),
+                notifications_sent,
+                duration,
+                options["dry_run"],
             )
 
             if not options["dry_run"]:

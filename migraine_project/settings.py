@@ -193,6 +193,96 @@ class HealthProbeLogFilter:
 
 
 # Logging configuration
+# LOG_FORMAT: 'text' (default, human-readable) or 'json' (structured for Promtail/Loki)
+# LOG_TO_FILE: 'true' (default) or 'false' (disable file logging in Kubernetes)
+LOG_FORMAT = os.getenv("LOG_FORMAT", "text").lower()
+LOG_TO_FILE = os.getenv("LOG_TO_FILE", "true").lower() in ("1", "true", "yes", "on")
+
+# Build formatters based on LOG_FORMAT
+LOGGING_FORMATTERS = {
+    "verbose": {
+        "format": "{levelname} {asctime} {module} {message}",
+        "style": "{",
+    },
+}
+
+# Add JSON formatter if python-json-logger is available and JSON format is requested
+if LOG_FORMAT == "json":
+    try:
+        from pythonjsonlogger import jsonlogger
+
+        class SentryTraceJsonFormatter(jsonlogger.JsonFormatter):
+            """
+            Custom JSON formatter that includes Sentry trace context for correlation.
+            This allows correlating logs with Sentry transactions in Grafana.
+
+            Note: Sentry trace context is only available after sentry_sdk.init() is called
+            and during an active transaction/span. The formatter gracefully handles cases
+            where Sentry is not initialized or no span is active.
+            """
+            def add_fields(self, log_record, record, message_dict):
+                super().add_fields(log_record, record, message_dict)
+                # Add standard fields
+                log_record["level"] = record.levelname.lower()
+                log_record["logger"] = record.name
+                log_record["module"] = record.module
+                log_record["funcName"] = record.funcName
+                log_record["lineno"] = record.lineno
+
+                # Add Sentry trace context if available
+                # This uses sentry_sdk which is imported at the top of settings.py
+                # The trace context is only available during an active transaction
+                try:
+                    scope = sentry_sdk.get_current_scope()
+                    span = scope.span if scope else None
+                    if span:
+                        log_record["trace_id"] = span.trace_id
+                        log_record["span_id"] = span.span_id
+                        if span.parent_span_id:
+                            log_record["parent_span_id"] = span.parent_span_id
+                except Exception:
+                    pass  # Sentry not initialized or no active span
+
+        LOGGING_FORMATTERS["json"] = {
+            "()": SentryTraceJsonFormatter,
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z",
+        }
+    except ImportError:
+        # python-json-logger not installed, fall back to text format
+        import logging as _logging
+        _logging.warning(
+            "LOG_FORMAT=json requested but python-json-logger is not installed. "
+            "Falling back to text format. Install with: pip install python-json-logger"
+        )
+        LOG_FORMAT = "text"
+
+# Determine which formatter to use
+ACTIVE_FORMATTER = "json" if LOG_FORMAT == "json" else "verbose"
+
+# Build handlers based on configuration
+LOGGING_HANDLERS = {
+    "console": {
+        "level": "INFO",
+        "class": "logging.StreamHandler",
+        "formatter": ACTIVE_FORMATTER,
+        "filters": ["health_probe_filter"],
+    },
+}
+
+# Only add file handler if LOG_TO_FILE is enabled
+if LOG_TO_FILE:
+    LOGGING_HANDLERS["file"] = {
+        "level": "INFO",
+        "class": "logging.FileHandler",
+        "filename": os.path.join(BASE_DIR, "migraine_forecast.log"),
+        "formatter": ACTIVE_FORMATTER,
+        "filters": ["health_probe_filter"],
+    }
+
+# Determine which handlers to use for loggers
+ACTIVE_HANDLERS = ["console", "file"] if LOG_TO_FILE else ["console"]
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -201,38 +291,16 @@ LOGGING = {
             "()": "migraine_project.settings.HealthProbeLogFilter",
         },
     },
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-            "filters": ["health_probe_filter"],  # Apply filter to console logs
-        },
-        "file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "migraine_forecast.log"),
-            "formatter": "verbose",
-            "filters": ["health_probe_filter"],  # Apply filter to file logs
-        },
-        # Sentry handler is automatically added by LoggingIntegration
-        # It will capture ERROR level and above logs
-        # The filter will prevent health probe logs from reaching Sentry
-    },
+    "formatters": LOGGING_FORMATTERS,
+    "handlers": LOGGING_HANDLERS,
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": ACTIVE_HANDLERS,
             "level": "INFO",
             "propagate": True,
         },
         "forecast": {
-            "handlers": ["console", "file"],
+            "handlers": ACTIVE_HANDLERS,
             "level": "INFO",
             "propagate": True,
         },
@@ -244,7 +312,7 @@ LOGGING = {
         },
         # Gunicorn access logs - also apply filter
         "gunicorn.access": {
-            "handlers": ["console", "file"],
+            "handlers": ACTIVE_HANDLERS,
             "level": "INFO",
             "propagate": False,
             "filters": ["health_probe_filter"],

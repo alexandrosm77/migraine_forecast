@@ -7,3 +7,4 @@ sentry-sdk[django]>=2.43.0
 bump2version>=1.0.0
 gunicorn>=21.2.0
 whitenoise>=6.6.0
+python-json-logger>=2.0.0

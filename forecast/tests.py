@@ -1,3 +1,5 @@
+import logging
+
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -23,6 +25,8 @@ from .llm_client import LLMClient
 from .notification_service import NotificationService
 from .forms import UserHealthProfileForm
 from .tools import ensure_timezone_aware
+
+logger = logging.getLogger(__name__)
 
 
 class LocationModelTest(TestCase):
@@ -1500,7 +1504,7 @@ class LanguageSwitchingTest(TestCase):
         }
         form = UserHealthProfileForm(data=form_data, instance=self.profile)
         if not form.is_valid():
-            print("Form errors:", form.errors)
+            logger.debug("Form errors: %s", form.errors)
         self.assertTrue(form.is_valid())
 
         saved_profile = form.save()

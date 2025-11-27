@@ -1,3 +1,5 @@
+import logging
+
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
@@ -7,6 +9,8 @@ from forecast.weather_service import WeatherService
 from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
 from forecast.notification_service import NotificationService
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -48,6 +52,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"[{timezone.now()}] Starting migraine and sinusitis probability check...")
         )
+        logger.info("Starting migraine and sinusitis probability check")
 
         # Initialize services
         weather_service = WeatherService()
@@ -118,6 +123,11 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             self.style.SUCCESS(f"[{timezone.now()}] Check completed. Total notifications sent: {notifications_sent}")
+        )
+        logger.info(
+            "Migraine/sinusitis probability check completed: locations=%d, notifications_sent=%d",
+            len(locations),
+            notifications_sent,
         )
 
     def _handle_test_notification(self, options):

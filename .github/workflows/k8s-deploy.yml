@@ -140,6 +140,8 @@ jobs:
               --from-literal=SENTRY_TRACES_SAMPLE_RATE="${{ vars.SENTRY_TRACES_SAMPLE_RATE }}" \
               --from-literal=SENTRY_PROFILES_SAMPLE_RATE="${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}" \
               --from-literal=DOCKERHUB_USERNAME="${{ vars.DOCKERHUB_USERNAME }}" \
+              --from-literal=LOG_FORMAT="json" \
+              --from-literal=LOG_TO_FILE="false" \
               --namespace=migraine-forecast \
               --dry-run=client -o yaml | sudo kubectl apply -f -
 
