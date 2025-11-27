@@ -359,7 +359,7 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
         (
             "API Configuration",
             {
-                "fields": ("base_url", "model", "api_key", "timeout"),
+                "fields": ("base_url", "model", "api_key", "timeout", "high_token_budget"),
                 "description": "Configure the LLM API endpoint and model",
             },
         ),
