@@ -84,6 +84,15 @@ data:
           # Set log level as a label for filtering
           - labels:
               level:
+          # DROP NOISY LOGS
+          # Drop static file requests (304 responses)
+          - drop:
+              expression: '.*GET /static/.*304.*'
+          # Drop admin static files
+          - drop:
+              expression: '.*GET /admin/(css|js|img|fonts)/.*'
+          - drop:
+              expression: '.*(could not inspect container info).*'
           # Drop trace fields from log line (they're now labels)
           - labeldrop:
               - trace_id
