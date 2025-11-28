@@ -114,6 +114,133 @@ class OpenMeteoClient:
             logger.error(f"Error fetching weather forecast: {e}")
             return None
 
+    def get_forecast_batch(self, locations, days=3):
+        """
+        Get weather forecast for multiple locations in a single API call.
+        Open-Meteo supports batch requests with comma-separated coordinates.
+
+        Args:
+            locations (list): List of Location model instances (max 50)
+            days (int): Number of forecast days (default: 3)
+
+        Returns:
+            list: List of dicts with weather forecast data for each location.
+                  Each dict has 'location' key and 'data' key (API response or None on error).
+        """
+        if not locations:
+            logger.warning("get_forecast_batch called with empty locations list")
+            return []
+
+        if len(locations) > 50:
+            logger.error(f"Batch size {len(locations)} exceeds maximum of 50 locations")
+            raise ValueError("Batch size cannot exceed 50 locations")
+
+        # Build comma-separated latitude and longitude strings
+        latitudes = ",".join(str(loc.latitude) for loc in locations)
+        longitudes = ",".join(str(loc.longitude) for loc in locations)
+
+        params = {
+            "latitude": latitudes,
+            "longitude": longitudes,
+            "hourly": ",".join(self.WEATHER_PARAMS),
+            "forecast_days": days,
+            "timezone": "UTC",
+        }
+
+        # Add breadcrumb for batch API call
+        location_details = [{"id": loc.id, "city": loc.city, "country": loc.country} for loc in locations]
+        add_breadcrumb(
+            category="weather_api",
+            message=f"Fetching batch weather forecast from Open-Meteo for {len(locations)} locations",
+            level="info",
+            data={
+                "location_count": len(locations),
+                "locations": location_details,
+                "days": days,
+                "api_url": self.BASE_URL,
+            },
+        )
+
+        try:
+            with start_span(op="http.client", description=f"Open-Meteo batch API request ({len(locations)} locations)"):
+                response = requests.get(self.BASE_URL, params=params, timeout=60)
+                response.raise_for_status()
+
+                add_breadcrumb(
+                    category="weather_api",
+                    message=f"Batch weather forecast fetched successfully for {len(locations)} locations",
+                    level="info",
+                    data={"status_code": response.status_code, "location_count": len(locations)},
+                )
+
+                # Parse the batch response
+                batch_data = response.json()
+
+                # The batch API returns an array of forecast objects
+                # Each element corresponds to a location in the same order as the request
+                results = []
+                if isinstance(batch_data, list):
+                    # Response is a list of forecast objects
+                    for i, location in enumerate(locations):
+                        if i < len(batch_data):
+                            results.append({"location": location, "data": batch_data[i]})
+                        else:
+                            logger.error(f"Missing data for location {location} at index {i}")
+                            results.append({"location": location, "data": None})
+                else:
+                    # Single location response (shouldn't happen with batch, but handle it)
+                    logger.warning("Batch API returned single object instead of array")
+                    if locations:
+                        results.append({"location": locations[0], "data": batch_data})
+
+                return results
+
+        except requests.exceptions.Timeout as e:
+            set_context(
+                "weather_api_batch_timeout",
+                {
+                    "location_count": len(locations),
+                    "locations": location_details,
+                    "days": days,
+                    "api_url": self.BASE_URL,
+                    "timeout": 60,
+                },
+            )
+            capture_exception(e)
+            logger.error(f"Timeout fetching batch weather forecast for {len(locations)} locations: {e}")
+            return None
+
+        except requests.exceptions.HTTPError as e:
+            set_context(
+                "weather_api_batch_http_error",
+                {
+                    "location_count": len(locations),
+                    "locations": location_details,
+                    "days": days,
+                    "api_url": self.BASE_URL,
+                    "status_code": e.response.status_code if e.response else None,
+                    "response_text": e.response.text if e.response else None,
+                },
+            )
+            capture_exception(e)
+            logger.error(f"HTTP error fetching batch weather forecast for {len(locations)} locations: {e}")
+            return None
+
+        except requests.exceptions.RequestException as e:
+            set_context(
+                "weather_api_batch_error",
+                {
+                    "location_count": len(locations),
+                    "locations": location_details,
+                    "days": days,
+                    "api_url": self.BASE_URL,
+                    "error_type": type(e).__name__,
+                },
+            )
+            capture_exception(e)
+            logger.error(f"Error fetching batch weather forecast for {len(locations)} locations: {e}")
+            return None
+
     def parse_forecast_data(self, forecast_data, location):
         """
         Parse the forecast data from Open-Meteo API and prepare it for storage.
@@ -169,3 +296,40 @@ class OpenMeteoClient:
             parsed_data.append(forecast_entry)
 
         return parsed_data
+
+    def parse_forecast_data_batch(self, batch_results):
+        """
+        Parse batch forecast data from Open-Meteo API.
+
+        Args:
+            batch_results (list): List of dicts with 'location' and 'data' keys
+                                  from get_forecast_batch()
+
+        Returns:
+            dict: Dictionary mapping location objects to lists of parsed forecast data.
+                  Format: {location: [forecast_entry1, forecast_entry2, ...], ...}
+        """
+        if not batch_results:
+            logger.warning("parse_forecast_data_batch called with empty batch_results")
+            return {}
+
+        parsed_batch = {}
+
+        for result in batch_results:
+            location = result.get("location")
+            forecast_data = result.get("data")
+
+            if not location:
+                logger.error("Batch result missing location")
+                continue
+
+            if not forecast_data:
+                logger.warning(f"No forecast data for location {location}")
+                parsed_batch[location] = []
+                continue
+
+            # Use the existing parse_forecast_data method for each location
+            parsed_data = self.parse_forecast_data(forecast_data, location)
+            parsed_batch[location] = parsed_data
+
+        return parsed_batch

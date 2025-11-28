@@ -160,6 +160,169 @@ class WeatherService:
                 logger.error(f"Error updating forecast for {location}: {str(e)}")
                 raise
 
+    def update_forecast_for_locations_batch(self, locations):
+        """
+        Update weather forecasts for multiple locations using batch API.
+        This reduces API calls by batching up to 50 locations per request.
+
+        Args:
+            locations (list): List of Location model instances (max 50)
+
+        Returns:
+            dict: Dictionary with batch results
+                  Format: {
+                      'total_created': int,
+                      'total_updated': int,
+                      'location_results': {location_id: {'created': int, 'updated': int}, ...},
+                      'errors': [{'location': Location, 'error': str}, ...]
+                  }
+        """
+        if not locations:
+            logger.warning("update_forecast_for_locations_batch called with empty locations list")
+            return {"total_created": 0, "total_updated": 0, "location_results": {}, "errors": []}
+
+        if len(locations) > 50:
+            raise ValueError("Batch size cannot exceed 50 locations")
+
+        # Build location details for logging
+        location_details = [f"{loc.city}, {loc.country} (ID: {loc.id})" for loc in locations]
+
+        logger.info(f"Starting batch forecast update for {len(locations)} locations: {location_details}")
+
+        add_breadcrumb(
+            category="weather",
+            message=f"Batch updating forecasts for {len(locations)} locations",
+            level="info",
+            data={"location_count": len(locations), "locations": location_details},
+        )
+
+        # Initialize results
+        total_created = 0
+        total_updated = 0
+        location_results = {}
+        errors = []
+
+        try:
+            # Fetch batch forecast data from the API
+            batch_results = self.api_client.get_forecast_batch(locations, days=3)
+
+            if batch_results is None:
+                # Batch API call failed completely
+                error_msg = f"Batch API call failed for {len(locations)} locations"
+                logger.error(error_msg)
+                capture_message(error_msg, level="error")
+
+                # Record error for all locations in the batch
+                for location in locations:
+                    errors.append({"location": location, "error": "Batch API call failed"})
+                    location_results[location.id] = {"created": 0, "updated": 0}
+
+                return {
+                    "total_created": 0,
+                    "total_updated": 0,
+                    "location_results": location_results,
+                    "errors": errors,
+                }
+
+            # Parse the batch forecast data
+            parsed_batch = self.api_client.parse_forecast_data_batch(batch_results)
+
+            # Process each location's forecast data
+            for location in locations:
+                try:
+                    parsed_data = parsed_batch.get(location, [])
+
+                    if not parsed_data:
+                        logger.warning(f"No valid forecast data parsed for location: {location}")
+                        errors.append({"location": location, "error": "No valid forecast data parsed"})
+                        location_results[location.id] = {"created": 0, "updated": 0}
+                        continue
+
+                    # Store the forecast data in the database using update_or_create
+                    created_count = 0
+                    updated_count = 0
+
+                    for entry in parsed_data:
+                        # Extract the unique key fields
+                        location_obj = entry.pop("location")
+                        target_time = entry.pop("target_time")
+
+                        # Use update_or_create to avoid duplicates
+                        forecast, created = WeatherForecast.objects.update_or_create(
+                            location=location_obj, target_time=target_time, defaults=entry
+                        )
+
+                        if created:
+                            created_count += 1
+                        else:
+                            updated_count += 1
+
+                    total_created += created_count
+                    total_updated += updated_count
+                    location_results[location.id] = {"created": created_count, "updated": updated_count}
+
+                    logger.info(
+                        f"Batch: Created {created_count} and updated {updated_count} forecast entries for {location}"
+                    )
+
+                except Exception as e:
+                    error_msg = f"Error processing forecast data for {location}: {str(e)}"
+                    logger.error(error_msg, exc_info=True)
+                    errors.append({"location": location, "error": str(e)})
+                    location_results[location.id] = {"created": 0, "updated": 0}
+
+                    # Capture exception with context
+                    set_context(
+                        "weather_batch_location_error",
+                        {
+                            "location": f"{location.city}, {location.country}",
+                            "location_id": location.id,
+                            "operation": "update_forecast_for_locations_batch",
+                        },
+                    )
+                    capture_exception(e)
+
+            add_breadcrumb(
+                category="weather",
+                message=f"Batch forecast update completed for {len(locations)} locations",
+                level="info",
+                data={
+                    "total_created": total_created,
+                    "total_updated": total_updated,
+                    "errors": len(errors),
+                },
+            )
+
+            return {
+                "total_created": total_created,
+                "total_updated": total_updated,
+                "location_results": location_results,
+                "errors": errors,
+            }
+
+        except Exception as e:
+            # Capture unexpected exceptions at batch level
+            error_msg = f"Unexpected error in batch forecast update: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+
+            set_context(
+                "weather_batch_error",
+                {"location_count": len(locations), "locations": location_details, "operation": "batch_update"},
+            )
+            capture_exception(e)
+
+            # Record error for all locations in the batch
+            for location in locations:
+                errors.append({"location": location, "error": str(e)})
+                location_results[location.id] = {"created": 0, "updated": 0}
+
+            return {
+                "total_created": 0,
+                "total_updated": 0,
+                "location_results": location_results,
+                "errors": errors,
+            }
+
     def update_all_forecasts(self):
         """
         Update weather forecasts for all locations in the database.

@@ -16,10 +16,10 @@ class Command(SilentStdoutCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--cleanup-days",
+            "--cleanup-hours",
             type=int,
-            default=180,
-            help="Delete forecasts older than this many days (default: 180)",
+            default=48,
+            help="Delete forecasts older than this many hours (default: 48)",
         )
         parser.add_argument(
             "--skip-cleanup",
@@ -78,54 +78,117 @@ class Command(SilentStdoutCommand):
                 data={"location_count": len(locations)},
             )
 
-            # Collect forecasts for each location
+            # Batch locations into groups of 50
+            BATCH_SIZE = 50
+            location_list = list(locations)
             total_forecasts_created = 0
             total_forecasts_updated = 0
             errors = []
 
-            for location in locations:
+            # Calculate number of batches
+            num_batches = (len(location_list) + BATCH_SIZE - 1) // BATCH_SIZE
+
+            self.stdout.write(
+                f"Processing {len(location_list)} locations in {num_batches} batch(es) of up to {BATCH_SIZE}"
+            )
+
+            for batch_num in range(num_batches):
+                start_idx = batch_num * BATCH_SIZE
+                end_idx = min(start_idx + BATCH_SIZE, len(location_list))
+                batch_locations = location_list[start_idx:end_idx]
+
+                self.stdout.write(f"\n{'=' * 60}")
+                self.stdout.write(f"Processing Batch {batch_num + 1}/{num_batches} ({len(batch_locations)} locations)")
+                self.stdout.write(f"{'=' * 60}")
+
+                # Log which locations are in this batch
+                batch_location_details = [
+                    f"{loc.city}, {loc.country} (User: {loc.user.username}, ID: {loc.id})"
+                    for loc in batch_locations
+                ]
+                self.stdout.write(f"Batch locations: {', '.join(batch_location_details)}")
+                logger.info(
+                    "Processing batch %d/%d with %d locations: %s",
+                    batch_num + 1,
+                    num_batches,
+                    len(batch_locations),
+                    batch_location_details,
+                )
+
                 try:
-                    self.stdout.write(f"\nProcessing location: {location} (User: {location.user.username})")
+                    # Process batch
+                    batch_result = weather_service.update_forecast_for_locations_batch(batch_locations)
 
-                    # Fetch and store forecasts
-                    created, updated = weather_service.update_forecast_for_location_upsert(location)
+                    # Update totals
+                    batch_created = batch_result["total_created"]
+                    batch_updated = batch_result["total_updated"]
+                    batch_errors = batch_result["errors"]
 
-                    total_forecasts_created += created
-                    total_forecasts_updated += updated
+                    total_forecasts_created += batch_created
+                    total_forecasts_updated += batch_updated
 
-                    self.stdout.write(f"  ✓ Created {created} new forecast(s), updated {updated} existing forecast(s)")
+                    self.stdout.write(
+                        f"\nBatch {batch_num + 1} Summary: "
+                        f"Created {batch_created}, Updated {batch_updated}, Errors: {len(batch_errors)}"
+                    )
+
+                    # Log individual location results
+                    for location in batch_locations:
+                        loc_result = batch_result["location_results"].get(
+                            location.id, {"created": 0, "updated": 0}
+                        )
+                        created = loc_result["created"]
+                        updated = loc_result["updated"]
+
+                        # Check if this location had an error
+                        loc_error = next((e for e in batch_errors if e["location"].id == location.id), None)
+
+                        if loc_error:
+                            error_msg = f"Error processing location {location}: {loc_error['error']}"
+                            errors.append(error_msg)
+                            self.stdout.write(self.style.ERROR(f"  ✗ {location} - {loc_error['error']}"))
+                            logger.error(error_msg)
+                        else:
+                            self.stdout.write(
+                                f"  ✓ {location} - Created {created}, Updated {updated}"
+                            )
 
                 except Exception as e:
-                    error_msg = f"Error processing location {location}: {str(e)}"
+                    # Batch-level error
+                    error_msg = f"Error processing batch {batch_num + 1}: {str(e)}"
                     errors.append(error_msg)
-                    self.stdout.write(self.style.ERROR(f"  ✗ {error_msg}"))
+                    self.stdout.write(self.style.ERROR(f"\n  ✗ {error_msg}"))
                     logger.error(error_msg, exc_info=True)
 
                     # Capture exception with context
                     set_context(
-                        "weather_collection_error",
-                        {"location": str(location), "location_id": location.id, "user": location.user.username},
+                        "weather_collection_batch_error",
+                        {
+                            "batch_num": batch_num + 1,
+                            "batch_size": len(batch_locations),
+                            "locations": batch_location_details,
+                        },
                     )
                     capture_exception(e)
 
-        # Cleanup old forecasts
-        if not options["skip_cleanup"]:
-            self.stdout.write("\n" + "=" * 60)
-            self.stdout.write("Cleaning up old forecast data...")
+            # Cleanup old forecasts
+            if not options["skip_cleanup"]:
+                self.stdout.write("\n" + "=" * 60)
+                self.stdout.write("Cleaning up old forecast data...")
 
-            cleanup_days = options["cleanup_days"]
-            cutoff_time = timezone.now() - timedelta(days=cleanup_days)
+                cleanup_hours = options["cleanup_hours"]
+                cutoff_time = timezone.now() - timedelta(hours=cleanup_hours)
 
-            old_forecasts = WeatherForecast.objects.filter(forecast_time__lt=cutoff_time)
-            count = old_forecasts.count()
+                old_forecasts = WeatherForecast.objects.filter(forecast_time__lt=cutoff_time)
+                count = old_forecasts.count()
 
-            if count > 0:
-                old_forecasts.delete()
-                self.stdout.write(
-                    self.style.SUCCESS(f"  ✓ Deleted {count} forecast(s) older than {cleanup_days} days")
-                )
-            else:
-                self.stdout.write("  No old forecasts to delete")
+                if count > 0:
+                    old_forecasts.delete()
+                    self.stdout.write(
+                        self.style.SUCCESS(f"  ✓ Deleted {count} forecast(s) older than {cleanup_hours} hours")
+                    )
+                else:
+                    self.stdout.write("  No old forecasts to delete")
 
             # Summary
             end_time = timezone.now()
