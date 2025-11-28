@@ -1,3 +1,5 @@
+from time import sleep
+
 from django.utils import timezone
 from datetime import timedelta
 
@@ -119,6 +121,7 @@ class Command(SilentStdoutCommand):
                 # Generate migraine prediction if enabled
                 if migraine_enabled:
                     try:
+                        sleep(5)  # Rate limit to 1 prediction per 5 seconds
                         probability, prediction = migraine_service.predict_migraine_probability(
                             location=location, user=user
                         )
