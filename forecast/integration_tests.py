@@ -302,7 +302,7 @@ class EndToEndWorkflowTest(TestCase):
         from .management.commands.collect_weather_data import Command as CollectWeatherCommand
 
         collect_cmd = CollectWeatherCommand()
-        collect_cmd.handle(cleanup_hours=48, skip_cleanup=False)
+        collect_cmd.handle(cleanup_days=2, skip_cleanup=False)
 
         # Verify we have forecasts for the full 24-hour window
         forecasts = WeatherForecast.objects.filter(location=location)
@@ -502,7 +502,7 @@ class EndToEndWorkflowTest(TestCase):
 
         # Run the collect_weather_data command with options
         collect_cmd = CollectWeatherCommand()
-        collect_cmd.handle(cleanup_hours=48, skip_cleanup=False)
+        collect_cmd.handle(cleanup_days=2, skip_cleanup=False)
 
         # Verify weather forecasts were created
         forecasts = WeatherForecast.objects.filter(location=location)
