@@ -109,8 +109,8 @@ class LLMClient:
                     "model": self.model,
                     "base_url": self.base_url,
                     "error": str(e),
-                    "response_status": resp.status_code if 'resp' in locals() else None,
-                    "response_text": resp.text[:500] if 'resp' in locals() else None,
+                    "response_status": resp.status_code if "resp" in locals() else None,
+                    "response_text": resp.text[:500] if "resp" in locals() else None,
                     "url": url,
                 },
             )
@@ -158,7 +158,6 @@ class LLMClient:
         forecasts: Optional[List[Any]] = None,
         previous_forecasts: Optional[List[Any]] = None,
         location: Optional[Any] = None,
-        previous_predictions: Optional[List[Any]] = None,
         high_token_budget: bool = False,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
@@ -174,9 +173,8 @@ class LLMClient:
             user_profile: User health profile with sensitivities
             context: Legacy context dict (deprecated, use forecasts instead)
             forecasts: List of WeatherForecast objects for prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period
+            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
-            previous_predictions: List of recent MigrainePrediction objects
             high_token_budget: Whether to use detailed context (default: False)
         """
         # Determine user's preferred language
@@ -202,7 +200,7 @@ class LLMClient:
             "- Significant temperature swings beyond normal diurnal variation\n"
             "- Humidity extremes (very high or very low)\n"
             "- Approaching weather fronts and storm systems\n\n"
-            "Use the user's sensitivity profile and recent prediction history as context for your assessment.\n"
+            "Use the user's sensitivity profile and recent weather trends as context for your assessment.\n"
             f"{language_instruction}\n"
             "Output ONLY valid JSON matching the schema below.\n"
             "<schema>\n"
@@ -224,7 +222,6 @@ class LLMClient:
                 previous_forecasts=previous_forecasts or [],
                 location=location,
                 user_profile=user_profile,
-                previous_predictions=previous_predictions,
             )
         else:
             # Fallback to legacy context building (for backwards compatibility)
@@ -362,7 +359,6 @@ class LLMClient:
         forecasts: Optional[List[Any]] = None,
         previous_forecasts: Optional[List[Any]] = None,
         location: Optional[Any] = None,
-        previous_predictions: Optional[List[Any]] = None,
         high_token_budget: bool = False,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
@@ -378,9 +374,8 @@ class LLMClient:
             user_profile: User health profile with sensitivities
             context: Legacy context dict (deprecated, use forecasts instead)
             forecasts: List of WeatherForecast objects for prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period
+            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
-            previous_predictions: List of recent SinusitisPrediction objects
             high_token_budget: Whether to use detailed context (default: False)
         """
         # Determine user's preferred language
@@ -407,7 +402,7 @@ class LLMClient:
             "- Barometric pressure changes\n"
             "- Precipitation (increases allergens)\n"
             "- Seasonal factors (pollen season, indoor heating drying air)\n\n"
-            "Use the user's sensitivity profile and recent prediction history as context for your assessment.\n"
+            "Use the user's sensitivity profile and recent weather trends as context for your assessment.\n"
             f"{language_instruction}\n"
             "Output ONLY valid JSON matching the schema below.\n"
             "<schema>\n"
@@ -429,7 +424,6 @@ class LLMClient:
                 previous_forecasts=previous_forecasts or [],
                 location=location,
                 user_profile=user_profile,
-                previous_predictions=previous_predictions,
             )
         else:
             # Fallback to legacy context building (for backwards compatibility)

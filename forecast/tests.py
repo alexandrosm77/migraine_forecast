@@ -1894,31 +1894,16 @@ class LLMContextBuilderTest(TestCase):
         # This is included in the high token budget version
         self.assertIn("London", context)
 
-    def test_historical_predictions_formatting(self):
-        """Test that historical predictions are formatted correctly"""
-        # Create some previous predictions
-        now = timezone.now()
-        predictions = []
-        for i, level in enumerate(["HIGH", "MEDIUM", "LOW"]):
-            pred = MigrainePrediction.objects.create(
-                user=self.user,
-                location=self.location,
-                forecast=self.forecasts[0],
-                target_time_start=now - timedelta(hours=24 - i * 4),
-                target_time_end=now - timedelta(hours=21 - i * 4),
-                probability=level,
-                prediction_time=now - timedelta(hours=24 - i * 4),
-            )
-            predictions.append(pred)
-
+    def test_weather_comparison_formatting(self):
+        """Test that weather comparison (past 24h vs forecast) is formatted correctly"""
         context = self.builder_low.build_migraine_context(
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,
-            previous_predictions=predictions,
         )
-        # Should contain recent predictions section
-        self.assertIn("Recent", context)
-        # Should contain prediction levels
-        self.assertIn("HIGH", context)
-        self.assertIn("MEDIUM", context)
+        # Should contain weather comparison information
+        self.assertIn("Past", context)
+        self.assertIn("Forecast", context)
+        # Should contain temperature and pressure data
+        self.assertIn("°C", context)
+        self.assertIn("hPa", context)

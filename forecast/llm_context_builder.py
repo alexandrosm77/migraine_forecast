@@ -7,7 +7,7 @@ of normalized scores.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -83,17 +83,15 @@ class LLMContextBuilder:
         previous_forecasts: List[Any],
         location: Any,
         user_profile: Optional[Dict[str, Any]] = None,
-        previous_predictions: Optional[List[Any]] = None,
     ) -> str:
         """
         Build context string for migraine prediction.
 
         Args:
             forecasts: List of WeatherForecast objects for the prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period
+            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
             user_profile: Optional user health profile dict
-            previous_predictions: Optional list of recent MigrainePrediction objects
 
         Returns:
             Formatted context string for LLM prompt
@@ -103,7 +101,6 @@ class LLMContextBuilder:
             previous_forecasts=previous_forecasts,
             location=location,
             user_profile=user_profile,
-            previous_predictions=previous_predictions,
             condition_type="migraine",
         )
 
@@ -113,17 +110,15 @@ class LLMContextBuilder:
         previous_forecasts: List[Any],
         location: Any,
         user_profile: Optional[Dict[str, Any]] = None,
-        previous_predictions: Optional[List[Any]] = None,
     ) -> str:
         """
         Build context string for sinusitis prediction.
 
         Args:
             forecasts: List of WeatherForecast objects for the prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period
+            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
             user_profile: Optional user health profile dict
-            previous_predictions: Optional list of recent SinusitisPrediction objects
 
         Returns:
             Formatted context string for LLM prompt
@@ -133,7 +128,6 @@ class LLMContextBuilder:
             previous_forecasts=previous_forecasts,
             location=location,
             user_profile=user_profile,
-            previous_predictions=previous_predictions,
             condition_type="sinusitis",
         )
 
@@ -143,7 +137,6 @@ class LLMContextBuilder:
         previous_forecasts: List[Any],
         location: Any,
         user_profile: Optional[Dict[str, Any]],
-        previous_predictions: Optional[List[Any]],
         condition_type: str,
     ) -> str:
         """Build the complete context string."""
@@ -167,12 +160,12 @@ class LLMContextBuilder:
         if condition_type == "sinusitis":
             parts.append(self._format_seasonal_health_context(latitude, now, forecasts))
 
+        # Weather comparison: past 24h vs forecast window
+        if previous_forecasts:
+            parts.append(self._format_weather_comparison(forecasts, previous_forecasts))
+
         # Hourly forecast or summary
         parts.append(self._format_hourly_forecast(forecasts))
-
-        # Weather changes from previous period
-        if previous_forecasts:
-            parts.append(self._format_weather_changes(forecasts, previous_forecasts))
 
         # Stability within forecast window
         parts.append(self._format_window_stability(forecasts))
@@ -180,10 +173,6 @@ class LLMContextBuilder:
         # User sensitivity profile
         if user_profile:
             parts.append(self._format_user_sensitivity(user_profile))
-
-        # Historical predictions with weather context
-        if previous_predictions:
-            parts.append(self._format_historical_predictions(previous_predictions, location, condition_type))
 
         return "\n\n".join(filter(None, parts))
 
@@ -336,6 +325,103 @@ class LLMContextBuilder:
         else:
             return "Unlikely - not heating season"
 
+    def _format_weather_comparison(
+        self,
+        forecasts: List[Any],
+        previous_forecasts: List[Any],
+    ) -> str:
+        """Format comprehensive weather comparison: past 24h vs forecast window."""
+        if not forecasts or not previous_forecasts:
+            return ""
+
+        # Calculate statistics for past 24h
+        past_temps = [f.temperature for f in previous_forecasts]
+        past_pressures = [f.pressure for f in previous_forecasts]
+        past_humidities = [f.humidity for f in previous_forecasts]
+        past_precip_total = sum(f.precipitation for f in previous_forecasts)
+
+        # Calculate statistics for forecast window
+        forecast_temps = [f.temperature for f in forecasts]
+        forecast_pressures = [f.pressure for f in forecasts]
+        forecast_humidities = [f.humidity for f in forecasts]
+        forecast_precip_total = sum(f.precipitation for f in forecasts)
+
+        # Calculate averages for comparison
+        avg_past_temp = np.mean(past_temps)
+        avg_forecast_temp = np.mean(forecast_temps)
+        temp_change = avg_forecast_temp - avg_past_temp
+
+        avg_past_pressure = np.mean(past_pressures)
+        avg_forecast_pressure = np.mean(forecast_pressures)
+        pressure_change = avg_forecast_pressure - avg_past_pressure
+
+        avg_past_humidity = np.mean(past_humidities)
+        avg_forecast_humidity = np.mean(forecast_humidities)
+        humidity_change = avg_forecast_humidity - avg_past_humidity
+
+        if self.high_token_budget:
+            lines = ["## Weather Comparison: Past 24h vs Forecast Window"]
+
+            # Temperature comparison
+            temp_line = (
+                f"Temperature: Past 24h {min(past_temps):.1f}-{max(past_temps):.1f}°C (avg {avg_past_temp:.1f}°C) → "
+                f"Forecast {min(forecast_temps):.1f}-{max(forecast_temps):.1f}°C (avg {avg_forecast_temp:.1f}°C)"
+            )
+            if abs(temp_change) >= 5:
+                temp_line += " - significant warming" if temp_change > 0 else " - significant cooling"
+            elif abs(temp_change) >= 2:
+                temp_line += f" ({temp_change:+.1f}°C change)"
+            lines.append(temp_line)
+
+            # Pressure comparison
+            pressure_line = (
+                f"Pressure: Past 24h {min(past_pressures):.1f}-{max(past_pressures):.1f}hPa (avg {avg_past_pressure:.1f}hPa) → "  # noqa
+                f"Forecast {min(forecast_pressures):.1f}-{max(forecast_pressures):.1f}hPa (avg {avg_forecast_pressure:.1f}hPa)"  # noqa
+            )
+            if pressure_change <= -5:
+                pressure_line += " - notable drop"
+            elif pressure_change >= 5:
+                pressure_line += " - notable rise"
+            elif abs(pressure_change) >= 2:
+                pressure_line += f" ({pressure_change:+.1f}hPa change)"
+            lines.append(pressure_line)
+
+            # Humidity comparison
+            humidity_line = (
+                f"Humidity: Past 24h {min(past_humidities):.0f}-{max(past_humidities):.0f}% (avg {avg_past_humidity:.0f}%) → "  # noqa
+                f"Forecast {min(forecast_humidities):.0f}-{max(forecast_humidities):.0f}% (avg {avg_forecast_humidity:.0f}%)"  # noqa
+            )
+            if abs(humidity_change) >= 10:
+                humidity_line += f" ({humidity_change:+.0f}% change)"
+            lines.append(humidity_line)
+
+            # Precipitation
+            lines.append(f"Precipitation: Past 24h {past_precip_total:.1f}mm → Forecast {forecast_precip_total:.1f}mm")
+
+            return "\n".join(lines)
+        else:
+            # Compact format
+            parts = []
+
+            # Temperature with change indicator
+            temp_note = ""
+            if abs(temp_change) >= 5:
+                temp_note = " (major change)" if abs(temp_change) >= 8 else " (significant)"
+            parts.append(f"Temp: {avg_past_temp:.1f}°C → {avg_forecast_temp:.1f}°C{temp_note}")
+
+            # Pressure with change indicator
+            pressure_note = ""
+            if pressure_change <= -5:
+                pressure_note = " (dropping)"
+            elif pressure_change >= 5:
+                pressure_note = " (rising)"
+            parts.append(f"Pressure: {avg_past_pressure:.1f} → {avg_forecast_pressure:.1f}hPa{pressure_note}")
+
+            # Humidity
+            parts.append(f"Humidity: {avg_past_humidity:.0f}% → {avg_forecast_humidity:.0f}%")
+
+            return f"Past 24h vs Forecast: {' | '.join(parts)}"
+
     def _format_hourly_forecast(self, forecasts: List[Any]) -> str:
         """Format hourly forecast data."""
         if not forecasts:
@@ -422,73 +508,6 @@ class LLMContextBuilder:
                 f"Humidity {min(humidities):.0f}-{max(humidities):.0f}%, "
                 f"Precip {precip_total:.1f}mm"
             )
-
-    def _format_weather_changes(
-        self,
-        forecasts: List[Any],
-        previous_forecasts: List[Any],
-    ) -> str:
-        """Format weather changes from previous period."""
-        if not forecasts or not previous_forecasts:
-            return ""
-
-        # Calculate averages
-        avg_temp = np.mean([f.temperature for f in forecasts])
-        avg_prev_temp = np.mean([f.temperature for f in previous_forecasts])
-        temp_change = avg_temp - avg_prev_temp
-
-        avg_pressure = np.mean([f.pressure for f in forecasts])
-        avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
-        pressure_change = avg_pressure - avg_prev_pressure
-
-        avg_humidity = np.mean([f.humidity for f in forecasts])
-        avg_prev_humidity = np.mean([f.humidity for f in previous_forecasts])
-        humidity_change = avg_humidity - avg_prev_humidity
-
-        # Determine significance
-        def describe_change(value: float, threshold: float, unit: str, name: str) -> str:
-            direction = "+" if value > 0 else ""
-            magnitude = abs(value)
-
-            if magnitude >= threshold * 2:
-                significance = " - significant change"
-            elif magnitude >= threshold:
-                significance = " - notable"
-            else:
-                significance = ""
-
-            return f"{name}: {direction}{value:.1f}{unit}{significance}"
-
-        if self.high_token_budget:
-            lines = ["## Weather Changes (vs previous 6 hours)"]
-            lines.append(
-                f"Temperature: {temp_change:+.1f}°C ({avg_prev_temp:.1f}°C → {avg_temp:.1f}°C)"
-                + (
-                    " - significant warming"
-                    if temp_change >= 5
-                    else " - significant cooling" if temp_change <= -5 else ""
-                )
-            )
-            lines.append(
-                f"Pressure: {pressure_change:+.1f}hPa ({avg_prev_pressure:.1f} → {avg_pressure:.1f}hPa)"
-                + (" - notable drop" if pressure_change <= -5 else " - notable rise" if pressure_change >= 5 else "")
-            )
-            lines.append(f"Humidity: {humidity_change:+.0f}% ({avg_prev_humidity:.0f}% → {avg_humidity:.0f}%)")
-            return "\n".join(lines)
-        else:
-            parts = []
-            parts.append(f"Temp {temp_change:+.1f}°C")
-
-            pressure_note = ""
-            if pressure_change <= -5:
-                pressure_note = " (dropping)"
-            elif pressure_change >= 5:
-                pressure_note = " (rising)"
-            parts.append(f"Pressure {pressure_change:+.1f}hPa{pressure_note}")
-
-            parts.append(f"Humidity {humidity_change:+.0f}%")
-
-            return f"Changes (vs 6h ago): {', '.join(parts)}"
 
     def _format_window_stability(self, forecasts: List[Any]) -> str:
         """Format stability metrics within the forecast window."""
@@ -583,137 +602,6 @@ class LLMContextBuilder:
                 return f"User sensitivity: {'; '.join(parts)}"
             else:
                 return "User sensitivity: Normal"
-
-    def _format_historical_predictions(
-        self,
-        predictions: List[Any],
-        location: Any,
-        condition_type: str,
-    ) -> str:
-        """Format historical predictions with their weather context."""
-        if not predictions:
-            return ""
-
-        # Limit based on token budget
-        max_predictions = 5 if self.high_token_budget else 2
-        predictions = list(predictions)[:max_predictions]
-
-        if not predictions:
-            return ""
-
-        if self.high_token_budget:
-            lines = ["## Recent Predictions with Weather Context"]
-            lines.append("These show how similar conditions were previously assessed:")
-            lines.append("")
-
-            for pred in predictions:
-                # Get weather data for this prediction's time window
-                weather_context = self._get_prediction_weather_context(pred, location)
-
-                time_ago = self._format_time_ago(pred.prediction_time)
-                pred_time = pred.prediction_time.strftime("%a %H:%M")
-
-                lines.append(f"{time_ago} ({pred_time}):")
-                lines.append(f"  Weather: {weather_context}")
-                lines.append(f"  Prediction: {pred.probability}")
-                lines.append("")
-
-            return "\n".join(lines).rstrip()
-        else:
-            # Compact format for low token budget
-            parts = []
-            for pred in predictions:
-                weather_context = self._get_prediction_weather_context(pred, location, compact=True)
-                time_ago = self._format_time_ago(pred.prediction_time, compact=True)
-                parts.append(f"{time_ago} {weather_context} → {pred.probability}")
-
-            return f"Recent: {' | '.join(parts)}"
-
-    def _get_prediction_weather_context(
-        self,
-        prediction: Any,
-        location: Any,
-        compact: bool = False,
-    ) -> str:
-        """Get weather context for a historical prediction."""
-        from .models import WeatherForecast
-
-        try:
-            # Get forecasts from the prediction's time window
-            start_time = prediction.target_time_start
-            end_time = prediction.target_time_end
-
-            forecasts = list(
-                WeatherForecast.objects.filter(
-                    location=location,
-                    target_time__gte=start_time,
-                    target_time__lte=end_time,
-                ).order_by("target_time")
-            )
-
-            # Get previous forecasts for comparison
-            previous_forecasts = list(
-                WeatherForecast.objects.filter(
-                    location=location,
-                    target_time__lt=start_time,
-                    target_time__gte=start_time - timedelta(hours=6),
-                ).order_by("-target_time")
-            )
-
-            if not forecasts:
-                return "No weather data available"
-
-            avg_temp = np.mean([f.temperature for f in forecasts])
-            avg_pressure = np.mean([f.pressure for f in forecasts])
-            avg_humidity = np.mean([f.humidity for f in forecasts])
-
-            # Calculate changes if we have previous data
-            if previous_forecasts:
-                avg_prev_pressure = np.mean([f.pressure for f in previous_forecasts])
-                pressure_change = avg_pressure - avg_prev_pressure
-            else:
-                pressure_change = 0
-
-            if compact:
-                if abs(pressure_change) >= 3:
-                    return f"Δ{pressure_change:+.0f}hPa, {avg_humidity:.0f}%"
-                else:
-                    return f"stable, {avg_humidity:.0f}%"
-            else:
-                parts = []
-                if abs(pressure_change) >= 1:
-                    parts.append(f"Pressure Δ{pressure_change:+.1f}hPa ({avg_prev_pressure:.0f}→{avg_pressure:.0f})")
-                else:
-                    parts.append(f"Pressure stable at {avg_pressure:.0f}hPa")
-                parts.append(f"Temp {avg_temp:.1f}°C")
-                parts.append(f"Humidity {avg_humidity:.0f}%")
-                return ", ".join(parts)
-
-        except Exception as e:
-            logger.warning(f"Failed to get weather context for prediction: {e}")
-            return "Weather data unavailable"
-
-    def _format_time_ago(self, dt: datetime, compact: bool = False) -> str:
-        """Format a datetime as time ago string."""
-        now = timezone.now()
-        diff = now - dt
-        hours = diff.total_seconds() / 3600
-
-        if compact:
-            if hours < 1:
-                return f"{int(diff.total_seconds() / 60)}m ago"
-            elif hours < 24:
-                return f"{int(hours)}h ago"
-            else:
-                return f"{int(hours / 24)}d ago"
-        else:
-            if hours < 1:
-                return f"{int(diff.total_seconds() / 60)} minutes ago"
-            elif hours < 24:
-                return f"{int(hours)} hours ago"
-            else:
-                days = int(hours / 24)
-                return f"{days} day{'s' if days > 1 else ''} ago"
 
     def _get_season(self, dt: datetime, latitude: float) -> str:
         """Determine season based on date and hemisphere."""

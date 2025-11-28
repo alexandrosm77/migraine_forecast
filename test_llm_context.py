@@ -456,7 +456,7 @@ def run_scenario(scenario_num, base_url, model, high_token=False, context_only=F
         return
 
     scenario = SCENARIOS[scenario_num]
-    location, forecasts, previous_forecasts, previous_predictions, user_profile = scenario["create_data"]()
+    location, forecasts, previous_forecasts, _, user_profile = scenario["create_data"]()
 
     # Print scenario header
     print_header(f"Scenario {scenario_num}: {scenario['name']}")
@@ -473,7 +473,6 @@ def run_scenario(scenario_num, base_url, model, high_token=False, context_only=F
         previous_forecasts=previous_forecasts,
         location=location,
         user_profile=user_profile,
-        previous_predictions=previous_predictions,
     )
 
     # Show context
@@ -498,7 +497,6 @@ def run_scenario(scenario_num, base_url, model, high_token=False, context_only=F
             forecasts=forecasts,
             previous_forecasts=previous_forecasts,
             location=location,
-            previous_predictions=previous_predictions,
             high_token_budget=high_token,
         )
         print_result("Migraine", level, detail)
@@ -514,7 +512,6 @@ def run_scenario(scenario_num, base_url, model, high_token=False, context_only=F
             forecasts=forecasts,
             previous_forecasts=previous_forecasts,
             location=location,
-            previous_predictions=previous_predictions,
             high_token_budget=high_token,
         )
         print_result("Sinusitis", level, detail)
