@@ -16,10 +16,10 @@ class Command(SilentStdoutCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--cleanup-hours",
+            "--cleanup-days",
             type=int,
-            default=48,
-            help="Delete forecasts older than this many hours (default: 48)",
+            default=180,
+            help="Delete forecasts older than this many days (default: 180)",
         )
         parser.add_argument(
             "--skip-cleanup",
@@ -113,8 +113,8 @@ class Command(SilentStdoutCommand):
             self.stdout.write("\n" + "=" * 60)
             self.stdout.write("Cleaning up old forecast data...")
 
-            cleanup_hours = options["cleanup_hours"]
-            cutoff_time = timezone.now() - timedelta(hours=cleanup_hours)
+            cleanup_days = options["cleanup_days"]
+            cutoff_time = timezone.now() - timedelta(days=cleanup_days)
 
             old_forecasts = WeatherForecast.objects.filter(forecast_time__lt=cutoff_time)
             count = old_forecasts.count()
@@ -122,7 +122,7 @@ class Command(SilentStdoutCommand):
             if count > 0:
                 old_forecasts.delete()
                 self.stdout.write(
-                    self.style.SUCCESS(f"  ✓ Deleted {count} forecast(s) older than {cleanup_hours} hours")
+                    self.style.SUCCESS(f"  ✓ Deleted {count} forecast(s) older than {cleanup_days} days")
                 )
             else:
                 self.stdout.write("  No old forecasts to delete")
