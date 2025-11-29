@@ -54,7 +54,7 @@ class ViewsIntegrationTest(TestCase):
     def test_index_view(self):
         response = self.client.get(reverse("forecast:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "forecast/index.html")
+        self.assertTemplateUsed(response, "forecast/index_v2.html")
 
     def test_dashboard_view_authenticated(self):
         # Login
@@ -63,7 +63,7 @@ class ViewsIntegrationTest(TestCase):
         # Access dashboard
         response = self.client.get(reverse("forecast:dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "forecast/dashboard.html")
+        self.assertTemplateUsed(response, "forecast/dashboard_v2.html")
 
         # Check context
         self.assertIn("locations", response.context)
@@ -82,7 +82,7 @@ class ViewsIntegrationTest(TestCase):
         # Access location detail
         response = self.client.get(reverse("forecast:location_detail", args=[self.location.id]))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "forecast/location_detail.html")
+        self.assertTemplateUsed(response, "forecast/location_detail_v2.html")
 
         # Check context
         self.assertIn("location", response.context)
@@ -97,7 +97,7 @@ class ViewsIntegrationTest(TestCase):
         # Access prediction detail
         response = self.client.get(reverse("forecast:prediction_detail", args=[self.prediction.id]))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "forecast/prediction_detail.html")
+        self.assertTemplateUsed(response, "forecast/prediction_detail_v2.html")
 
         # Check context
         self.assertIn("prediction", response.context)
@@ -110,7 +110,7 @@ class ViewsIntegrationTest(TestCase):
         # Get the form page
         response = self.client.get(reverse("forecast:location_add"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "forecast/location_add.html")
+        self.assertTemplateUsed(response, "forecast/location_add_v2.html")
 
         # Test form submission
         with patch("forecast.views.weather_service.update_forecast_for_location") as mock_update:
@@ -164,7 +164,7 @@ class ViewsIntegrationTest(TestCase):
         # Test first page
         response = self.client.get(reverse("forecast:prediction_list"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "forecast/prediction_list.html")
+        self.assertTemplateUsed(response, "forecast/prediction_list_v2.html")
 
         # Check pagination context
         self.assertIn("predictions", response.context)
@@ -404,6 +404,8 @@ class EndToEndWorkflowTest(TestCase):
         # ============================================================
         profile_data = {
             "language": "en",
+            "ui_version": "v2",
+            "theme": "light",
             "age": 35,
             "prior_conditions": "Occasional migraines, sensitive to weather changes",
             "email_notifications_enabled": True,
