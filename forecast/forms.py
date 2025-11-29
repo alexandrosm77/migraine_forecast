@@ -36,62 +36,63 @@ class UserHealthProfileForm(forms.ModelForm):
         widgets = {
             "language": forms.Select(
                 attrs={
-                    "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
+                    "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
                 }
             ),
             "prior_conditions": forms.Textarea(
                 attrs={
                     "rows": 3,
                     "placeholder": "e.g., aura, sinus issues, hypertension, etc.",
-                    "class": "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
+                    "class": "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
                 }
             ),
             "email_notifications_enabled": forms.CheckboxInput(
                 attrs={
-                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",
+                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",  # noqa: E501
                 }
             ),
             "quiet_hours_enabled": forms.CheckboxInput(
                 attrs={
-                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",
+                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",  # noqa: E501
                 }
             ),
             "migraine_predictions_enabled": forms.CheckboxInput(
                 attrs={
-                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",
+                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",  # noqa: E501
                 }
             ),
             "sinusitis_predictions_enabled": forms.CheckboxInput(
                 attrs={
-                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",
+                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",  # noqa: E501
                 }
             ),
             "notification_mode": forms.Select(
                 attrs={
-                    "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
+                    "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
                 }
             ),
             "notification_severity_threshold": forms.Select(
                 attrs={
-                    "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
+                    "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
                 }
             ),
             "digest_time": forms.TimeInput(
                 attrs={
                     "type": "time",
-                    "class": "form-control block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
+                    "class": "form-control block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
                 }
             ),
             "quiet_hours_start": forms.TimeInput(
                 attrs={
                     "type": "time",
-                    "class": "form-control block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
+                    "class": "form-control block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
                 }
             ),
             "quiet_hours_end": forms.TimeInput(
                 attrs={
                     "type": "time",
-                    "class": "form-control block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",
+                    "class": "form-control block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
+
                 }
             ),
         }
@@ -102,15 +103,15 @@ class UserHealthProfileForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Add dark mode classes to all fields that don't have explicit widgets
-        default_input_class = "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-        default_select_class = "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        default_input_class = "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"  # noqa: E501
+        default_select_class = "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"  # noqa: E501
 
         for field_name, field in self.fields.items():
             if field_name not in self.Meta.widgets:
                 if isinstance(field.widget, forms.Select):
-                    field.widget.attrs['class'] = default_select_class
+                    field.widget.attrs["class"] = default_select_class
                 elif isinstance(field.widget, (forms.NumberInput, forms.TextInput)):
-                    field.widget.attrs['class'] = default_input_class
+                    field.widget.attrs["class"] = default_input_class
 
     def clean(self):
         cleaned = super().clean()

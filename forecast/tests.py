@@ -1010,6 +1010,8 @@ class UserHealthProfileFormTest(TestCase):
         """Test form with valid data"""
         form_data = {
             "language": "en",
+            "ui_version": "v2",
+            "theme": "light",
             "age": 30,
             "prior_conditions": "Aura, hypertension",
             "email_notifications_enabled": True,
@@ -1038,6 +1040,8 @@ class UserHealthProfileFormTest(TestCase):
         """Test that form clamps sensitivity values to valid range"""
         form_data = {
             "language": "en",
+            "ui_version": "v2",
+            "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
@@ -1069,6 +1073,8 @@ class UserHealthProfileFormTest(TestCase):
         """Test that optional fields can be omitted"""
         form_data = {
             "language": "en",
+            "ui_version": "v2",
+            "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
@@ -1627,6 +1633,8 @@ class LanguageSwitchingTest(TestCase):
         # Test form submission with language change
         form_data = {
             "language": "el",
+            "ui_version": "v2",
+            "theme": "light",
             "age": 30,
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
@@ -1679,6 +1687,8 @@ class LanguageSwitchingTest(TestCase):
             "/accounts/profile/",
             {
                 "language": "el",
+                "ui_version": "v2",
+                "theme": "light",
                 "age": 35,
                 "email_notifications_enabled": True,
                 "notification_mode": "IMMEDIATE",
