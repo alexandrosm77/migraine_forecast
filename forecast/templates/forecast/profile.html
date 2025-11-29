@@ -52,12 +52,17 @@
                             <form method="post" novalidate>
                                 {% csrf_token %}
                                 <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label for="id_language" class="form-label">{% trans "Language" %}</label>
                                         {{ form.language }}
                                         <div class="form-text">{% trans "Preferred language for the interface" %}</div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
+                                        <label for="id_ui_version" class="form-label">{% trans "UI Version" %}</label>
+                                        {{ form.ui_version }}
+                                        <div class="form-text">{% trans "Choose between Classic or Modern UI" %}</div>
+                                    </div>
+                                    <div class="col-md-4">
                                         <label for="id_age" class="form-label">{% trans "Age" %}</label>
                                         {{ form.age }}
                                     </div>

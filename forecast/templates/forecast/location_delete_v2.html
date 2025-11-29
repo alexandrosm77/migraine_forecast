@@ -1,0 +1,101 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Delete Location" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl w-full">
+        <!-- Warning Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border-2 border-red-200 overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-red-500 to-red-600 px-8 py-6">
+                <div class="flex items-center">
+                    <div class="h-12 w-12 bg-white dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                        <svg class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h2 class="ml-4 text-2xl font-bold text-white">{% trans "Delete Location" %}</h2>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="p-8">
+                <div class="mb-6">
+                    <p class="text-lg text-gray-900 dark:text-gray-100 mb-4">
+                        {% blocktrans with city=location.city country=location.country %}
+                        Are you sure you want to delete the location <strong class="text-red-600">{{ city }}, {{ country }}</strong>?
+                        {% endblocktrans %}
+                    </p>
+                    
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800 mb-2">{% trans "Warning: This action cannot be undone" %}</h3>
+                                <div class="text-sm text-red-700">
+                                    <p>{% trans "This will permanently delete:" %}</p>
+                                    <ul class="list-disc list-inside mt-2 space-y-1">
+                                        <li>{% trans "All weather forecasts for this location" %}</li>
+                                        <li>{% trans "All migraine predictions for this location" %}</li>
+                                        <li>{% trans "All sinusitis predictions for this location" %}</li>
+                                        <li>{% trans "All comparison data for this location" %}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location Info -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{% trans "Location Details" %}</h3>
+                    <dl class="grid grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "City" %}</dt>
+                            <dd class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.city }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "Country" %}</dt>
+                            <dd class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.country }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "Latitude" %}</dt>
+                            <dd class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ location.latitude|floatformat:4 }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "Longitude" %}</dt>
+                            <dd class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ location.longitude|floatformat:4 }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- Form -->
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="flex flex-col sm:flex-row gap-4 justify-between">
+                        <a href="{% url 'forecast:location_detail' location.id %}" class="inline-flex justify-center items-center px-6 py-3 text-base font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg transition">
+                            <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            {% trans "Cancel" %}
+                        </a>
+                        <button type="submit" class="inline-flex justify-center items-center px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 rounded-lg shadow-md hover:shadow-lg transition-all">
+                            <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            {% trans "Yes, Delete Location" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

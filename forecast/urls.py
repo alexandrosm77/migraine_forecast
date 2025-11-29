@@ -21,4 +21,5 @@ urlpatterns = [
     path("accounts/register/", views.register, name="register"),
     path("accounts/profile/", views.profile, name="profile"),
     path("set-language/<str:language_code>/", views.set_language, name="set_language"),
+    path("toggle-theme/", views.toggle_theme, name="toggle_theme"),
 ]

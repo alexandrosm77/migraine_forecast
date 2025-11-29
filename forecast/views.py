@@ -5,6 +5,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.utils import timezone, translation
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.views.decorators.http import require_http_methods
 from datetime import timedelta
 
 from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction
@@ -20,9 +21,36 @@ prediction_service = MigrainePredictionService()
 sinusitis_prediction_service = SinusitisPredictionService()
 
 
+def get_template_name(request, base_name):
+    """
+    Get the appropriate template name based on user's UI version preference.
+
+    Args:
+        request: The HTTP request object
+        base_name: The base template name (e.g., 'dashboard.html')
+
+    Returns:
+        The full template path (e.g., 'forecast/dashboard_v2.html' or 'forecast/dashboard.html')
+    """
+    ui_version = "v2"
+
+    if request.user.is_authenticated:
+        try:
+            ui_version = request.user.health_profile.ui_version
+        except Exception:
+            pass
+
+    if ui_version == "v2":
+        name_without_ext = base_name.rsplit('.', 1)[0]
+        ext = base_name.rsplit('.', 1)[1] if '.' in base_name else 'html'
+        return f"forecast/{name_without_ext}_v2.{ext}"
+    else:
+        return f"forecast/{base_name}"
+
+
 def index(request):
     """Home page view."""
-    return render(request, "forecast/index.html")
+    return render(request, get_template_name(request, "index.html"))
 
 
 @login_required
@@ -125,17 +153,105 @@ def dashboard(request):
             "weather_trends": trends,
         })
 
+    # Get historical prediction data for charts (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+
+    # Migraine prediction history
+    migraine_history = []
+    if migraine_enabled:
+        historical_predictions = MigrainePrediction.objects.filter(
+            user=request.user,
+            prediction_time__gte=thirty_days_ago
+        ).order_by('prediction_time')
+
+        # Group by date and count by probability
+        from collections import defaultdict
+        daily_counts = defaultdict(lambda: {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'date': None})
+
+        for pred in historical_predictions:
+            date_key = pred.prediction_time.date().isoformat()
+            daily_counts[date_key]['date'] = pred.prediction_time.date().strftime('%b %d')
+            daily_counts[date_key][pred.probability] += 1
+
+        migraine_history = [
+            {
+                'date': data['date'],
+                'high': data['HIGH'],
+                'medium': data['MEDIUM'],
+                'low': data['LOW'],
+            }
+            for date_key, data in sorted(daily_counts.items())
+        ]
+
+    # Sinusitis prediction history
+    sinusitis_history = []
+    if sinusitis_enabled:
+        historical_sinusitis = SinusitisPrediction.objects.filter(
+            user=request.user,
+            prediction_time__gte=thirty_days_ago
+        ).order_by('prediction_time')
+
+        from collections import defaultdict
+        daily_counts = defaultdict(lambda: {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'date': None})
+
+        for pred in historical_sinusitis:
+            date_key = pred.prediction_time.date().isoformat()
+            daily_counts[date_key]['date'] = pred.prediction_time.date().strftime('%b %d')
+            daily_counts[date_key][pred.probability] += 1
+
+        sinusitis_history = [
+            {
+                'date': data['date'],
+                'high': data['HIGH'],
+                'medium': data['MEDIUM'],
+                'low': data['LOW'],
+            }
+            for date_key, data in sorted(daily_counts.items())
+        ]
+
+    # Convert history data to JSON for Chart.js
+    import json
+    migraine_history_json = json.dumps(migraine_history)
+    sinusitis_history_json = json.dumps(sinusitis_history)
+
+    # Get latest predictions for each location
+    locations_with_predictions = []
+    for location in locations:
+        latest_migraine = None
+        latest_sinusitis = None
+
+        if migraine_enabled:
+            latest_migraine = MigrainePrediction.objects.filter(
+                user=request.user,
+                location=location
+            ).order_by('-prediction_time').first()
+
+        if sinusitis_enabled:
+            latest_sinusitis = SinusitisPrediction.objects.filter(
+                user=request.user,
+                location=location
+            ).order_by('-prediction_time').first()
+
+        locations_with_predictions.append({
+            'location': location,
+            'latest_migraine': latest_migraine,
+            'latest_sinusitis': latest_sinusitis,
+        })
+
     context = {
         "locations": locations,
+        "locations_with_predictions": locations_with_predictions,
         "recent_predictions": recent_predictions,
         "recent_sinusitis_predictions": recent_sinusitis_predictions,
         "upcoming_high_risk": high_risk_with_analysis,
         "upcoming_sinusitis_high_risk": sinusitis_high_risk_with_analysis,
         "migraine_enabled": migraine_enabled,
         "sinusitis_enabled": sinusitis_enabled,
+        "migraine_history": migraine_history_json,
+        "sinusitis_history": sinusitis_history_json,
     }
 
-    return render(request, "forecast/dashboard.html", context)
+    return render(request, get_template_name(request, "dashboard.html"), context)
 
 
 @login_required
@@ -147,7 +263,7 @@ def location_list(request):
         "locations": locations,
     }
 
-    return render(request, "forecast/location_list.html", context)
+    return render(request, get_template_name(request, "location_list.html"), context)
 
 
 @login_required
@@ -179,7 +295,7 @@ def location_add(request):
         else:
             messages.error(request, "Please fill all required fields.")
 
-    return render(request, "forecast/location_add.html")
+    return render(request, get_template_name(request, "location_add.html"))
 
 
 @login_required
@@ -216,7 +332,7 @@ def location_detail(request, location_id):
         "predictions": predictions,
     }
 
-    return render(request, "forecast/location_detail.html", context)
+    return render(request, get_template_name(request, "location_detail.html"), context)
 
 
 @login_required
@@ -233,7 +349,7 @@ def location_delete(request, location_id):
         "location": location,
     }
 
-    return render(request, "forecast/location_delete.html", context)
+    return render(request, get_template_name(request, "location_delete.html"), context)
 
 
 @login_required
@@ -258,7 +374,7 @@ def prediction_list(request):
         "predictions": predictions,
     }
 
-    return render(request, "forecast/prediction_list.html", context)
+    return render(request, get_template_name(request, "prediction_list.html"), context)
 
 
 @login_required
@@ -375,7 +491,7 @@ def prediction_detail(request, prediction_id):
         "weather_factor_values": weather_factor_values,
     }
 
-    return render(request, "forecast/prediction_detail.html", context)
+    return render(request, get_template_name(request, "prediction_detail.html"), context)
 
 
 @login_required
@@ -400,7 +516,7 @@ def sinusitis_prediction_list(request):
         "predictions": predictions,
     }
 
-    return render(request, "forecast/sinusitis_prediction_list.html", context)
+    return render(request, get_template_name(request, "sinusitis_prediction_list.html"), context)
 
 
 @login_required
@@ -517,7 +633,7 @@ def sinusitis_prediction_detail(request, prediction_id):
         "weather_factor_values": weather_factor_values,
     }
 
-    return render(request, "forecast/sinusitis_prediction_detail.html", context)
+    return render(request, get_template_name(request, "sinusitis_prediction_detail.html"), context)
 
 
 def register(request):
@@ -532,7 +648,7 @@ def register(request):
     else:
         form = UserCreationForm()
 
-    return render(request, "forecast/register.html", {"form": form})
+    return render(request, get_template_name(request, "register.html"), {"form": form})
 
 
 @login_required
@@ -570,7 +686,26 @@ def profile(request):
         "form": form,
         "locations": locations,
     }
-    return render(request, "forecast/profile.html", context)
+    return render(request, get_template_name(request, "profile.html"), context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_theme(request):
+    """
+    Toggle the user's theme preference between light and dark mode.
+    """
+    try:
+        profile = request.user.health_profile
+        # Toggle theme
+        profile.theme = "dark" if profile.theme == "light" else "light"
+        profile.save()
+        messages.success(request, f"Theme switched to {profile.theme} mode")
+    except Exception as e:
+        messages.error(request, f"Failed to update theme: {str(e)}")
+
+    # Redirect back to the previous page
+    return redirect(request.META.get("HTTP_REFERER", "forecast:dashboard"))
 
 
 @login_required

@@ -1,0 +1,151 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Register" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full">
+        <!-- Logo/Icon -->
+        <div class="text-center mb-8">
+            <div class="flex justify-center mb-4">
+                <div class="h-16 w-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                </div>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{% trans "Create Account" %}</h2>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{% trans "Join us to start tracking your health" %}</p>
+        </div>
+
+        <!-- Registration Form -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="p-8">
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Non-field errors -->
+                    {% if form.non_field_errors %}
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                        <div class="flex">
+                            <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div class="ml-3">
+                                {% for error in form.non_field_errors %}
+                                <p class="text-sm text-red-700">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Username Field -->
+                    <div>
+                        <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Username" %}
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            </div>
+                            {{ form.username }}
+                        </div>
+                        {% if form.username.errors %}
+                        <p class="mt-1 text-sm text-red-600">
+                            {% for error in form.username.errors %}{{ error }}{% endfor %}
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Password Field -->
+                    <div>
+                        <label for="{{ form.password1.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Password" %}
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
+                            {{ form.password1 }}
+                        </div>
+                        {% if form.password1.errors %}
+                        <p class="mt-1 text-sm text-red-600">
+                            {% for error in form.password1.errors %}{{ error }}{% endfor %}
+                        </p>
+                        {% endif %}
+                        {% if form.password1.help_text %}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{{ form.password1.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Confirm Password Field -->
+                    <div>
+                        <label for="{{ form.password2.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Confirm Password" %}
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            {{ form.password2 }}
+                        </div>
+                        {% if form.password2.errors %}
+                        <p class="mt-1 text-sm text-red-600">
+                            {% for error in form.password2.errors %}{{ error }}{% endfor %}
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div>
+                        <button type="submit" class="w-full flex justify-center items-center px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
+                            <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                            </svg>
+                            {% trans "Create Account" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-8 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-700 text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {% trans "Already have an account?" %}
+                    <a href="{% url 'login' %}" class="font-medium text-teal-600 hover:text-teal-700 transition">
+                        {% trans "Login here" %}
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Back to Home -->
+        <div class="mt-6 text-center">
+            <a href="{% url 'forecast:index' %}" class="inline-flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 transition">
+                <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                {% trans "Back to Home" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styling for form fields */
+#id_username,
+#id_password1,
+#id_password2 {
+    @apply block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition;
+}
+</style>
+{% endblock %}
+

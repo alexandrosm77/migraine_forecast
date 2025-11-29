@@ -1,0 +1,114 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Locations" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{% trans "Your Locations" %}</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{% trans "Manage the locations you're tracking" %}</p>
+        </div>
+        <a href="{% url 'forecast:location_add' %}" class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 rounded-lg shadow-md hover:shadow-lg transition-all">
+            <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            {% trans "Add Location" %}
+        </a>
+    </div>
+
+    {% if locations %}
+    <!-- Locations Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for location in locations %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover-lift transition">
+            <!-- Card Header -->
+            <div class="bg-gradient-to-r from-teal-50 to-blue-50 dark:from-teal-900/20 dark:to-blue-900/20 p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ location.city }}</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ location.country }}</p>
+                    </div>
+                    <div class="h-12 w-12 bg-teal-100 dark:bg-teal-900 rounded-lg flex items-center justify-center">
+                        <svg class="h-6 w-6 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="p-6">
+                <dl class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-500">{% trans "Latitude" %}</dt>
+                        <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">{{ location.latitude|floatformat:4 }}</dd>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-500">{% trans "Longitude" %}</dt>
+                        <dd class="text-sm text-gray-900 dark:text-gray-100 font-mono">{{ location.longitude|floatformat:4 }}</dd>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-500">{% trans "Added" %}</dt>
+                        <dd class="text-sm text-gray-900 dark:text-gray-100">{{ location.created_at|date:"F j, Y" }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Card Footer -->
+            <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <a href="{% url 'forecast:location_detail' location.id %}" class="inline-flex items-center text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition">
+                    {% trans "View Details" %}
+                    <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
+                <a href="{% url 'forecast:location_delete' location.id %}" class="inline-flex items-center text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
+                    <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    {% trans "Delete" %}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+        <div class="flex justify-center mb-6">
+            <div class="h-24 w-24 bg-teal-100 rounded-full flex items-center justify-center">
+                <svg class="h-12 w-12 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{% trans "No locations yet" %}</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+            {% trans "You haven't added any locations yet. Add a location to start receiving migraine forecasts." %}
+        </p>
+        <a href="{% url 'forecast:location_add' %}" class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 rounded-lg shadow-md hover:shadow-lg transition-all">
+            <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            {% trans "Add Your First Location" %}
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Back to Dashboard -->
+    <div class="mt-8">
+        <a href="{% url 'forecast:dashboard' %}" class="inline-flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 transition">
+            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            {% trans "Back to Dashboard" %}
+        </a>
+    </div>
+</div>
+{% endblock %}
+

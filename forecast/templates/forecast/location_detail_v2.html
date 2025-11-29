@@ -1,0 +1,176 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Location Details" %} - {{ location.city }} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="flex justify-between items-start mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ location.city }}, {{ location.country }}</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{% trans "Location details and forecasts" %}</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'forecast:location_list' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
+                <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                {% trans "Back to Locations" %}
+            </a>
+            <a href="{% url 'forecast:location_delete' location.id %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition">
+                <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                {% trans "Delete Location" %}
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Location Info Sidebar -->
+        <div class="lg:col-span-1">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-8">
+                <div class="bg-gradient-to-r from-teal-50 to-blue-50 p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="h-16 w-16 bg-teal-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <svg class="h-10 w-10 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-center text-lg font-semibold text-gray-900 dark:text-gray-100">{% trans "Location Information" %}</h3>
+                </div>
+                <div class="p-6">
+                    <dl class="space-y-4">
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "City" %}</dt>
+                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.city }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Country" %}</dt>
+                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.country }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Latitude" %}</dt>
+                            <dd class="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100">{{ location.latitude|floatformat:4 }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Longitude" %}</dt>
+                            <dd class="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100">{{ location.longitude|floatformat:4 }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Added" %}</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ location.created_at|date:"F j, Y" }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Current Weather Forecast -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{% trans "Current Weather Forecast" %}</h3>
+                </div>
+                <div class="p-6">
+                    {% if forecasts %}
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Time" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Temp (°C)" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Humidity (%)" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Pressure (hPa)" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Precip (mm)" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Cloud (%)" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200">
+                                {% for forecast in forecasts|slice:":6" %}
+                                <tr class="hover:bg-gray-50 dark:bg-gray-700 transition">
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ forecast.target_time|date:"H:i" }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ forecast.temperature|floatformat:1 }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ forecast.humidity|floatformat:0 }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ forecast.pressure|floatformat:1 }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ forecast.precipitation|floatformat:1 }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ forecast.cloud_cover|floatformat:0 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                        </svg>
+                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{% trans "No forecast data available for this location." %}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Migraine Predictions -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{% trans "Recent Migraine Predictions" %}</h3>
+                </div>
+                <div class="p-6">
+                    {% if predictions %}
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Prediction Time" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Target Window" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Probability" %}</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200">
+                                {% for prediction in predictions %}
+                                <tr class="hover:bg-gray-50 dark:bg-gray-700 transition">
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ prediction.prediction_time|date:"M d, H:i" }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        {% if prediction.probability == 'HIGH' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            {% trans "High" %}
+                                        </span>
+                                        {% elif prediction.probability == 'MEDIUM' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                            {% trans "Medium" %}
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            {% trans "Low" %}
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                        <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="text-teal-600 hover:text-teal-900">
+                                            {% trans "Details" %} →
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{% trans "No prediction data available for this location." %}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

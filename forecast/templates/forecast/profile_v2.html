@@ -1,0 +1,327 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Profile" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{% trans "Profile Settings" %}</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{% trans "Manage your account and preferences" %}</p>
+        </div>
+        <a href="{% url 'forecast:dashboard' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
+            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            {% trans "Back to Dashboard" %}
+        </a>
+    </div>
+
+    <!-- User Info Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="h-16 w-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                    {{ user.username|slice:":1"|upper }}
+                </div>
+                <div class="ml-4">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ user.username }}</h2>
+                    <p class="text-gray-600 dark:text-gray-400">{{ user.email|default:"No email provided" }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-500">{% trans "Member since" %} {{ user.date_joined|date:"F j, Y" }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-gray-500 dark:text-gray-500">{% trans "Locations" %}</div>
+                <div class="text-2xl font-bold text-teal-600">{{ locations.count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Preferences Section -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">⚙️ {% trans "Preferences" %}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div>
+                        <label for="id_language" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Language" %}
+                        </label>
+                        {{ form.language }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Preferred language for the interface" %}</p>
+                    </div>
+                    <div>
+                        <label for="id_ui_version" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            🎨 {% trans "UI Version" %}
+                        </label>
+                        {{ form.ui_version }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Choose between Classic or Modern UI" %}</p>
+                    </div>
+                    <div>
+                        <label for="id_theme" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            🌓 {% trans "Theme" %}
+                        </label>
+                        {{ form.theme }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Light or Dark mode" %}</p>
+                    </div>
+                    <div>
+                        <label for="id_age" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Age" %}
+                        </label>
+                        {{ form.age }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Information Section -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">🏥 {% trans "Health Information" %}</h3>
+                <div>
+                    <label for="id_prior_conditions" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Prior Health Issues" %}
+                    </label>
+                    {{ form.prior_conditions }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Optional: anything that influences your migraines." %}</p>
+                </div>
+            </div>
+
+            <!-- Notification Settings Section -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">📧 {% trans "Notification Settings" %}</h3>
+
+                <!-- Master Switch -->
+                <div class="mb-6 p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-700">
+                    <label class="flex items-center cursor-pointer">
+                        {{ form.email_notifications_enabled }}
+                        <span class="ml-3 text-sm font-semibold text-gray-900 dark:text-gray-100">{% trans "Enable Email Notifications" %}</span>
+                    </label>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400 ml-7">{% trans "Master switch for all email alerts" %}</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="id_notification_mode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Notification Mode" %}
+                        </label>
+                        {{ form.notification_mode }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "How to deliver notifications" %}</p>
+                    </div>
+                    <div>
+                        <label for="id_digest_time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Digest Time" %}
+                        </label>
+                        {{ form.digest_time }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Time to send daily digest" %}</p>
+                    </div>
+                    <div>
+                        <label for="id_notification_severity_threshold" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Severity Threshold" %}
+                        </label>
+                        {{ form.notification_severity_threshold }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Minimum severity for notifications" %}</p>
+                    </div>
+                    <div>
+                        <label for="id_notification_frequency_hours" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Notification Frequency" %}
+                        </label>
+                        {{ form.notification_frequency_hours }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Minimum hours between notifications" %}</p>
+                    </div>
+                </div>
+
+                <!-- Daily Limits -->
+                <div class="mt-6">
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Daily Limits</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label for="id_daily_notification_limit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Overall Daily Limit
+                            </label>
+                            {{ form.daily_notification_limit }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Max emails per day (0 = disabled)</p>
+                        </div>
+                        <div>
+                            <label for="id_daily_migraine_notification_limit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Migraine Limit
+                            </label>
+                            {{ form.daily_migraine_notification_limit }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Max migraine emails (0 = use overall)</p>
+                        </div>
+                        <div>
+                            <label for="id_daily_sinusitis_notification_limit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Sinusitis Limit
+                            </label>
+                            {{ form.daily_sinusitis_notification_limit }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Max sinusitis emails (0 = use overall)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quiet Hours -->
+                <div class="mt-6">
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">🌙 Quiet Hours</h4>
+                    <div class="mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            {{ form.quiet_hours_enabled }}
+                            <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-100">Enable Quiet Hours (Do Not Disturb)</span>
+                        </label>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500 ml-7">Prevent notifications during specific times</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="id_quiet_hours_start" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Quiet Hours Start
+                            </label>
+                            {{ form.quiet_hours_start }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">e.g., 22:00 (10 PM)</p>
+                        </div>
+                        <div>
+                            <label for="id_quiet_hours_end" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Quiet Hours End
+                            </label>
+                            {{ form.quiet_hours_end }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">e.g., 07:00 (7 AM)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction Settings Section -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">🔮 {% trans "Prediction Settings" %}</h3>
+
+                <!-- Prediction Time Window -->
+                <div class="mb-6">
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Prediction Time Window</h4>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-4">Configure how far ahead to check weather conditions for predictions</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="id_prediction_window_start_hours" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Window Start (hours ahead)
+                            </label>
+                            {{ form.prediction_window_start_hours }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Start checking from this many hours ahead</p>
+                        </div>
+                        <div>
+                            <label for="id_prediction_window_end_hours" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Window End (hours ahead)
+                            </label>
+                            {{ form.prediction_window_end_hours }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Stop checking at this many hours ahead (max 72)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prediction Services -->
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Prediction Services</h4>
+                    <div class="space-y-3">
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <label class="flex items-center cursor-pointer">
+                                {{ form.migraine_predictions_enabled }}
+                                <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-100">Enable Migraine Predictions</span>
+                            </label>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500 ml-7">Generate and receive migraine predictions</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <label class="flex items-center cursor-pointer">
+                                {{ form.sinusitis_predictions_enabled }}
+                                <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-100">Enable Sinusitis Predictions</span>
+                            </label>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500 ml-7">Generate and receive sinusitis predictions</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensitivity Settings Section -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">🎚️ {% trans "Sensitivity Settings" %}</h3>
+
+                <!-- Overall Sensitivity -->
+                <div class="mb-6">
+                    <label for="id_sensitivity_overall" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Overall Sensitivity
+                    </label>
+                    {{ form.sensitivity_overall }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">0.5 = less sensitive, 1 = average, 2 = very sensitive</p>
+                </div>
+
+                <!-- Individual Sensitivities -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="id_sensitivity_temperature" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            🌡️ Temperature Sensitivity
+                        </label>
+                        {{ form.sensitivity_temperature }}
+                    </div>
+                    <div>
+                        <label for="id_sensitivity_humidity" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            💧 Humidity Sensitivity
+                        </label>
+                        {{ form.sensitivity_humidity }}
+                    </div>
+                    <div>
+                        <label for="id_sensitivity_pressure" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            🔽 Pressure Sensitivity
+                        </label>
+                        {{ form.sensitivity_pressure }}
+                    </div>
+                    <div>
+                        <label for="id_sensitivity_cloud_cover" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            ☁️ Cloud Cover Sensitivity
+                        </label>
+                        {{ form.sensitivity_cloud_cover }}
+                    </div>
+                    <div>
+                        <label for="id_sensitivity_precipitation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            🌧️ Precipitation Sensitivity
+                        </label>
+                        {{ form.sensitivity_precipitation }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="p-6 bg-gray-50 dark:bg-gray-700">
+                <div class="flex justify-between items-center">
+                    <a href="{% url 'logout' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition">
+                        <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        {% trans "Logout" %}
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 rounded-lg shadow-md hover:shadow-lg transition-all">
+                        <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        {% trans "Save Changes" %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Custom styling for form fields */
+select, input[type="number"], input[type="time"], textarea {
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm;
+}
+
+textarea {
+    min-height: 100px;
+}
+
+input[type="checkbox"] {
+    @apply h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded;
+}
+</style>
+{% endblock %}
+
+

@@ -1,0 +1,271 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Prediction Details" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{% trans "Migraine Prediction Details" %}</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{{ prediction.location.city }}, {{ prediction.location.country }}</p>
+        </div>
+        <a href="{% url 'forecast:prediction_list' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
+            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            {% trans "Back to Predictions" %}
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Prediction Info Card -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-teal-50 to-blue-50 dark:from-teal-900/20 dark:to-blue-900/20">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{% trans "Prediction Information" %}</h3>
+                </div>
+                <div class="p-6">
+                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Location" %}</dt>
+                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ prediction.location.city }}, {{ prediction.location.country }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Prediction Made" %}</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ prediction.prediction_time|date:"F j, Y, g:i a" }}</dd>
+                        </div>
+                        <div class="md:col-span-2">
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Target Time Window" %}</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ prediction.target_time_start|date:"F j, Y, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Migraine Probability" %}</dt>
+                            <dd class="mt-1">
+                                {% if prediction.probability == 'HIGH' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
+                                    {% trans "High Risk" %}
+                                </span>
+                                {% elif prediction.probability == 'MEDIUM' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                                    {% trans "Medium Risk" %}
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                                    {% trans "Low Risk" %}
+                                </span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Notification Sent" %}</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ prediction.notification_sent|yesno:"Yes,No" }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- LLM Analysis Section -->
+            {% if llm_analysis_text %}
+            <div class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-blue-200 dark:border-blue-700 bg-blue-100 dark:bg-blue-800">
+                    <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100">📊 {% trans "Model Analysis" %}</h3>
+                </div>
+                <div class="p-6">
+                    <p class="text-sm text-blue-900 dark:text-blue-100">{{ llm_analysis_text }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- LLM Rationale Section -->
+            {% if llm_rationale %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🔍 {% trans "Why This Alert?" %}</h3>
+                </div>
+                <div class="p-6">
+                    <p class="text-sm text-gray-700 dark:text-gray-300">{{ llm_rationale }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Prevention Tips Section -->
+            {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">💡 {% trans "Prevention Tips" %}</h3>
+                </div>
+                <div class="p-6">
+                    <ul class="space-y-2 mb-4">
+                        {% for tip in llm_prevention_tips %}
+                        <li class="flex items-start">
+                            <svg class="h-5 w-5 text-teal-600 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">{{ tip }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                        <p class="text-xs text-blue-800 dark:text-blue-200">
+                            <strong>{% trans "Note:" %}</strong> {% trans "These are AI-generated suggestions based on current weather conditions and should not be considered medical advice. Please consult with your healthcare provider for personalized recommendations." %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Analysis Card (fallback) -->
+            {% if prediction.analysis and not llm_analysis_text and not llm_rationale %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🔍 {% trans "Analysis" %}</h3>
+                </div>
+                <div class="p-6">
+                    <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ prediction.analysis }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Weather Factors Card (Moved to Bottom) -->
+            {% if weather_factor_values %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🌤️ {% trans "Weather Factors" %}</h3>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        {% if weather_factor_values.temperature_change %}
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3 flex-1">
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{% trans "Temperature Change" %}</h4>
+                                    <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">{{ weather_factor_values.temperature_change.change }} from previous period</p>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Range in window: {{ weather_factor_values.temperature_change.range }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if weather_factor_values.pressure_change %}
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3 flex-1">
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{% trans "Pressure Change" %}</h4>
+                                    <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">{{ weather_factor_values.pressure_change.change }} from previous period</p>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Range in window: {{ weather_factor_values.pressure_change.range }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if weather_factor_values.humidity_extreme %}
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-6 w-6 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3 flex-1">
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{% trans "Humidity Change" %}</h4>
+                                    <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">{{ weather_factor_values.humidity_extreme.change }} from previous period</p>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Range in window: {{ weather_factor_values.humidity_extreme.range }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if weather_factor_values.precipitation %}
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3 flex-1">
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{% trans "Precipitation" %}</h4>
+                                    <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">Total: {{ weather_factor_values.precipitation.total }}</p>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Max: {{ weather_factor_values.precipitation.max }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if weather_factor_values.cloud_cover %}
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-6 w-6 text-gray-500 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3 flex-1">
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{% trans "Cloud Cover" %}</h4>
+                                    <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">{{ weather_factor_values.cloud_cover.change }} from previous period</p>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Range in window: {{ weather_factor_values.cloud_cover.range }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-1">
+            <!-- Quick Stats -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6 sticky top-8">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{% trans "Quick Stats" %}</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Risk Level" %}</span>
+                        {% if prediction.probability == 'HIGH' %}
+                        <span class="text-sm font-semibold text-red-600">{% trans "High" %}</span>
+                        {% elif prediction.probability == 'MEDIUM' %}
+                        <span class="text-sm font-semibold text-amber-600">{% trans "Medium" %}</span>
+                        {% else %}
+                        <span class="text-sm font-semibold text-green-600">{% trans "Low" %}</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Notified" %}</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ prediction.notification_sent|yesno:"Yes,No" }}</span>
+                    </div>
+                    {% if prediction.created_at %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Created" %}</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ prediction.created_at|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Actions -->
+                <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <a href="{% url 'forecast:location_detail' prediction.location.id %}" class="block w-full text-center px-4 py-2 text-sm font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg transition mb-3">
+                        {% trans "View Location" %}
+                    </a>
+                    <a href="{% url 'forecast:dashboard' %}" class="block w-full text-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
+                        {% trans "Back to Dashboard" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

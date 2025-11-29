@@ -109,6 +109,29 @@ class UserHealthProfile(models.Model):
         help_text="Preferred language for the user interface and notifications",
     )
 
+    # UI Version preference
+    UI_VERSION_CHOICES = [
+        ("v1", "Classic UI"),
+        ("v2", "Modern UI"),
+    ]
+    ui_version = models.CharField(
+        max_length=10,
+        choices=UI_VERSION_CHOICES,
+        default="v2",
+        help_text="User interface version preference",
+    )
+
+    THEME_CHOICES = [
+        ("light", "Light Mode"),
+        ("dark", "Dark Mode"),
+    ]
+    theme = models.CharField(
+        max_length=10,
+        choices=THEME_CHOICES,
+        default="light",
+        help_text="Color theme preference (light or dark mode)",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

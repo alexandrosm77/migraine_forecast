@@ -1,0 +1,141 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Home" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="relative overflow-hidden">
+    <!-- Background gradient -->
+    <div class="absolute inset-0 gradient-bg opacity-10"></div>
+    
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
+        <div class="text-center">
+            <!-- Icon -->
+            <div class="flex justify-center mb-8">
+                <div class="relative">
+                    <div class="absolute inset-0 bg-teal-400 rounded-full blur-2xl opacity-30 animate-pulse"></div>
+                    <svg class="relative h-24 w-24 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- Heading -->
+            <h1 class="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+                <span class="block">{% trans "Predict & Prevent" %}</span>
+                <span class="block bg-gradient-to-r from-teal-600 to-teal-400 bg-clip-text text-transparent">
+                    {% trans "Weather-Triggered Episodes" %}
+                </span>
+            </h1>
+            
+            <!-- Subtitle -->
+            <p class="max-w-2xl mx-auto text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-12">
+                {% trans "Get personalized migraine and sinusitis forecasts based on weather patterns. Stay ahead of your health." %}
+            </p>
+            
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                {% if user.is_authenticated %}
+                <a href="{% url 'forecast:dashboard' %}" class="inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all">
+                    {% trans "Go to Dashboard" %}
+                    <svg class="ml-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                </a>
+                {% else %}
+                <a href="{% url 'forecast:register' %}" class="inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all">
+                    {% trans "Get Started Free" %}
+                    <svg class="ml-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                </a>
+                <a href="{% url 'login' %}" class="inline-flex items-center px-8 py-4 text-lg font-semibold text-teal-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:bg-gray-700 rounded-xl shadow-md hover:shadow-lg border-2 border-teal-200 transform hover:-translate-y-0.5 transition-all">
+                    {% trans "Sign In" %}
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+    <div class="text-center mb-16">
+        <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            {% trans "How It Works" %}
+        </h2>
+        <p class="text-xl text-gray-600 dark:text-gray-400">
+            {% trans "Advanced weather analysis for better health management" %}
+        </p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Feature 1 -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg hover-lift border border-gray-100">
+            <div class="h-14 w-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center mb-6">
+                <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                {% trans "Weather Analysis" %}
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                {% trans "Our AI analyzes temperature, pressure, humidity, and other weather factors to predict migraine and sinusitis risk." %}
+            </p>
+        </div>
+        
+        <!-- Feature 2 -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg hover-lift border border-gray-100">
+            <div class="h-14 w-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mb-6">
+                <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                {% trans "Smart Alerts" %}
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                {% trans "Receive timely email notifications when high-risk conditions are detected, giving you time to prepare." %}
+            </p>
+        </div>
+        
+        <!-- Feature 3 -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg hover-lift border border-gray-100">
+            <div class="h-14 w-14 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center mb-6">
+                <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                {% trans "Personalized Settings" %}
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                {% trans "Customize sensitivity levels, notification preferences, and track multiple locations for comprehensive coverage." %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="bg-gradient-to-r from-teal-600 to-teal-500 py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+                <div class="text-4xl font-bold text-white mb-2">24/7</div>
+                <div class="text-teal-100">{% trans "Continuous Monitoring" %}</div>
+            </div>
+            <div>
+                <div class="text-4xl font-bold text-white mb-2">72h</div>
+                <div class="text-teal-100">{% trans "Forecast Window" %}</div>
+            </div>
+            <div>
+                <div class="text-4xl font-bold text-white mb-2">AI</div>
+                <div class="text-teal-100">{% trans "Powered Predictions" %}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
