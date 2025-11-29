@@ -61,9 +61,16 @@
         <span class="time-window">{{ start_time|date:"F j, Y, g:i a" }} {% trans "to" %} {{ end_time|date:"F j, Y, g:i a" }}</span>.</p>
 
         {% if llm_analysis_text %}
-        <div style="background-color: #eefcf4; padding: 15px; border: 1px solid #c6f6d5; border-radius: 6px; margin: 15px 0;">
-            <h3 style="margin-top: 0; color: #276749;">🧠 {% trans "Model Analysis" %}</h3>
+        <div style="background-color: #e6f7ff; padding: 15px; border: 1px solid #91d5ff; border-radius: 6px; margin: 15px 0;">
+            <h3 style="margin-top: 0; color: #0050b3;">📊 {% trans "Model Analysis" %}</h3>
             <p style="margin: 0;">{{ llm_analysis_text }}</p>
+        </div>
+        {% endif %}
+
+        {% if llm_rationale %}
+        <div style="background-color: #f0f5ff; padding: 15px; border: 1px solid #adc6ff; border-radius: 6px; margin: 15px 0;">
+            <h3 style="margin-top: 0; color: #1d39c4;">🔍 {% trans "Why This Alert?" %}</h3>
+            <p style="margin: 0;">{{ llm_rationale }}</p>
         </div>
         {% endif %}
 
@@ -106,27 +113,32 @@
 
 
         <div style="background-color: #f0f8ff; padding: 20px; margin: 20px 0; border-radius: 5px; border: 1px solid #bee3f8;">
-            <h3 style="margin: 0 0 15px 0; color: #2b6cb0;">💡 {% trans "Recommended Actions" %}</h3>
+            <h3 style="margin: 0 0 15px 0; color: #2b6cb0;">💡 {% trans "Prevention Tips" %}</h3>
+
+            {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
+            <!-- LLM-generated tips -->
+            <ul style="margin: 0 0 15px 0;">
+                {% for tip in llm_prevention_tips %}
+                <li>{{ tip }}</li>
+                {% endfor %}
+            </ul>
+            <p style="margin: 15px 0 0 0; font-size: 13px; color: #666;">
+                <em>{% trans "These are AI-generated suggestions based on current weather conditions." %}</em>
+            </p>
+            {% else %}
+            <!-- Fallback to hardcoded tips when LLM is unavailable -->
             <p style="margin: 0 0 10px 0;"><strong>{% trans "General preventive measures:" %}</strong></p>
             <ul style="margin: 0 0 15px 0;">
                 <li>{% trans "Take prescribed preventive medication if you have any" %}</li>
                 <li>{% trans "Stay well hydrated throughout the day" %}</li>
                 <li>{% trans "Maintain regular sleep and meal schedules" %}</li>
                 <li>{% trans "Avoid known personal triggers (certain foods, stress, etc.)" %}</li>
+                <li>{% trans "Have your rescue medication readily available" %}</li>
             </ul>
-
-            {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
-            <p style="margin: 0 0 10px 0;"><strong>{% trans "Personalized tips based on current factors:" %}</strong></p>
-            <ul style="margin: 0 0 15px 0;">
-                {% for tip in llm_prevention_tips %}
-                <li>{{ tip }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
 
             {% if detailed_factors.factors %}
             <p style="margin: 0 0 10px 0;"><strong>{% trans "Specific to today's weather conditions:" %}</strong></p>
-            <ul style="margin: 0;">
+            <ul style="margin: 0 0 15px 0;">
                 {% for factor in detailed_factors.factors %}
                     {% if factor.name == 'Temperature Change' %}
                         <li>{% trans "Dress in layers to adapt to temperature changes" %}</li>
@@ -143,9 +155,10 @@
                 {% endfor %}
             </ul>
             {% endif %}
+            {% endif %}
 
             <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
-                <strong>{% trans "Remember:" %}</strong> {% trans "Have your rescue medication readily available and know your early warning signs." %}
+                <strong>{% trans "Remember:" %}</strong> {% trans "These suggestions should not be considered medical advice. Consult with your healthcare provider for personalized recommendations." %}
             </p>
         </div>
         

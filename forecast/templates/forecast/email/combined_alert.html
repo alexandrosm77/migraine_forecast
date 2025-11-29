@@ -106,9 +106,16 @@
             <h2 class="section-header">🧠 Migraine Alert - {{ loc.migraine_probability_level }} Probability</h2>
 
             {% if loc.migraine_llm_analysis_text %}
-            <div style="background-color: #eefcf4; padding: 15px; border: 1px solid #c6f6d5; border-radius: 6px; margin: 15px 0;">
-                <h3 style="margin-top: 0; color: #276749;">Model Analysis</h3>
+            <div style="background-color: #e6f7ff; padding: 15px; border: 1px solid #91d5ff; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #0050b3;">📊 Model Analysis</h3>
                 <p style="margin: 0;">{{ loc.migraine_llm_analysis_text }}</p>
+            </div>
+            {% endif %}
+
+            {% if loc.migraine_llm_rationale %}
+            <div style="background-color: #f0f5ff; padding: 15px; border: 1px solid #adc6ff; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #1d39c4;">🔍 Why This Alert?</h3>
+                <p style="margin: 0;">{{ loc.migraine_llm_rationale }}</p>
             </div>
             {% endif %}
 
@@ -145,9 +152,16 @@
             <h2 class="section-header">👃 Sinusitis Alert - {{ loc.sinusitis_probability_level }} Probability</h2>
 
             {% if loc.sinusitis_llm_analysis_text %}
-            <div style="background-color: #fef3c7; padding: 15px; border: 1px solid #fde68a; border-radius: 6px; margin: 15px 0;">
-                <h3 style="margin-top: 0; color: #92400e;">Model Analysis</h3>
+            <div style="background-color: #fff7e6; padding: 15px; border: 1px solid #ffd591; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #ad6800;">📊 Model Analysis</h3>
                 <p style="margin: 0;">{{ loc.sinusitis_llm_analysis_text }}</p>
+            </div>
+            {% endif %}
+
+            {% if loc.sinusitis_llm_rationale %}
+            <div style="background-color: #fffbf0; padding: 15px; border: 1px solid #ffe7ba; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #d48806;">🔍 Why This Alert?</h3>
+                <p style="margin: 0;">{{ loc.sinusitis_llm_rationale }}</p>
             </div>
             {% endif %}
 
@@ -193,24 +207,29 @@
         {% endfor %}
 
         <div style="background-color: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 5px; border: 2px solid #86efac;">
-            <h3 style="margin: 0 0 15px 0; color: #166534;">💡 Recommended Actions</h3>
+            <h3 style="margin: 0 0 15px 0; color: #166534;">💡 Prevention Tips</h3>
 
             {% if has_migraine %}
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #3498db; margin: 0 0 10px 0;">For Migraine Prevention:</h4>
+                {% if first_migraine_tips and first_migraine_tips|length > 0 %}
+                <!-- LLM-generated tips -->
                 <ul style="margin: 0 0 10px 0;">
+                    {% for tip in first_migraine_tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+                <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+                    <em>AI-generated suggestions based on current weather conditions.</em>
+                </p>
+                {% else %}
+                <!-- Fallback to hardcoded tips -->
+                <ul style="margin: 0;">
                     <li>Take prescribed preventive medication if you have any</li>
                     <li>Stay well hydrated throughout the day</li>
                     <li>Maintain regular sleep and meal schedules</li>
                     <li>Avoid known personal triggers (certain foods, stress, etc.)</li>
                     <li>Have your rescue medication readily available</li>
-                </ul>
-                {% if first_migraine_tips and first_migraine_tips|length > 0 %}
-                <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
-                <ul style="margin: 0;">
-                    {% for tip in first_migraine_tips %}
-                    <li>{{ tip }}</li>
-                    {% endfor %}
                 </ul>
                 {% endif %}
             </div>
@@ -219,26 +238,31 @@
             {% if has_sinusitis %}
             <div>
                 <h4 style="color: #f59e0b; margin: 0 0 10px 0;">For Sinusitis Prevention:</h4>
+                {% if first_sinusitis_tips and first_sinusitis_tips|length > 0 %}
+                <!-- LLM-generated tips -->
                 <ul style="margin: 0 0 10px 0;">
+                    {% for tip in first_sinusitis_tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+                <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+                    <em>AI-generated suggestions based on current weather conditions.</em>
+                </p>
+                {% else %}
+                <!-- Fallback to hardcoded tips -->
+                <ul style="margin: 0;">
                     <li>Use saline nasal rinse to keep sinuses clear</li>
                     <li>Stay well hydrated throughout the day</li>
                     <li>Use a humidifier if air is dry</li>
                     <li>Avoid allergens and irritants (smoke, strong odors)</li>
                     <li>Apply warm compresses to sinus areas if needed</li>
                 </ul>
-                {% if first_sinusitis_tips and first_sinusitis_tips|length > 0 %}
-                <p style="margin: 10px 0 5px 0;"><strong>Personalized tips:</strong></p>
-                <ul style="margin: 0;">
-                    {% for tip in first_sinusitis_tips %}
-                    <li>{{ tip }}</li>
-                    {% endfor %}
-                </ul>
                 {% endif %}
             </div>
             {% endif %}
 
             <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
-                <strong>Remember:</strong> If symptoms persist or worsen, consult with your healthcare provider.
+                <strong>Remember:</strong> These suggestions should not be considered medical advice. If symptoms persist or worsen, consult with your healthcare provider.
             </p>
         </div>
         

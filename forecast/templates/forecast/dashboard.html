@@ -23,13 +23,34 @@
         <div class="card-body">
             <p>{% trans "High migraine probability detected in the next 24 hours:" %}</p>
             <ul class="list-group">
-                {% for prediction in upcoming_high_risk %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>{{ prediction.location.city }}, {{ prediction.location.country }}</strong>
-                        <span class="text-muted d-block">{{ prediction.target_time_start|date:"F j, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</span>
+                {% for item in upcoming_high_risk %}
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <strong>{{ item.prediction.location.city }}, {{ item.prediction.location.country }}</strong>
+                            <span class="text-muted d-block">{{ item.prediction.target_time_start|date:"F j, g:i a" }} - {{ item.prediction.target_time_end|date:"g:i a" }}</span>
+
+                            {% if item.weather_trends %}
+                            <div class="mt-2">
+                                <small class="text-muted"><strong>🌡️ {% trans "Weather Trends:" %}</strong></small>
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    {% for trend in item.weather_trends %}
+                                    <span class="badge {% if trend.severity == 'high' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                        {{ trend.name }} ({{ trend.score|floatformat:1 }})
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if item.has_full_analysis %}
+                            <div class="mt-2 p-2 bg-light rounded">
+                                <small class="text-muted">📊 <strong>{% trans "Analysis:" %}</strong> {{ item.analysis_preview }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <a href="{% url 'forecast:prediction_detail' item.prediction.id %}" class="btn btn-sm btn-outline-danger ms-2">{% trans "Details" %}</a>
                     </div>
-                    <a href="{% url 'forecast:prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-danger">{% trans "Details" %}</a>
                 </li>
                 {% endfor %}
             </ul>
@@ -45,13 +66,34 @@
         <div class="card-body">
             <p>{% trans "High sinusitis probability detected in the next 24 hours:" %}</p>
             <ul class="list-group">
-                {% for prediction in upcoming_sinusitis_high_risk %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>{{ prediction.location.city }}, {{ prediction.location.country }}</strong>
-                        <span class="text-muted d-block">{{ prediction.target_time_start|date:"F j, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</span>
+                {% for item in upcoming_sinusitis_high_risk %}
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <strong>{{ item.prediction.location.city }}, {{ item.prediction.location.country }}</strong>
+                            <span class="text-muted d-block">{{ item.prediction.target_time_start|date:"F j, g:i a" }} - {{ item.prediction.target_time_end|date:"g:i a" }}</span>
+
+                            {% if item.weather_trends %}
+                            <div class="mt-2">
+                                <small class="text-muted"><strong>🌡️ {% trans "Weather Trends:" %}</strong></small>
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    {% for trend in item.weather_trends %}
+                                    <span class="badge {% if trend.severity == 'high' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                        {{ trend.name }} ({{ trend.score|floatformat:1 }})
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if item.has_full_analysis %}
+                            <div class="mt-2 p-2 bg-light rounded">
+                                <small class="text-muted">📊 <strong>{% trans "Analysis:" %}</strong> {{ item.analysis_preview }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <a href="{% url 'forecast:sinusitis_prediction_detail' item.prediction.id %}" class="btn btn-sm btn-outline-warning ms-2">{% trans "Details" %}</a>
                     </div>
-                    <a href="{% url 'forecast:sinusitis_prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-warning">Details</a>
                 </li>
                 {% endfor %}
             </ul>

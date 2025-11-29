@@ -263,6 +263,7 @@ class NotificationService:
             "weather_factors": weather_factors,
             "detailed_factors": detailed_factors,
             "llm_analysis_text": (weather_factors or {}).get("llm_analysis_text"),
+            "llm_rationale": (weather_factors or {}).get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),
             "llm_prevention_tips": (weather_factors or {}).get("llm_prevention_tips") or [],
         }
 
@@ -454,6 +455,7 @@ class NotificationService:
                         "migraine_probability_level": migraine_pred.probability,
                         "migraine_detailed_factors": migraine_detailed_factors,
                         "migraine_llm_analysis_text": migraine_weather_factors.get("llm_analysis_text"),
+                        "migraine_llm_rationale": migraine_weather_factors.get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),
                         "migraine_llm_prevention_tips": migraine_weather_factors.get("llm_prevention_tips") or [],
                     }
                 )
@@ -469,6 +471,7 @@ class NotificationService:
                         "sinusitis_probability_level": sinusitis_pred.probability,
                         "sinusitis_detailed_factors": sinusitis_detailed_factors,
                         "sinusitis_llm_analysis_text": sinusitis_weather_factors.get("llm_analysis_text"),
+                        "sinusitis_llm_rationale": sinusitis_weather_factors.get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),
                         "sinusitis_llm_prevention_tips": sinusitis_weather_factors.get("llm_prevention_tips") or [],
                     }
                 )
@@ -971,6 +974,7 @@ class NotificationService:
             "weather_factors": weather_factors,
             "detailed_factors": detailed_factors,
             "llm_analysis_text": (weather_factors or {}).get("llm_analysis_text"),
+            "llm_rationale": (weather_factors or {}).get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),
             "llm_prevention_tips": (weather_factors or {}).get("llm_prevention_tips") or [],
         }
 

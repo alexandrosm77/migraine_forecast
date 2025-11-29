@@ -74,12 +74,63 @@ def dashboard(request):
             target_time_start__lte=now + timedelta(hours=24),
         ).order_by("target_time_start")
 
+    # Prepare high-risk predictions with analysis preview and weather trends
+    high_risk_with_analysis = []
+    for pred in upcoming_high_risk:
+        wf = pred.weather_factors or {}
+        analysis_text = wf.get("llm_analysis_text", "")
+        # Truncate to ~150 characters for preview
+        preview = analysis_text[:150] + "..." if len(analysis_text) > 150 else analysis_text
+
+        # Get weather trends from weather_factors
+        trends = []
+        detailed_factors = wf.get("detailed_factors", {})
+        if detailed_factors:
+            for factor in detailed_factors.get("factors", []):
+                trends.append({
+                    "name": factor.get("name", ""),
+                    "severity": factor.get("severity", ""),
+                    "score": factor.get("score", 0),
+                })
+
+        high_risk_with_analysis.append({
+            "prediction": pred,
+            "analysis_preview": preview,
+            "has_full_analysis": bool(analysis_text),
+            "weather_trends": trends,
+        })
+
+    sinusitis_high_risk_with_analysis = []
+    for pred in upcoming_sinusitis_high_risk:
+        wf = pred.weather_factors or {}
+        analysis_text = wf.get("llm_analysis_text", "")
+        # Truncate to ~150 characters for preview
+        preview = analysis_text[:150] + "..." if len(analysis_text) > 150 else analysis_text
+
+        # Get weather trends from weather_factors
+        trends = []
+        detailed_factors = wf.get("detailed_factors", {})
+        if detailed_factors:
+            for factor in detailed_factors.get("factors", []):
+                trends.append({
+                    "name": factor.get("name", ""),
+                    "severity": factor.get("severity", ""),
+                    "score": factor.get("score", 0),
+                })
+
+        sinusitis_high_risk_with_analysis.append({
+            "prediction": pred,
+            "analysis_preview": preview,
+            "has_full_analysis": bool(analysis_text),
+            "weather_trends": trends,
+        })
+
     context = {
         "locations": locations,
         "recent_predictions": recent_predictions,
         "recent_sinusitis_predictions": recent_sinusitis_predictions,
-        "upcoming_high_risk": upcoming_high_risk,
-        "upcoming_sinusitis_high_risk": upcoming_sinusitis_high_risk,
+        "upcoming_high_risk": high_risk_with_analysis,
+        "upcoming_sinusitis_high_risk": sinusitis_high_risk_with_analysis,
         "migraine_enabled": migraine_enabled,
         "sinusitis_enabled": sinusitis_enabled,
     }
@@ -319,6 +370,7 @@ def prediction_detail(request, prediction_id):
         "prediction": prediction,
         "detailed_factors": detailed_factors,
         "llm_analysis_text": wf.get("llm_analysis_text"),
+        "llm_rationale": wf.get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),
         "llm_prevention_tips": wf.get("llm_prevention_tips") or [],
         "weather_factor_values": weather_factor_values,
     }
@@ -460,6 +512,7 @@ def sinusitis_prediction_detail(request, prediction_id):
         "prediction": prediction,
         "detailed_factors": detailed_factors,
         "llm_analysis_text": wf.get("llm_analysis_text"),
+        "llm_rationale": wf.get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),
         "llm_prevention_tips": wf.get("llm_prevention_tips") or [],
         "weather_factor_values": weather_factor_values,
     }

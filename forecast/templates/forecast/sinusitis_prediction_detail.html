@@ -114,9 +114,20 @@
     </div>
 
     {% if llm_analysis_text %}
-    <div class="alert alert-success" role="alert">
-        <h5 class="alert-heading">🧠 Model Analysis</h5>
+    <div class="alert alert-info" role="alert">
+        <h5 class="alert-heading">📊 Model Analysis</h5>
         <p class="mb-0">{{ llm_analysis_text }}</p>
+    </div>
+    {% endif %}
+
+    {% if llm_rationale %}
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">🔍 Why This Alert?</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-0">{{ llm_rationale }}</p>
+        </div>
     </div>
     {% endif %}
 
@@ -158,20 +169,21 @@
     {% if prediction.probability == 'HIGH' or prediction.probability == 'MEDIUM' %}
     <div class="card mb-4">
         <div class="card-header">
-            <h5 class="mb-0">Sinusitis Prevention Tips</h5>
+            <h5 class="mb-0">💡 Prevention Tips</h5>
         </div>
         <div class="card-body">
             {% if llm_prevention_tips and llm_prevention_tips|length > 0 %}
-            <div class="mb-3">
-                <h6>🎯 Personalized tips based on current factors</h6>
-                <ul class="mb-0">
-                    {% for tip in llm_prevention_tips %}
-                    <li>{{ tip }}</li>
-                    {% endfor %}
-                </ul>
+            <!-- LLM-generated tips -->
+            <ul class="mb-3">
+                {% for tip in llm_prevention_tips %}
+                <li>{{ tip }}</li>
+                {% endfor %}
+            </ul>
+            <div class="alert alert-info mb-0">
+                <small><strong>Note:</strong> These are AI-generated suggestions based on current weather conditions and should not be considered medical advice. Please consult with your healthcare provider for personalized recommendations.</small>
             </div>
-            <hr>
-            {% endif %}
+            {% else %}
+            <!-- Fallback to hardcoded tips when LLM is unavailable -->
             <div class="row">
                 <div class="col-md-6">
                     <h6>Immediate Actions</h6>
@@ -197,9 +209,10 @@
                     </ul>
                 </div>
             </div>
-            <div class="alert alert-info mt-3">
+            <div class="alert alert-info mt-3 mb-0">
                 <small><strong>Note:</strong> These are general suggestions and not medical advice. If you experience severe or persistent sinus symptoms, please consult with your healthcare provider for personalized recommendations.</small>
             </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
