@@ -10,8 +10,24 @@ class UserHealthProfile(models.Model):
     prior_conditions = models.TextField(
         blank=True, help_text="Optional: List prior health issues relevant to migraines"
     )
+    # Sensitivity preset (replaces granular sensitivity fields)
+    SENSITIVITY_PRESET_CHOICES = [
+        ("LOW", "Low - Less sensitive to weather changes"),
+        ("NORMAL", "Normal - Average sensitivity"),
+        ("HIGH", "High - More sensitive to weather changes"),
+    ]
+    sensitivity_preset = models.CharField(
+        max_length=10,
+        choices=SENSITIVITY_PRESET_CHOICES,
+        default="NORMAL",
+        help_text="Your sensitivity to weather changes (passed directly to the prediction model)",
+    )
+
+    # DEPRECATED: Old granular sensitivity fields (kept for migration compatibility)
+    # These will be removed in a future version
     sensitivity_overall = models.FloatField(
-        default=1.0, help_text="Overall sensitivity multiplier (0.5 = less sensitive, 1 = average, 2 = very sensitive)"
+        default=1.0,
+        help_text="DEPRECATED: Use sensitivity_preset instead"
     )
     sensitivity_temperature = models.FloatField(default=1.0)
     sensitivity_humidity = models.FloatField(default=1.0)
@@ -192,6 +208,11 @@ class Location(models.Model):
     country = models.CharField(max_length=100)
     latitude = models.FloatField()
     longitude = models.FloatField()
+    timezone = models.CharField(
+        max_length=50,
+        default='UTC',
+        help_text="IANA timezone name (e.g., 'America/New_York', 'Europe/Athens'). Used for digest scheduling."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

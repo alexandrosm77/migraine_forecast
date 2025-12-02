@@ -12,6 +12,7 @@ namespace: migraine-forecast
 resources:
   - namespace.yaml
   - persistent-volume.yaml
+  - configmap.yaml
   # secrets.yaml - created from GitHub secrets during deployment
   - deployment.yaml
   - service.yaml

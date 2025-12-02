@@ -109,32 +109,11 @@ class SinusitisPredictionService:
             try:
                 profile = user.health_profile
                 applied_profile = {
-                    "sensitivity_overall": profile.sensitivity_overall,
-                    "sensitivity_temperature": profile.sensitivity_temperature,
-                    "sensitivity_humidity": profile.sensitivity_humidity,
-                    "sensitivity_pressure": profile.sensitivity_pressure,
-                    "sensitivity_cloud_cover": profile.sensitivity_cloud_cover,
-                    "sensitivity_precipitation": profile.sensitivity_precipitation,
+                    "sensitivity_preset": profile.sensitivity_preset,  # Pass preset directly to LLM
                     "language": profile.language,  # Pass user's language preference to LLM
                 }
-                # Map weight keys to profile keys and adjust weights
-                factor_to_profile = {
-                    "temperature_change": "sensitivity_temperature",
-                    "humidity_extreme": "sensitivity_humidity",
-                    "pressure_change": "sensitivity_pressure",
-                    "pressure_low": "sensitivity_pressure",
-                    "precipitation": "sensitivity_precipitation",
-                    "cloud_cover": "sensitivity_cloud_cover",
-                }
-                for k, w in adjusted_weights.items():
-                    pk = factor_to_profile.get(k)
-                    if pk:
-                        adjusted_weights[k] = max(0.0, w * profile.sensitivity_overall * getattr(profile, pk, 1.0))
-                # Re-normalize weights to sum to 1.0 to keep score scale comparable
-                total_w = sum(adjusted_weights.values())
-                if total_w > 0:
-                    for k in adjusted_weights:
-                        adjusted_weights[k] = adjusted_weights[k] / total_w
+                # No weight adjustment - LLM will interpret the sensitivity preset directly
+                # Weights remain at default values
             except UserHealthProfile.DoesNotExist:
                 pass
             except Exception:
@@ -395,15 +374,20 @@ class SinusitisPredictionService:
             # Calculate overall probability score (0-1)
             total_score = sum(scores[factor] * adjusted_weights.get(factor, 0.0) for factor in scores)
 
-            # Determine probability level (shift thresholds slightly by overall sensitivity)
+            # Determine probability level based on sensitivity preset
             high_thr = 0.65  # Slightly lower than migraine
             med_thr = 0.35  # Slightly lower than migraine
             if user is not None and applied_profile is not None:
-                overall = applied_profile.get("sensitivity_overall", 1.0)
-                # More sensitive → lower thresholds; less sensitive → higher thresholds (clamped)
-                shift = (overall - 1.0) * 0.15  # max +/- 15% threshold shift per overall unit
-                high_thr = min(max(high_thr - shift, 0.45), 0.85)
-                med_thr = min(max(med_thr - shift, 0.20), 0.65)
+                sensitivity_preset = applied_profile.get("sensitivity_preset", "NORMAL")
+                # Adjust thresholds based on preset
+                if sensitivity_preset == "HIGH":
+                    # More sensitive → lower thresholds
+                    high_thr = 0.55
+                    med_thr = 0.25
+                elif sensitivity_preset == "LOW":
+                    # Less sensitive → higher thresholds
+                    high_thr = 0.75
+                    med_thr = 0.45
 
             if total_score >= high_thr:
                 probability_level = "HIGH"

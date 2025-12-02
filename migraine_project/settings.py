@@ -91,12 +91,30 @@ WSGI_APPLICATION = "migraine_project.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Support both SQLite (local dev) and PostgreSQL (production)
+# Use PostgreSQL if DB_ENGINE is set, otherwise default to SQLite
+DB_ENGINE = os.environ.get('DB_ENGINE', 'sqlite3')
+
+if DB_ENGINE == 'postgresql':
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get('DB_NAME', 'migraine_forecast'),
+            "USER": os.environ.get('DB_USER', 'postgres'),
+            "PASSWORD": os.environ.get('DB_PASSWORD', ''),
+            "HOST": os.environ.get('DB_HOST', 'localhost'),
+            "PORT": os.environ.get('DB_PORT', '5432'),
+            "CONN_MAX_AGE": int(os.environ.get('DB_CONN_MAX_AGE', '600')),  # Connection pooling
+        }
     }
-}
+else:
+    # SQLite for local development
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -479,3 +497,19 @@ if SENTRY_ENABLED and SENTRY_DSN:
 
 SESSION_COOKIE_NAME = "forecast_sessionid"
 CSRF_COOKIE_NAME = "forecast_csrftoken"
+
+# Celery Configuration
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+CELERY_ENABLE_UTC = True
+# Task routing - send LLM tasks to dedicated queue
+CELERY_TASK_ROUTES = {
+    'forecast.tasks.generate_prediction': {'queue': 'llm'},
+    'forecast.tasks.generate_digest_predictions': {'queue': 'llm'},
+}
+# Default queue for all other tasks
+CELERY_TASK_DEFAULT_QUEUE = 'default'

@@ -1,0 +1,38 @@
+# ConfigMap for Celery and application settings
+#
+# NOTE: This file is a template for reference only.
+# The actual ConfigMap is created dynamically by GitHub Actions workflow
+# from secrets and variables defined in the repository settings.
+#
+# To update configuration:
+# 1. Add secrets to GitHub repository settings (Settings > Secrets and variables > Actions)
+# 2. Add variables to GitHub repository settings (Settings > Secrets and variables > Actions)
+# 3. Update .github/workflows/k8s-deploy.yml to include the new values
+#
+# Current secrets (stored in GitHub Actions secrets):
+# - CELERY_BROKER_URL: Redis URL for Celery broker
+# - CELERY_RESULT_BACKEND: Redis URL for Celery result backend
+# - DB_PASSWORD: PostgreSQL database password
+# - SENTRY_DSN: Sentry DSN for error tracking
+#
+# Current variables (stored in GitHub Actions variables):
+# - DB_ENGINE: Database engine (postgresql or sqlite3)
+# - DB_NAME: Database name
+# - DB_USER: Database user
+# - DB_HOST: Database host
+# - DB_PORT: Database port
+# - DB_CONN_MAX_AGE: Database connection max age (seconds)
+# - SENTRY_ENABLED: Enable Sentry error tracking
+# - SENTRY_ENVIRONMENT: Sentry environment name
+# - SENTRY_TRACES_SAMPLE_RATE: Sentry traces sample rate
+# - SENTRY_PROFILES_SAMPLE_RATE: Sentry profiles sample rate
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: migraine-config
+  namespace: migraine-forecast
+data:
+  # This ConfigMap is created dynamically by GitHub Actions
+  # See .github/workflows/k8s-deploy.yml for the actual values
+

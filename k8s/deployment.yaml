@@ -97,65 +97,51 @@ spec:
           claimName: migraine-db-pvc
 
 ---
-# Cron Deployment - Runs scheduled tasks (single replica, no scaling)
+# Celery Worker - Default Queue (orchestration, weather, email)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: migraine-forecast-cron
+  name: migraine-forecast-worker-default
   namespace: migraine-forecast
   labels:
     app: migraine-forecast
-    component: cron
+    component: worker-default
 spec:
-  # MUST be 1 - cron jobs should not run in parallel
   replicas: 1
 
-  # Deployment strategy - Recreate to ensure only one cron pod at a time
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
 
   selector:
     matchLabels:
       app: migraine-forecast
-      component: cron
+      component: worker-default
 
   template:
     metadata:
       labels:
         app: migraine-forecast
-        component: cron
+        component: worker-default
     spec:
       containers:
-      - name: cron
+      - name: worker-default
         image: alexandrosm77/migraine_forecast:latest
         imagePullPolicy: Always
 
-        # Override CMD to run only cron (no gunicorn)
         command: ["/bin/bash", "-c"]
         args:
           - |
-            echo "Starting cron daemon..."
+            echo "Starting Celery worker for default queue..."
+            exec celery -A migraine_project worker \
+              --loglevel=info \
+              --queues=default \
+              --concurrency=2 \
+              --max-tasks-per-child=100
 
-            # Export environment variables to cron environment
-            # Cron doesn't inherit environment variables from the container
-            # so we need to explicitly write them to the crontab
-            echo "Exporting environment variables to cron..."
-            printenv | grep -E '^(SENTRY_|DJANGO_|LLM_|LOG_)' | sed 's/^\(.*\)$/export \1/g' > /etc/environment_vars.sh
-            chmod +x /etc/environment_vars.sh
-
-            # Update crontab to source environment variables before each command
-            crontab -l > /tmp/current_cron
-            sed -i 's|cd /app &&|cd /app \&\& . /etc/environment_vars.sh \&\&|g' /tmp/current_cron
-            crontab /tmp/current_cron
-            rm /tmp/current_cron
-
-            echo "Environment variables exported to cron"
-            echo "Starting cron daemon..."
-            cron
-            echo "Cron started. Tailing logs..."
-            tail -f /var/log/cron.log
-
-        # Graceful shutdown - wait for running cron jobs to finish
+        # Graceful shutdown
         lifecycle:
           preStop:
             exec:
@@ -163,24 +149,13 @@ spec:
                 - /bin/bash
                 - -c
                 - |
-                  echo "Received shutdown signal, waiting for cron jobs to finish..."
-                  # Wait up to 60 seconds for any running Python processes to finish
-                  for i in {1..60}; do
-                    if ! pgrep -f "python manage.py" > /dev/null; then
-                      echo "No cron jobs running, safe to shutdown"
-                      exit 0
-                    fi
-                    echo "Waiting for cron jobs to finish... ($i/60)"
-                    sleep 1
-                  done
-                  echo "Timeout reached, forcing shutdown"
+                  echo "Received shutdown signal, waiting for tasks to finish..."
+                  sleep 10
 
-        # Environment variables from ConfigMap
         envFrom:
         - configMapRef:
             name: migraine-config
 
-        # Environment variables from Secret
         env:
         - name: SENTRY_DSN
           valueFrom:
@@ -188,21 +163,172 @@ spec:
               name: migraine-secrets
               key: SENTRY_DSN
 
-        # Volume mounts - read-write for cron (writes to database)
         volumeMounts:
         - name: db-storage
           mountPath: /app/db.sqlite3
           subPath: db.sqlite3
-          # No readOnly - cron needs to write
 
-        # Resource limits - higher for LLM inference
         resources:
           requests:
             memory: "256Mi"
             cpu: "100m"
           limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: migraine-db-pvc
+
+---
+# Celery Worker - LLM Queue (MUST run with concurrency=1)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: migraine-forecast-worker-llm
+  namespace: migraine-forecast
+  labels:
+    app: migraine-forecast
+    component: worker-llm
+spec:
+  # MUST be 1 - LLM API constraint
+  replicas: 1
+
+  # Recreate strategy to ensure only one LLM worker at a time
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: migraine-forecast
+      component: worker-llm
+
+  template:
+    metadata:
+      labels:
+        app: migraine-forecast
+        component: worker-llm
+    spec:
+      containers:
+      - name: worker-llm
+        image: alexandrosm77/migraine_forecast:latest
+        imagePullPolicy: Always
+
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "Starting Celery worker for LLM queue (concurrency=1)..."
+            exec celery -A migraine_project worker \
+              --loglevel=info \
+              --queues=llm \
+              --concurrency=1 \
+              --max-tasks-per-child=50
+
+        # Graceful shutdown - important for LLM tasks
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  echo "Received shutdown signal, waiting for LLM tasks to finish..."
+                  sleep 30
+
+        envFrom:
+        - configMapRef:
+            name: migraine-config
+
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: SENTRY_DSN
+
+        volumeMounts:
+        - name: db-storage
+          mountPath: /app/db.sqlite3
+          subPath: db.sqlite3
+
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
             memory: "1Gi"
             cpu: "1000m"
+
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: migraine-db-pvc
+
+---
+# Celery Beat - Scheduler (MUST be singleton)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: migraine-forecast-celery-beat
+  namespace: migraine-forecast
+  labels:
+    app: migraine-forecast
+    component: celery-beat
+spec:
+  # MUST be 1 - only one beat scheduler
+  replicas: 1
+
+  # Recreate strategy to ensure only one beat at a time
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: migraine-forecast
+      component: celery-beat
+
+  template:
+    metadata:
+      labels:
+        app: migraine-forecast
+        component: celery-beat
+    spec:
+      containers:
+      - name: celery-beat
+        image: alexandrosm77/migraine_forecast:latest
+        imagePullPolicy: Always
+
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "Starting Celery Beat scheduler..."
+            exec celery -A migraine_project beat \
+              --loglevel=info
+
+        envFrom:
+        - configMapRef:
+            name: migraine-config
+
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: SENTRY_DSN
+
+        volumeMounts:
+        - name: db-storage
+          mountPath: /app/db.sqlite3
+          subPath: db.sqlite3
+
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
 
       volumes:
       - name: db-storage
