@@ -27,11 +27,17 @@ def config_loggers(*args, **kwargs):
     Configure Celery to use Django's logging configuration.
     This ensures Celery logs use the same format (JSON or text) as Django.
     """
-    from logging.config import dictConfig
-    from django.conf import settings
+    try:
+        from logging.config import dictConfig
+        from django.conf import settings
 
-    # Use Django's LOGGING configuration for Celery
-    dictConfig(settings.LOGGING)
+        # Use Django's LOGGING configuration for Celery
+        dictConfig(settings.LOGGING)
+    except Exception as e:
+        # If there's an error configuring logging, fall back to default
+        # This prevents Celery from failing to start
+        import logging
+        logging.warning(f"Failed to configure Celery logging: {e}. Using default logging.")
 
 
 # Celery Beat schedule
