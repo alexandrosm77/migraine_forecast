@@ -2,7 +2,6 @@
 Celery configuration for migraine_forecast project.
 """
 import os
-import logging
 from celery import Celery
 from celery.schedules import crontab
 from celery.signals import setup_logging
@@ -33,6 +32,7 @@ def config_loggers(*args, **kwargs):
 
     # Use Django's LOGGING configuration for Celery
     dictConfig(settings.LOGGING)
+
 
 # Celery Beat schedule
 app.conf.beat_schedule = {
