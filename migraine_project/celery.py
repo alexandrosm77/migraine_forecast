@@ -2,8 +2,10 @@
 Celery configuration for migraine_forecast project.
 """
 import os
+import logging
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import setup_logging
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'migraine_project.settings')
@@ -18,6 +20,19 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
+
+
+@setup_logging.connect
+def config_loggers(*args, **kwargs):
+    """
+    Configure Celery to use Django's logging configuration.
+    This ensures Celery logs use the same format (JSON or text) as Django.
+    """
+    from logging.config import dictConfig
+    from django.conf import settings
+
+    # Use Django's LOGGING configuration for Celery
+    dictConfig(settings.LOGGING)
 
 # Celery Beat schedule
 app.conf.beat_schedule = {
