@@ -28,6 +28,29 @@ spec:
         - configMapRef:
             name: migraine-config
 
+        # Environment variables from Secrets
+        env:
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: SENTRY_DSN
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: CELERY_BROKER_URL
+        - name: CELERY_RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: CELERY_RESULT_BACKEND
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: migraine-secrets
+              key: DB_PASSWORD
+
         volumeMounts:
         - name: db-storage
           mountPath: /app/db.sqlite3
