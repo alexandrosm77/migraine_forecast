@@ -146,21 +146,7 @@
                                         {{ form.quiet_hours_end }}
                                         <div class="form-text">e.g., 07:00 (7 AM)</div>
                                     </div>
-                                    <div class="col-12">
-                                        <hr class="my-3">
-                                        <h6 class="mb-3">Prediction Time Window</h6>
-                                        <div class="form-text mb-3">Configure how far ahead to check weather conditions for predictions</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_prediction_window_start_hours" class="form-label">Window Start (hours ahead)</label>
-                                        {{ form.prediction_window_start_hours }}
-                                        <div class="form-text">Start checking from this many hours ahead</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="id_prediction_window_end_hours" class="form-label">Window End (hours ahead)</label>
-                                        {{ form.prediction_window_end_hours }}
-                                        <div class="form-text">Stop checking at this many hours ahead (max 72)</div>
-                                    </div>
+
                                     <div class="col-12">
                                         <hr class="my-3">
                                         <h6 class="mb-3">Prediction Services</h6>
@@ -181,30 +167,10 @@
                                     </div>
                                     <div class="col-12">
                                         <hr class="my-3">
-                                        <h6 class="mb-3">Sensitivity Settings</h6>
-                                        <label for="id_sensitivity_overall" class="form-label">Overall Sensitivity</label>
-                                        {{ form.sensitivity_overall }}
-                                        <div class="form-text">0.5 = less sensitive, 1 = average, 2 = very sensitive</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Temperature Sensitivity</label>
-                                        {{ form.sensitivity_temperature }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Humidity Sensitivity</label>
-                                        {{ form.sensitivity_humidity }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Pressure Sensitivity</label>
-                                        {{ form.sensitivity_pressure }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Cloud Cover Sensitivity</label>
-                                        {{ form.sensitivity_cloud_cover }}
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Precipitation Sensitivity</label>
-                                        {{ form.sensitivity_precipitation }}
+                                        <h6 class="mb-3">🎚️ {% trans "Sensitivity Settings" %}</h6>
+                                        <label for="id_sensitivity_preset" class="form-label">{% trans "Weather Sensitivity" %}</label>
+                                        {{ form.sensitivity_preset }}
+                                        <div class="form-text">{% trans "How sensitive you are to weather changes. This setting is passed directly to the prediction model." %}</div>
                                     </div>
                                 </div>
                                 <div class="mt-3">

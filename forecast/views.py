@@ -336,6 +336,42 @@ def location_detail(request, location_id):
 
 
 @login_required
+def location_edit(request, location_id):
+    """View for editing a location."""
+    location = get_object_or_404(Location, id=location_id, user=request.user)
+
+    if request.method == "POST":
+        city = request.POST.get("city")
+        country = request.POST.get("country")
+        latitude = request.POST.get("latitude")
+        longitude = request.POST.get("longitude")
+        timezone = request.POST.get("timezone")
+
+        if city and country and latitude and longitude:
+            try:
+                location.city = city
+                location.country = country
+                location.latitude = float(latitude)
+                location.longitude = float(longitude)
+                if timezone:
+                    location.timezone = timezone
+                location.save()
+
+                messages.success(request, f"Location {city}, {country} updated successfully!")
+                return redirect("forecast:location_detail", location_id=location.id)
+            except Exception as e:
+                messages.error(request, f"Error updating location: {str(e)}")
+        else:
+            messages.error(request, "Please fill all required fields.")
+
+    context = {
+        "location": location,
+    }
+
+    return render(request, get_template_name(request, "location_edit.html"), context)
+
+
+@login_required
 def location_delete(request, location_id):
     """View for deleting a location."""
     location = get_object_or_404(Location, id=location_id, user=request.user)

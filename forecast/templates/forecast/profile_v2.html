@@ -195,27 +195,7 @@
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">🔮 {% trans "Prediction Settings" %}</h3>
 
-                <!-- Prediction Time Window -->
-                <div class="mb-6">
-                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Prediction Time Window</h4>
-                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-4">Configure how far ahead to check weather conditions for predictions</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="id_prediction_window_start_hours" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Window Start (hours ahead)
-                            </label>
-                            {{ form.prediction_window_start_hours }}
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Start checking from this many hours ahead</p>
-                        </div>
-                        <div>
-                            <label for="id_prediction_window_end_hours" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Window End (hours ahead)
-                            </label>
-                            {{ form.prediction_window_end_hours }}
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Stop checking at this many hours ahead (max 72)</p>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Prediction Services -->
                 <div>
@@ -243,47 +223,13 @@
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">🎚️ {% trans "Sensitivity Settings" %}</h3>
 
-                <!-- Overall Sensitivity -->
+                <!-- Sensitivity Preset -->
                 <div class="mb-6">
-                    <label for="id_sensitivity_overall" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Overall Sensitivity
+                    <label for="id_sensitivity_preset" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Weather Sensitivity" %}
                     </label>
-                    {{ form.sensitivity_overall }}
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">0.5 = less sensitive, 1 = average, 2 = very sensitive</p>
-                </div>
-
-                <!-- Individual Sensitivities -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="id_sensitivity_temperature" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            🌡️ Temperature Sensitivity
-                        </label>
-                        {{ form.sensitivity_temperature }}
-                    </div>
-                    <div>
-                        <label for="id_sensitivity_humidity" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            💧 Humidity Sensitivity
-                        </label>
-                        {{ form.sensitivity_humidity }}
-                    </div>
-                    <div>
-                        <label for="id_sensitivity_pressure" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            🔽 Pressure Sensitivity
-                        </label>
-                        {{ form.sensitivity_pressure }}
-                    </div>
-                    <div>
-                        <label for="id_sensitivity_cloud_cover" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            ☁️ Cloud Cover Sensitivity
-                        </label>
-                        {{ form.sensitivity_cloud_cover }}
-                    </div>
-                    <div>
-                        <label for="id_sensitivity_precipitation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            🌧️ Precipitation Sensitivity
-                        </label>
-                        {{ form.sensitivity_precipitation }}
-                    </div>
+                    {{ form.sensitivity_preset }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "How sensitive you are to weather changes. This setting is passed directly to the prediction model." %}</p>
                 </div>
             </div>
 

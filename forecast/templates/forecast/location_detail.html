@@ -9,6 +9,7 @@
         <h1>{{ location.city }}, {{ location.country }}</h1>
         <div>
             <a href="{% url 'forecast:location_list' %}" class="btn btn-outline-secondary">{% trans "Back to Locations" %}</a>
+            <a href="{% url 'forecast:location_edit' location.id %}" class="btn btn-outline-primary">{% trans "Edit Location" %}</a>
             <a href="{% url 'forecast:location_delete' location.id %}" class="btn btn-outline-danger">{% trans "Delete Location" %}</a>
         </div>
     </div>
@@ -25,6 +26,7 @@
                     <p><strong>{% trans "Country" %}:</strong> {{ location.country }}</p>
                     <p><strong>{% trans "Latitude" %}:</strong> {{ location.latitude|floatformat:4 }}</p>
                     <p><strong>{% trans "Longitude" %}:</strong> {{ location.longitude|floatformat:4 }}</p>
+                    <p><strong>{% trans "Timezone" %}:</strong> {{ location.timezone }}</p>
                     <p><strong>{% trans "Added" %}:</strong> {{ location.created_at|date:"F j, Y" }}</p>
                 </div>
             </div>
