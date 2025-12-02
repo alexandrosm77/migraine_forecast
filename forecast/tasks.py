@@ -286,11 +286,13 @@ def cleanup_old_data():
     # Delete predictions older than 7 days
     cutoff_time = timezone.now() - timedelta(days=7)
 
-    migraine_deleted = MigrainePrediction.objects.filter(created_at__lt=cutoff_time).delete()[0]
-    sinusitis_deleted = SinusitisPrediction.objects.filter(created_at__lt=cutoff_time).delete()[0]
+    # MigrainePrediction and SinusitisPrediction use 'prediction_time' field
+    migraine_deleted = MigrainePrediction.objects.filter(prediction_time__lt=cutoff_time).delete()[0]
+    sinusitis_deleted = SinusitisPrediction.objects.filter(prediction_time__lt=cutoff_time).delete()[0]
+    # LLMResponse uses 'created_at' field
     llm_deleted = LLMResponse.objects.filter(created_at__lt=cutoff_time).delete()[0]
 
-    logger.info(f"Cleanup completed: migraine={migraine_deleted}, " f"sinusitis={sinusitis_deleted}, llm={llm_deleted}")
+    logger.info(f"Cleanup completed: migraine={migraine_deleted}, sinusitis={sinusitis_deleted}, llm={llm_deleted}")
 
     return {
         "status": "completed",
@@ -320,7 +322,6 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
-    from datetime import timedelta
 
     logger.info(f"Generating {prediction_type} prediction for user {user_id}, location {location_id}")
 
