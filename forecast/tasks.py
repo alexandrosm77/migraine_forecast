@@ -327,17 +327,26 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     user = User.objects.get(id=user_id)
     location = Location.objects.get(id=location_id)
 
-    # Generate prediction for next 2-hour window
-    now = timezone.now()
-    start_time = now
-    end_time = now + timedelta(hours=2)
-
+    # Generate prediction for next 2-hour window (0-2 hours ahead)
+    # The services use window_start_hours and window_end_hours parameters
     if prediction_type == "migraine":
         service = MigrainePredictionService()
-        prediction = service.generate_prediction(user, location, start_time, end_time)
+        probability_level, prediction = service.predict_migraine_probability(
+            location=location,
+            user=user,
+            store_prediction=True,
+            window_start_hours=0,
+            window_end_hours=2
+        )
     else:
         service = SinusitisPredictionService()
-        prediction = service.generate_prediction(user, location, start_time, end_time)
+        probability_level, prediction = service.predict_sinusitis_probability(
+            location=location,
+            user=user,
+            store_prediction=True,
+            window_start_hours=0,
+            window_end_hours=2
+        )
 
     # Queue notification check (on default queue)
     if prediction:
@@ -346,6 +355,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     return {
         "status": "completed",
         "prediction_id": prediction.id if prediction else None,
+        "probability_level": probability_level,
     }
 
 
@@ -388,17 +398,40 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     # End at 10 PM today
     waking_end = location_tz.localize(datetime.combine(today, datetime.min.time().replace(hour=22)))
 
+    # Calculate hours ahead for the window
+    now_utc = timezone.now()
+    window_start_hours = int((waking_start - now_utc).total_seconds() / 3600)
+    window_end_hours = int((waking_end - now_utc).total_seconds() / 3600)
+
+    # Ensure window is valid (at least 0 hours ahead)
+    window_start_hours = max(0, window_start_hours)
+    window_end_hours = max(window_start_hours + 1, window_end_hours)
+
     # Generate prediction for waking hours
     prediction = None
+    probability_level = None
     if prediction_type == "migraine":
         service = MigrainePredictionService()
-        prediction = service.generate_prediction(user, location, waking_start, waking_end)
+        probability_level, prediction = service.predict_migraine_probability(
+            location=location,
+            user=user,
+            store_prediction=True,
+            window_start_hours=window_start_hours,
+            window_end_hours=window_end_hours
+        )
     else:
         service = SinusitisPredictionService()
-        prediction = service.generate_prediction(user, location, waking_start, waking_end)
+        probability_level, prediction = service.predict_sinusitis_probability(
+            location=location,
+            user=user,
+            store_prediction=True,
+            window_start_hours=window_start_hours,
+            window_end_hours=window_end_hours
+        )
 
     return {
         "status": "completed",
         "prediction_id": prediction.id if prediction else None,
+        "probability_level": probability_level,
         "waking_hours": f"{waking_start} to {waking_end}",
     }
