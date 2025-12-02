@@ -412,20 +412,10 @@ class EndToEndWorkflowTest(TestCase):
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 3,
-            "daily_migraine_notification_limit": 2,
-            "daily_sinusitis_notification_limit": 2,
-            "notification_frequency_hours": 4,  # Custom: 4 hours between notifications
             "quiet_hours_enabled": False,
-            "prediction_window_start_hours": 2,  # Custom: Check 2-8 hours ahead
-            "prediction_window_end_hours": 8,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
-            "sensitivity_overall": 1.5,
-            "sensitivity_temperature": 1.8,
-            "sensitivity_humidity": 1.2,
-            "sensitivity_pressure": 2.0,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.3,
+            "sensitivity_preset": "HIGH",  # Using preset instead of granular sensitivity
         }
 
         response = self.client.post(reverse("forecast:profile"), profile_data)
@@ -434,10 +424,8 @@ class EndToEndWorkflowTest(TestCase):
         # Verify profile was created with custom preferences
         user.refresh_from_db()
         profile = user.health_profile
-        self.assertEqual(profile.notification_frequency_hours, 4)
-        self.assertEqual(profile.prediction_window_start_hours, 2)
-        self.assertEqual(profile.prediction_window_end_hours, 8)
-        self.assertEqual(profile.sensitivity_pressure, 2.0)
+        self.assertEqual(profile.sensitivity_preset, "HIGH")
+        self.assertEqual(profile.daily_notification_limit, 3)
 
         # ============================================================
         # STEP 4: Add Location
@@ -616,13 +604,13 @@ class EndToEndWorkflowTest(TestCase):
         # ============================================================
         # STEP 12: Test Profile Update
         # ============================================================
-        # Update notification frequency
-        profile_data["notification_frequency_hours"] = 6
+        # Update sensitivity preset
+        profile_data["sensitivity_preset"] = "LOW"
         response = self.client.post(reverse("forecast:profile"), profile_data)
         self.assertEqual(response.status_code, 302)
 
         user.refresh_from_db()
-        self.assertEqual(user.health_profile.notification_frequency_hours, 6)
+        self.assertEqual(user.health_profile.sensitivity_preset, "LOW")
 
         # ============================================================
         # STEP 13: Test Location Deletion

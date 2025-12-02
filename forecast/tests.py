@@ -1018,26 +1018,16 @@ class UserHealthProfileFormTest(TestCase):
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 2,
-            "daily_migraine_notification_limit": 1,
-            "daily_sinusitis_notification_limit": 1,
-            "notification_frequency_hours": 4,
             "quiet_hours_enabled": False,
-            "prediction_window_start_hours": 2,
-            "prediction_window_end_hours": 8,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": False,
-            "sensitivity_overall": 1.5,
-            "sensitivity_temperature": 1.2,
-            "sensitivity_humidity": 1.0,
-            "sensitivity_pressure": 1.3,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.1,
+            "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)
         self.assertTrue(form.is_valid())
 
     def test_form_clamps_sensitivity_values(self):
-        """Test that form clamps sensitivity values to valid range"""
+        """Test that form accepts sensitivity preset values"""
         form_data = {
             "language": "en",
             "ui_version": "v2",
@@ -1046,28 +1036,16 @@ class UserHealthProfileFormTest(TestCase):
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
-            "daily_migraine_notification_limit": 1,
-            "daily_sinusitis_notification_limit": 1,
-            "notification_frequency_hours": 3,
             "quiet_hours_enabled": False,
-            "prediction_window_start_hours": 3,
-            "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
-            "sensitivity_overall": 5.0,  # Too high
-            "sensitivity_temperature": -1.0,  # Too low
-            "sensitivity_humidity": 1.5,  # Valid
-            "sensitivity_pressure": 1.0,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.0,
+            "sensitivity_preset": "HIGH",
         }
         form = UserHealthProfileForm(data=form_data)
         self.assertTrue(form.is_valid())
 
         cleaned = form.cleaned_data
-        self.assertEqual(cleaned["sensitivity_overall"], 3.0)  # Clamped to max
-        self.assertEqual(cleaned["sensitivity_temperature"], 0.0)  # Clamped to min
-        self.assertEqual(cleaned["sensitivity_humidity"], 1.5)  # Unchanged
+        self.assertEqual(cleaned["sensitivity_preset"], "HIGH")
 
     def test_form_optional_fields(self):
         """Test that optional fields can be omitted"""
@@ -1079,105 +1057,53 @@ class UserHealthProfileFormTest(TestCase):
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
-            "daily_migraine_notification_limit": 1,
-            "daily_sinusitis_notification_limit": 1,
-            "notification_frequency_hours": 3,
             "quiet_hours_enabled": False,
-            "prediction_window_start_hours": 3,
-            "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
-            "sensitivity_overall": 1.0,
-            "sensitivity_temperature": 1.0,
-            "sensitivity_humidity": 1.0,
-            "sensitivity_pressure": 1.0,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.0,
+            "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)
         self.assertTrue(form.is_valid())
 
     def test_form_notification_frequency_validation(self):
-        """Test notification frequency validation"""
-        # Test too low
+        """Test notification frequency validation - field removed from form"""
+        # notification_frequency_hours is no longer in the form
+        # This test is now obsolete but we keep it to verify the field is not required
         form_data = {
             "language": "en",
+            "ui_version": "v2",
+            "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
-            "daily_migraine_notification_limit": 1,
-            "daily_sinusitis_notification_limit": 1,
-            "notification_frequency_hours": 0,  # Too low
             "quiet_hours_enabled": False,
-            "prediction_window_start_hours": 3,
-            "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
-            "sensitivity_overall": 1.0,
-            "sensitivity_temperature": 1.0,
-            "sensitivity_humidity": 1.0,
-            "sensitivity_pressure": 1.0,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.0,
+            "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("Notification frequency must be at least 1 hour", str(form.errors))
-
-        # Test too high
-        form_data["notification_frequency_hours"] = 25  # Too high
-        form = UserHealthProfileForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("Notification frequency cannot exceed 24 hours", str(form.errors))
+        self.assertTrue(form.is_valid())  # Should be valid without notification_frequency_hours
 
     def test_form_prediction_window_validation(self):
-        """Test prediction window validation"""
-        # Test window start too low
+        """Test prediction window validation - fields removed from form"""
+        # prediction_window_start_hours and prediction_window_end_hours are no longer in the form
+        # This test is now obsolete but we keep it to verify the fields are not required
         form_data = {
             "language": "en",
+            "ui_version": "v2",
+            "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
-            "daily_migraine_notification_limit": 1,
-            "daily_sinusitis_notification_limit": 1,
-            "notification_frequency_hours": 3,
             "quiet_hours_enabled": False,
-            "prediction_window_start_hours": 0,  # Too low
-            "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
-            "sensitivity_overall": 1.0,
-            "sensitivity_temperature": 1.0,
-            "sensitivity_humidity": 1.0,
-            "sensitivity_pressure": 1.0,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.0,
+            "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("Prediction window start must be at least 1 hour ahead", str(form.errors))
-
-        # Test window end too high
-        form_data["prediction_window_start_hours"] = 3
-        form_data["prediction_window_end_hours"] = 80  # Too high
-        form = UserHealthProfileForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("Prediction window end cannot exceed 72 hours ahead", str(form.errors))
-
-        # Test start >= end
-        form_data["prediction_window_start_hours"] = 6
-        form_data["prediction_window_end_hours"] = 6  # Same as start
-        form = UserHealthProfileForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("Prediction window start must be before window end", str(form.errors))
-
-        # Test window too narrow
-        form_data["prediction_window_start_hours"] = 5
-        form_data["prediction_window_end_hours"] = 5  # Less than 1 hour wide
-        form = UserHealthProfileForm(data=form_data)
-        self.assertFalse(form.is_valid())
+        self.assertTrue(form.is_valid())  # Should be valid without prediction window fields
 
 
 class ToolsTest(TestCase):
@@ -1640,20 +1566,10 @@ class LanguageSwitchingTest(TestCase):
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
-            "daily_migraine_notification_limit": 1,
-            "daily_sinusitis_notification_limit": 1,
-            "notification_frequency_hours": 3,
             "quiet_hours_enabled": False,
-            "prediction_window_start_hours": 1,
-            "prediction_window_end_hours": 6,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
-            "sensitivity_overall": 1.0,
-            "sensitivity_temperature": 1.0,
-            "sensitivity_humidity": 1.0,
-            "sensitivity_pressure": 1.0,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.0,
+            "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data, instance=self.profile)
         if not form.is_valid():
@@ -1694,20 +1610,10 @@ class LanguageSwitchingTest(TestCase):
                 "notification_mode": "IMMEDIATE",
                 "notification_severity_threshold": "MEDIUM",
                 "daily_notification_limit": 1,
-                "daily_migraine_notification_limit": 1,
-                "daily_sinusitis_notification_limit": 1,
-                "notification_frequency_hours": 3,
                 "quiet_hours_enabled": False,
-                "prediction_window_start_hours": 1,
-                "prediction_window_end_hours": 6,
                 "migraine_predictions_enabled": True,
                 "sinusitis_predictions_enabled": True,
-                "sensitivity_overall": 1.0,
-                "sensitivity_temperature": 1.0,
-                "sensitivity_humidity": 1.0,
-                "sensitivity_pressure": 1.0,
-                "sensitivity_cloud_cover": 1.0,
-                "sensitivity_precipitation": 1.0,
+                "sensitivity_preset": "NORMAL",
             },
             follow=True,
         )

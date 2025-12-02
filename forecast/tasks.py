@@ -1,6 +1,7 @@
 """
 Celery tasks for migraine forecast application.
 """
+
 import logging
 from celery import shared_task
 from django.utils import timezone
@@ -13,7 +14,8 @@ logger = logging.getLogger(__name__)
 # QUEUE: default - General orchestration tasks
 # =============================================================================
 
-@shared_task(queue='default')
+
+@shared_task(queue="default")
 def collect_weather_data():
     """
     Task 1: Fetch weather data for all locations.
@@ -28,7 +30,7 @@ def collect_weather_data():
 
     if not locations:
         logger.warning("No locations found for weather data collection")
-        return {'status': 'no_locations'}
+        return {"status": "no_locations"}
 
     total_created = 0
     total_updated = 0
@@ -67,16 +69,16 @@ def collect_weather_data():
     )
 
     return {
-        'status': 'completed',
-        'locations_processed': len(locations),
-        'forecasts_created': total_created,
-        'forecasts_updated': total_updated,
-        'errors': len(errors),
-        'old_forecasts_deleted': deleted_count,
+        "status": "completed",
+        "locations_processed": len(locations),
+        "forecasts_created": total_created,
+        "forecasts_updated": total_updated,
+        "errors": len(errors),
+        "old_forecasts_deleted": deleted_count,
     }
 
 
-@shared_task(queue='default')
+@shared_task(queue="default")
 def schedule_immediate_predictions():
     """
     Orchestrator: Queue prediction jobs for IMMEDIATE mode users.
@@ -86,10 +88,14 @@ def schedule_immediate_predictions():
 
     logger.info("Scheduling predictions for IMMEDIATE mode users")
 
-    users = User.objects.filter(
-        health_profile__notification_mode='IMMEDIATE',
-        health_profile__email_notifications_enabled=True,
-    ).select_related('health_profile').prefetch_related('locations')
+    users = (
+        User.objects.filter(
+            health_profile__notification_mode="IMMEDIATE",
+            health_profile__email_notifications_enabled=True,
+        )
+        .select_related("health_profile")
+        .prefetch_related("locations")
+    )
 
     prediction_count = 0
 
@@ -98,33 +104,29 @@ def schedule_immediate_predictions():
         for location in user.locations.all():
             # Queue predictions for this user/location
             if profile.migraine_predictions_enabled:
-                generate_prediction.delay(user.id, location.id, 'migraine')
+                generate_prediction.delay(user.id, location.id, "migraine")
                 prediction_count += 1
 
             if profile.sinusitis_predictions_enabled:
-                generate_prediction.delay(user.id, location.id, 'sinusitis')
+                generate_prediction.delay(user.id, location.id, "sinusitis")
                 prediction_count += 1
 
     logger.info(f"Scheduled {prediction_count} prediction tasks for {len(users)} IMMEDIATE users")
 
     return {
-        'status': 'completed',
-        'users_processed': len(users),
-        'predictions_scheduled': prediction_count,
+        "status": "completed",
+        "users_processed": len(users),
+        "predictions_scheduled": prediction_count,
     }
 
 
-
-
-
-@shared_task(queue='default')
+@shared_task(queue="default")
 def schedule_digest_emails():
     """
     Orchestrator: Check for DIGEST users whose digest time has arrived.
     Runs every 15 minutes via Celery Beat.
     """
     from django.contrib.auth.models import User
-    from datetime import datetime
 
     logger.info("Checking for DIGEST users ready for email")
 
@@ -133,10 +135,14 @@ def schedule_digest_emails():
 
     # Find users whose digest_time is within the last 15 minutes
     # (to catch users whose digest time fell between checks)
-    users = User.objects.filter(
-        health_profile__notification_mode='DIGEST',
-        health_profile__email_notifications_enabled=True,
-    ).select_related('health_profile').prefetch_related('locations')
+    users = (
+        User.objects.filter(
+            health_profile__notification_mode="DIGEST",
+            health_profile__email_notifications_enabled=True,
+        )
+        .select_related("health_profile")
+        .prefetch_related("locations")
+    )
 
     digest_count = 0
 
@@ -149,8 +155,9 @@ def schedule_digest_emails():
 
         # Check if digest_time is within the last 15 minutes
         # Handle edge case around midnight
-        time_diff_minutes = (current_time.hour * 60 + current_time.minute) - \
-                           (digest_time.hour * 60 + digest_time.minute)
+        time_diff_minutes = (current_time.hour * 60 + current_time.minute) - (
+            digest_time.hour * 60 + digest_time.minute
+        )
 
         # If within 0-15 minutes past digest time, trigger digest
         if 0 <= time_diff_minutes < 15:
@@ -161,12 +168,12 @@ def schedule_digest_emails():
     logger.info(f"Scheduled {digest_count} digest emails")
 
     return {
-        'status': 'completed',
-        'digests_scheduled': digest_count,
+        "status": "completed",
+        "digests_scheduled": digest_count,
     }
 
 
-@shared_task(queue='default', bind=True, autoretry_for=(Exception,), retry_kwargs={'max_retries': 3, 'countdown': 60})
+@shared_task(queue="default", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 3, "countdown": 60})
 def send_prediction_notification(self, prediction_id, prediction_type):
     """
     Send notification for a prediction if it meets criteria.
@@ -181,25 +188,25 @@ def send_prediction_notification(self, prediction_id, prediction_type):
     logger.info(f"Sending notification for {prediction_type} prediction {prediction_id}")
 
     # Get the prediction
-    if prediction_type == 'migraine':
+    if prediction_type == "migraine":
         prediction = MigrainePrediction.objects.get(id=prediction_id)
     else:
         prediction = SinusitisPrediction.objects.get(id=prediction_id)
 
     # Send notification
     service = NotificationService()
-    if prediction_type == 'migraine':
+    if prediction_type == "migraine":
         result = service.send_migraine_alert(prediction)
     else:
         result = service.send_sinusitis_alert(prediction)
 
     return {
-        'status': 'completed',
-        'notification_sent': result,
+        "status": "completed",
+        "notification_sent": result,
     }
 
 
-@shared_task(queue='default', bind=True, autoretry_for=(Exception,), retry_kwargs={'max_retries': 3, 'countdown': 60})
+@shared_task(queue="default", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 3, "countdown": 60})
 def send_digest_email(self, user_id):
     """
     Generate predictions and send digest email for a DIGEST mode user.
@@ -231,43 +238,42 @@ def send_digest_email(self, user_id):
         # This ensures predictions are ready before we send the email
         if profile.migraine_predictions_enabled:
             # Call the LLM task synchronously
-            result = generate_digest_predictions.apply(args=[user.id, location.id, 'migraine'])
-            if result.get('prediction_id'):
-                pred = MigrainePrediction.objects.get(id=result['prediction_id'])
-                if pred.probability in ['MEDIUM', 'HIGH']:
+            result = generate_digest_predictions.apply(args=[user.id, location.id, "migraine"])
+            if result.get("prediction_id"):
+                pred = MigrainePrediction.objects.get(id=result["prediction_id"])
+                if pred.probability in ["MEDIUM", "HIGH"]:
                     migraine_predictions.append(pred)
 
         if profile.sinusitis_predictions_enabled:
-            result = generate_digest_predictions.apply(args=[user.id, location.id, 'sinusitis'])
-            if result.get('prediction_id'):
-                pred = SinusitisPrediction.objects.get(id=result['prediction_id'])
-                if pred.probability in ['MEDIUM', 'HIGH']:
+            result = generate_digest_predictions.apply(args=[user.id, location.id, "sinusitis"])
+            if result.get("prediction_id"):
+                pred = SinusitisPrediction.objects.get(id=result["prediction_id"])
+                if pred.probability in ["MEDIUM", "HIGH"]:
                     sinusitis_predictions.append(pred)
 
     # Send combined email if we have any predictions
     if migraine_predictions or sinusitis_predictions:
         service = NotificationService()
         result = service.send_combined_alert(
-            migraine_predictions=migraine_predictions,
-            sinusitis_predictions=sinusitis_predictions
+            migraine_predictions=migraine_predictions, sinusitis_predictions=sinusitis_predictions
         )
 
         return {
-            'status': 'completed',
-            'email_sent': result,
-            'migraine_count': len(migraine_predictions),
-            'sinusitis_count': len(sinusitis_predictions),
+            "status": "completed",
+            "email_sent": result,
+            "migraine_count": len(migraine_predictions),
+            "sinusitis_count": len(sinusitis_predictions),
         }
     else:
         logger.info(f"No predictions to send for user {user_id}")
         return {
-            'status': 'completed',
-            'email_sent': False,
-            'reason': 'no_predictions',
+            "status": "completed",
+            "email_sent": False,
+            "reason": "no_predictions",
         }
 
 
-@shared_task(queue='default')
+@shared_task(queue="default")
 def cleanup_old_data():
     """
     Clean up old predictions and LLM responses.
@@ -284,26 +290,22 @@ def cleanup_old_data():
     sinusitis_deleted = SinusitisPrediction.objects.filter(created_at__lt=cutoff_time).delete()[0]
     llm_deleted = LLMResponse.objects.filter(created_at__lt=cutoff_time).delete()[0]
 
-    logger.info(
-        f"Cleanup completed: migraine={migraine_deleted}, "
-        f"sinusitis={sinusitis_deleted}, llm={llm_deleted}"
-    )
+    logger.info(f"Cleanup completed: migraine={migraine_deleted}, " f"sinusitis={sinusitis_deleted}, llm={llm_deleted}")
 
     return {
-        'status': 'completed',
-        'migraine_predictions_deleted': migraine_deleted,
-        'sinusitis_predictions_deleted': sinusitis_deleted,
-        'llm_responses_deleted': llm_deleted,
+        "status": "completed",
+        "migraine_predictions_deleted": migraine_deleted,
+        "sinusitis_predictions_deleted": sinusitis_deleted,
+        "llm_responses_deleted": llm_deleted,
     }
-
-
 
 
 # =============================================================================
 # QUEUE: llm - LLM inference tasks (MUST run serially, concurrency=1)
 # =============================================================================
 
-@shared_task(queue='llm', bind=True, autoretry_for=(Exception,), retry_kwargs={'max_retries': 2, 'countdown': 120})
+
+@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 2, "countdown": 120})
 def generate_prediction(self, user_id, location_id, prediction_type):
     """
     Generate a single prediction using LLM inference.
@@ -318,7 +320,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     logger.info(f"Generating {prediction_type} prediction for user {user_id}, location {location_id}")
 
@@ -330,7 +332,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     start_time = now
     end_time = now + timedelta(hours=2)
 
-    if prediction_type == 'migraine':
+    if prediction_type == "migraine":
         service = MigrainePredictionService()
         prediction = service.generate_prediction(user, location, start_time, end_time)
     else:
@@ -342,12 +344,12 @@ def generate_prediction(self, user_id, location_id, prediction_type):
         send_prediction_notification.delay(prediction.id, prediction_type)
 
     return {
-        'status': 'completed',
-        'prediction_id': prediction.id if prediction else None,
+        "status": "completed",
+        "prediction_id": prediction.id if prediction else None,
     }
 
 
-@shared_task(queue='llm', bind=True, autoretry_for=(Exception,), retry_kwargs={'max_retries': 2, 'countdown': 120})
+@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 2, "countdown": 120})
 def generate_digest_predictions(self, user_id, location_id, prediction_type):
     """
     Generate predictions for DIGEST mode user (waking hours window).
@@ -362,7 +364,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
-    from datetime import datetime, timedelta
+    from datetime import datetime
     import pytz
 
     logger.info(f"Generating {prediction_type} digest prediction for user {user_id}, location {location_id}")
@@ -372,7 +374,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
 
     # Get location timezone
     # Assuming location has a timezone field - if not, default to UTC
-    location_tz = pytz.timezone(getattr(location, 'timezone', 'UTC'))
+    location_tz = pytz.timezone(getattr(location, "timezone", "UTC"))
 
     # Calculate waking hours window (6 AM - 10 PM in location timezone)
     now_local = timezone.now().astimezone(location_tz)
@@ -388,7 +390,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
 
     # Generate prediction for waking hours
     prediction = None
-    if prediction_type == 'migraine':
+    if prediction_type == "migraine":
         service = MigrainePredictionService()
         prediction = service.generate_prediction(user, location, waking_start, waking_end)
     else:
@@ -396,7 +398,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
         prediction = service.generate_prediction(user, location, waking_start, waking_end)
 
     return {
-        'status': 'completed',
-        'prediction_id': prediction.id if prediction else None,
-        'waking_hours': f"{waking_start} to {waking_end}",
+        "status": "completed",
+        "prediction_id": prediction.id if prediction else None,
+        "waking_hours": f"{waking_start} to {waking_end}",
     }

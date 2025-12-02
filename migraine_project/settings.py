@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -95,7 +96,18 @@ WSGI_APPLICATION = "migraine_project.wsgi.application"
 # Use PostgreSQL if DB_ENGINE is set, otherwise default to SQLite
 DB_ENGINE = os.environ.get('DB_ENGINE', 'sqlite3')
 
-if DB_ENGINE == 'postgresql':
+# Check if we're running tests - always use SQLite for tests
+RUNNING_TESTS = 'test' in sys.argv
+
+if RUNNING_TESTS:
+    # Always use SQLite for tests regardless of production database
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "test_db.sqlite3",
+        }
+    }
+elif DB_ENGINE == 'postgresql':
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
