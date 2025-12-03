@@ -237,15 +237,16 @@ def send_digest_email(self, user_id):
         # Generate predictions synchronously (not via Celery)
         # This ensures predictions are ready before we send the email
         if profile.migraine_predictions_enabled:
-            # Call the LLM task synchronously
-            result = generate_digest_predictions.apply(args=[user.id, location.id, "migraine"])
+            # Call the task function directly (not as a Celery task)
+            # This runs synchronously in the current worker
+            result = generate_digest_predictions(self, user.id, location.id, "migraine")
             if result.get("prediction_id"):
                 pred = MigrainePrediction.objects.get(id=result["prediction_id"])
                 if pred.probability in ["MEDIUM", "HIGH"]:
                     migraine_predictions.append(pred)
 
         if profile.sinusitis_predictions_enabled:
-            result = generate_digest_predictions.apply(args=[user.id, location.id, "sinusitis"])
+            result = generate_digest_predictions(self, user.id, location.id, "sinusitis")
             if result.get("prediction_id"):
                 pred = SinusitisPrediction.objects.get(id=result["prediction_id"])
                 if pred.probability in ["MEDIUM", "HIGH"]:
