@@ -85,6 +85,13 @@ data:
           - labels:
               level:
           # DROP NOISY LOGS
+          # Drop Promtail's own INFO/DEBUG logs (only keep ERROR/WARN)
+          - match:
+              selector: '{container="promtail"}'
+              stages:
+                - drop:
+                    source: level
+                    expression: '(INFO|DEBUG)'
           # Drop static file requests (304 responses)
           - drop:
               expression: '.*GET /static/.*304.*'
