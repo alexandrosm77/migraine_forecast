@@ -231,7 +231,7 @@ class LLMClient:
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
             '  "confidence": <float between 0 and 1>,\n'
-            '  "rationale": "<brief explanation of your reasoning>",\n'
+            '  "rationale": "<brief 3 sentence explanation of your reasoning>",\n'
             '  "analysis_text": "<concise 3 sentence user-facing explanation>",\n'
             '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
             "}\n"
@@ -433,7 +433,7 @@ class LLMClient:
             "{\n"
             '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
             '  "confidence": <float between 0 and 1>,\n'
-            '  "rationale": "<brief explanation of your reasoning>",\n'
+            '  "rationale": "<brief 3 sentence explanation of your reasoning>",\n'
             '  "analysis_text": "<concise 3 sentence user-facing explanation>",\n'
             '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
             "}\n"
