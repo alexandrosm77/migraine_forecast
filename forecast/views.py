@@ -851,7 +851,7 @@ def impersonate_user(request, user_id):
         return redirect("forecast:user_list")
 
     # Store the original user ID in the session
-    request.session["_impersonate_original_user_id"] = request.user.id
+    request.session["impersonate_original_user_id"] = request.user.id
 
     # Log in as the target user
     login(request, target_user, backend="django.contrib.auth.backends.ModelBackend")
@@ -865,7 +865,7 @@ def stop_impersonation(request):
     """
     Stop impersonating and return to the original admin user.
     """
-    original_user_id = request.session.get("_impersonate_original_user_id")
+    original_user_id = request.session.get("impersonate_original_user_id")
 
     if not original_user_id:
         messages.error(request, "You are not currently impersonating anyone.")
@@ -875,7 +875,7 @@ def stop_impersonation(request):
     original_user = get_object_or_404(User, id=original_user_id)
 
     # Remove the impersonation flag from session
-    del request.session["_impersonate_original_user_id"]
+    del request.session["impersonate_original_user_id"]
 
     # Log back in as the original user
     login(request, original_user, backend="django.contrib.auth.backends.ModelBackend")

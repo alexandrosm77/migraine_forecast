@@ -282,7 +282,7 @@
     </nav>
 
     <!-- Impersonation Banner -->
-    {% if request.session._impersonate_original_user_id %}
+    {% if request.session.impersonate_original_user_id %}
     <div class="bg-amber-500 dark:bg-amber-600">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div class="flex items-center justify-between">
