@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_json_widget",
+    "django_extensions",
     "forecast",
 ]
 
@@ -525,3 +526,6 @@ CELERY_TASK_ROUTES = {
 }
 # Default queue for all other tasks
 CELERY_TASK_DEFAULT_QUEUE = 'default'
+
+# make ./manage.py shell_plus use IPython instead of bultin python
+SHELL_PLUS = "ipython"
