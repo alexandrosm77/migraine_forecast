@@ -25,7 +25,7 @@ urlpatterns = [
     path("set-language/<str:language_code>/", views.set_language, name="set_language"),
     path("toggle-theme/", views.toggle_theme, name="toggle_theme"),
     # User impersonation (admin only)
-    path("admin/users/", views.user_list, name="user_list"),
-    path("admin/impersonate/<int:user_id>/", views.impersonate_user, name="impersonate_user"),
-    path("admin/stop-impersonation/", views.stop_impersonation, name="stop_impersonation"),
+    path("users/", views.user_list, name="user_list"),
+    path("users/impersonate/<int:user_id>/", views.impersonate_user, name="impersonate_user"),
+    path("users/stop-impersonation/", views.stop_impersonation, name="stop_impersonation"),
 ]
