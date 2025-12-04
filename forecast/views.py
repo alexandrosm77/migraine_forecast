@@ -850,11 +850,16 @@ def impersonate_user(request, user_id):
         messages.error(request, "You cannot impersonate other administrators.")
         return redirect("forecast:user_list")
 
-    # Store the original user ID in the session
-    request.session["impersonate_original_user_id"] = request.user.id
+    # Store the original user ID before logging in as the target user
+    original_user_id = request.user.id
 
     # Log in as the target user
     login(request, target_user, backend="django.contrib.auth.backends.ModelBackend")
+
+    # Store the original user ID in the session AFTER login
+    # (login() cycles the session, so we need to set this after)
+    request.session["impersonate_original_user_id"] = original_user_id
+    request.session.modified = True
 
     messages.success(request, f"You are now impersonating {target_user.username}.")
     return redirect("forecast:dashboard")
@@ -874,11 +879,14 @@ def stop_impersonation(request):
     # Get the original user
     original_user = get_object_or_404(User, id=original_user_id)
 
-    # Remove the impersonation flag from session
-    del request.session["impersonate_original_user_id"]
-
     # Log back in as the original user
     login(request, original_user, backend="django.contrib.auth.backends.ModelBackend")
+
+    # Remove the impersonation flag from session AFTER login
+    # (to ensure it's removed from the new session)
+    if "impersonate_original_user_id" in request.session:
+        del request.session["impersonate_original_user_id"]
+        request.session.modified = True
 
     messages.success(request, f"Stopped impersonating. You are now logged in as {original_user.username}.")
     return redirect("forecast:user_list")
