@@ -15,14 +15,28 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-@shared_task(queue="default")
-def collect_weather_data():
+@shared_task(
+    queue="default",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 2, "countdown": 300},  # 2 retries with 5-minute delays
+)
+def collect_weather_data(self):
     """
     Task 1: Fetch weather data for all locations.
     Runs every 2 hours via Celery Beat.
+
+    Includes automatic retry logic:
+    - HTTP-level: 3 retries with exponential backoff (1s, 2s, 4s) for transient errors
+    - Task-level: 2 retries with 5-minute delays if all HTTP retries fail
     """
     from forecast.weather_service import WeatherService
     from forecast.models import Location, WeatherForecast
+
+    # Log retry attempts
+    retry_count = self.request.retries
+    if retry_count > 0:
+        logger.warning(f"Weather data collection retry attempt {retry_count}/2")
 
     logger.info("Starting weather data collection")
     service = WeatherService()
@@ -239,14 +253,14 @@ def send_digest_email(self, user_id):
         if profile.migraine_predictions_enabled:
             # Call the task function directly (not as a Celery task)
             # This runs synchronously in the current worker
-            result = generate_digest_predictions(self, user.id, location.id, "migraine")
+            result = generate_digest_predictions(user.id, location.id, "migraine")
             if result.get("prediction_id"):
                 pred = MigrainePrediction.objects.get(id=result["prediction_id"])
                 if pred.probability in ["MEDIUM", "HIGH"]:
                     migraine_predictions.append(pred)
 
         if profile.sinusitis_predictions_enabled:
-            result = generate_digest_predictions(self, user.id, location.id, "sinusitis")
+            result = generate_digest_predictions(user.id, location.id, "sinusitis")
             if result.get("prediction_id"):
                 pred = SinusitisPrediction.objects.get(id=result["prediction_id"])
                 if pred.probability in ["MEDIUM", "HIGH"]:
@@ -314,6 +328,10 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     Generate a single prediction using LLM inference.
     CRITICAL: This task MUST run with concurrency=1 due to LLM API constraints.
 
+    Includes automatic retry logic:
+    - HTTP-level: 3 retries with exponential backoff (2s, 4s, 8s) for transient errors
+    - Task-level: 2 retries with 2-minute delays if all HTTP retries fail
+
     Args:
         user_id: ID of the user
         location_id: ID of the location
@@ -323,6 +341,11 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
+
+    # Log retry attempts
+    retry_count = self.request.retries
+    if retry_count > 0:
+        logger.warning(f"LLM prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")
 
     logger.info(f"Generating {prediction_type} prediction for user {user_id}, location {location_id}")
 
@@ -367,6 +390,10 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     Generate predictions for DIGEST mode user (waking hours window).
     CRITICAL: This task MUST run with concurrency=1 due to LLM API constraints.
 
+    Includes automatic retry logic:
+    - HTTP-level: 3 retries with exponential backoff (2s, 4s, 8s) for transient errors
+    - Task-level: 2 retries with 2-minute delays if all HTTP retries fail
+
     Args:
         user_id: ID of the user
         location_id: ID of the location
@@ -378,6 +405,11 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
     from datetime import datetime
     import pytz
+
+    # Log retry attempts
+    retry_count = self.request.retries
+    if retry_count > 0:
+        logger.warning(f"LLM digest prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")
 
     logger.info(f"Generating {prediction_type} digest prediction for user {user_id}, location {location_id}")
 

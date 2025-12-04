@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 from django.utils import timezone
 from sentry_sdk import capture_exception, set_context, add_breadcrumb, start_span
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +14,7 @@ class OpenMeteoClient:
     Client for the Open-Meteo Weather API.
 
     This client fetches weather forecast data that can be used for migraine prediction.
+    Includes automatic retry logic for transient network failures.
     """
 
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
@@ -29,8 +32,27 @@ class OpenMeteoClient:
     ]
 
     def __init__(self):
-        """Initialize the Open-Meteo client."""
-        pass
+        """Initialize the Open-Meteo client with retry logic."""
+        # Configure retry strategy
+        # Retry on connection errors, timeouts, and specific HTTP status codes
+        retry_strategy = Retry(
+            total=3,  # Total number of retries
+            backoff_factor=1,  # Wait 1s, 2s, 4s between retries
+            status_forcelist=[429, 500, 502, 503, 504],  # Retry on these HTTP status codes
+            allowed_methods=["GET"],  # Only retry GET requests
+            raise_on_status=False,  # Don't raise exception on retry exhaustion (we handle it)
+            respect_retry_after_header=True,  # Honor Retry-After header if present
+        )
+
+        # Create HTTP adapter with retry strategy
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+
+        # Create session and mount adapter
+        self.session = requests.Session()
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+
+        logger.info("OpenMeteoClient initialized with retry strategy: 3 retries, exponential backoff")
 
     def get_forecast(self, latitude, longitude, days=3):
         """
@@ -62,7 +84,7 @@ class OpenMeteoClient:
 
         try:
             with start_span(op="http.client", description="Open-Meteo API request"):
-                response = requests.get(self.BASE_URL, params=params, timeout=30)
+                response = self.session.get(self.BASE_URL, params=params, timeout=30)
                 response.raise_for_status()
 
                 add_breadcrumb(
@@ -80,7 +102,7 @@ class OpenMeteoClient:
                 {"latitude": latitude, "longitude": longitude, "days": days, "api_url": self.BASE_URL, "timeout": 30},
             )
             capture_exception(e)
-            logger.error(f"Timeout fetching weather forecast: {e}")
+            logger.error(f"Timeout fetching weather forecast after retries: {e}")
             return None
 
         except requests.exceptions.HTTPError as e:
@@ -163,7 +185,7 @@ class OpenMeteoClient:
 
         try:
             with start_span(op="http.client", description=f"Open-Meteo batch API request ({len(locations)} locations)"):
-                response = requests.get(self.BASE_URL, params=params, timeout=60)
+                response = self.session.get(self.BASE_URL, params=params, timeout=60)
                 response.raise_for_status()
 
                 add_breadcrumb(
@@ -207,7 +229,7 @@ class OpenMeteoClient:
                 },
             )
             capture_exception(e)
-            logger.error(f"Timeout fetching batch weather forecast for {len(locations)} locations: {e}")
+            logger.error(f"Timeout fetching batch weather forecast for {len(locations)} locations after retries: {e}")
             return None
 
         except requests.exceptions.HTTPError as e:

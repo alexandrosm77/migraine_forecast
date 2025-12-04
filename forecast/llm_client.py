@@ -3,6 +3,8 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from sentry_sdk import capture_exception, set_context, add_breadcrumb, start_span
 
 from .llm_context_builder import LLMContextBuilder
@@ -16,6 +18,8 @@ class LLMClient:
 
     Reads configuration (base_url, api_key, model, timeout) passed in constructor.
     Base URL defaults should be provided by Django settings (e.g., http://localhost:8000).
+
+    Includes automatic retry logic for transient API failures.
     """
 
     def __init__(
@@ -31,7 +35,27 @@ class LLMClient:
         self.model = model
         self.timeout = timeout
         self.extra_payload = extra_payload or {}
+
+        # Configure retry strategy for LLM API calls
+        # Retry on connection errors, timeouts, and specific HTTP status codes
+        retry_strategy = Retry(
+            total=3,  # Total number of retries
+            backoff_factor=2,  # Wait 2s, 4s, 8s between retries (longer than weather API)
+            status_forcelist=[404, 429, 500, 502, 503, 504],  # Retry on these HTTP status codes
+            allowed_methods=["POST"],  # Only retry POST requests (chat completions)
+            raise_on_status=False,  # Don't raise exception on retry exhaustion (we handle it)
+            respect_retry_after_header=True,  # Honor Retry-After header if present
+        )
+
+        # Create HTTP adapter with retry strategy
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+
+        # Create session and mount adapter
         self._session = requests.Session()
+        self._session.mount("https://", adapter)
+        self._session.mount("http://", adapter)
+
+        logger.info(f"LLMClient initialized for {self.base_url} with retry strategy: 3 retries, exponential backoff")
 
     def _headers(self) -> Dict[str, str]:
         headers = {
@@ -83,7 +107,7 @@ class LLMClient:
                 "llm_timeout", {"model": self.model, "base_url": self.base_url, "timeout": self.timeout, "url": url}
             )
             capture_exception(e)
-            logger.error(f"LLM request timeout: {e}")
+            logger.error(f"LLM request timeout after retries: {e}")
             raise
 
         except requests.exceptions.HTTPError as e:
@@ -98,7 +122,7 @@ class LLMClient:
                 },
             )
             capture_exception(e)
-            logger.error(f"LLM HTTP error: {e}")
+            logger.error(f"LLM HTTP error after retries: {e}")
             raise
 
         except ValueError as e:
@@ -124,7 +148,7 @@ class LLMClient:
                 {"model": self.model, "base_url": self.base_url, "error_type": type(e).__name__, "url": url},
             )
             capture_exception(e)
-            logger.error(f"LLM request error: {e}")
+            logger.error(f"LLM request error after retries: {e}")
             raise
 
     @staticmethod
