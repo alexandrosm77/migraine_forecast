@@ -8,28 +8,67 @@
     <!-- Page Header -->
     <div class="mb-8 flex justify-between items-center">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{% trans "Profile Settings" %}</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">{% trans "Manage your account and preferences" %}</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                {% if is_viewing_other %}
+                    {% trans "Profile Settings" %}: {{ profile_user.username }}
+                {% else %}
+                    {% trans "Profile Settings" %}
+                {% endif %}
+            </h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                {% if is_viewing_other %}
+                    {% trans "Viewing user profile as administrator" %}
+                {% else %}
+                    {% trans "Manage your account and preferences" %}
+                {% endif %}
+            </p>
         </div>
-        <a href="{% url 'forecast:dashboard' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
-            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            {% trans "Back to Dashboard" %}
-        </a>
+        <div class="flex gap-2">
+            {% if is_viewing_other and not profile_user.is_superuser %}
+                <a href="{% url 'forecast:impersonate_user' profile_user.id %}"
+                   class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition"
+                   onclick="return confirm('{% trans "Are you sure you want to impersonate" %} {{ profile_user.username }}?');">
+                    <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    {% trans "Impersonate User" %}
+                </a>
+            {% endif %}
+            <a href="{% if is_viewing_other %}{% url 'forecast:user_list' %}{% else %}{% url 'forecast:dashboard' %}{% endif %}"
+               class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
+                <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                {% if is_viewing_other %}{% trans "Back to User List" %}{% else %}{% trans "Back to Dashboard" %}{% endif %}
+            </a>
+        </div>
     </div>
+
+    <!-- Admin View Alert -->
+    {% if is_viewing_other %}
+    <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+            <svg class="h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-blue-800 dark:text-blue-200 font-medium">
+                {% trans "Admin View" %}: {% trans "You are viewing" %} {{ profile_user.username }}'s {% trans "profile" %}.
+            </span>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- User Info Card -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center">
                 <div class="h-16 w-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                    {{ user.username|slice:":1"|upper }}
+                    {{ profile_user.username|slice:":1"|upper }}
                 </div>
                 <div class="ml-4">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ user.username }}</h2>
-                    <p class="text-gray-600 dark:text-gray-400">{{ user.email|default:"No email provided" }}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-500">{% trans "Member since" %} {{ user.date_joined|date:"F j, Y" }}</p>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ profile_user.username }}</h2>
+                    <p class="text-gray-600 dark:text-gray-400">{{ profile_user.email|default:"No email provided" }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-500">{% trans "Member since" %} {{ profile_user.date_joined|date:"F j, Y" }}</p>
                 </div>
             </div>
             <div class="text-right">
@@ -235,6 +274,7 @@
 
             <!-- Form Actions -->
             <div class="p-6 bg-gray-50 dark:bg-gray-700">
+                {% if not is_viewing_other %}
                 <div class="flex justify-between items-center">
                     <a href="{% url 'logout' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition">
                         <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -249,6 +289,18 @@
                         {% trans "Save Changes" %}
                     </button>
                 </div>
+                {% else %}
+                <div class="bg-amber-50 dark:bg-amber-900 border border-amber-200 dark:border-amber-700 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-amber-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span class="text-amber-800 dark:text-amber-200 font-medium">
+                            {% trans "You are viewing this profile as an administrator. Changes cannot be saved from this view." %}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </form>
     </div>

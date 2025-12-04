@@ -2,10 +2,13 @@ from django.db.models import Max
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+from django.contrib.auth import login
 from django.contrib import messages
 from django.utils import timezone, translation
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.http import require_http_methods
+from django.core.exceptions import PermissionDenied
 from datetime import timedelta
 
 from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction
@@ -688,25 +691,39 @@ def register(request):
 
 
 @login_required
-def profile(request):
-    """User profile view with health profile editing."""
+def profile(request, user_id=None):
+    """
+    User profile view with health profile editing.
+    Admins can view other users' profiles by passing user_id.
+    """
+    # Determine which user's profile to view
+    if user_id and request.user.is_superuser:
+        # Admin viewing another user's profile
+        profile_user = get_object_or_404(User, id=user_id)
+        is_viewing_other = True
+    else:
+        # User viewing their own profile
+        profile_user = request.user
+        is_viewing_other = False
+
     # Get or create the user's health profile
     try:
-        profile = request.user.health_profile
+        profile = profile_user.health_profile
     except Exception:
         from .models import UserHealthProfile
 
         profile = None
         try:
-            profile = UserHealthProfile.objects.get(user=request.user)
+            profile = UserHealthProfile.objects.get(user=profile_user)
         except UserHealthProfile.DoesNotExist:
-            profile = UserHealthProfile(user=request.user)
+            profile = UserHealthProfile(user=profile_user)
 
-    if request.method == "POST":
+    if request.method == "POST" and not is_viewing_other:
+        # Only allow editing own profile
         form = UserHealthProfileForm(request.POST, instance=profile)
         if form.is_valid():
             obj = form.save(commit=False)
-            obj.user = request.user
+            obj.user = profile_user
             obj.save()
             messages.success(request, "Health profile updated successfully.")
             return redirect("forecast:profile")
@@ -716,11 +733,13 @@ def profile(request):
         form = UserHealthProfileForm(instance=profile)
 
     # Provide locations info for template stats
-    locations = Location.objects.filter(user=request.user)
+    locations = Location.objects.filter(user=profile_user)
 
     context = {
         "form": form,
         "locations": locations,
+        "profile_user": profile_user,
+        "is_viewing_other": is_viewing_other,
     }
     return render(request, get_template_name(request, "profile.html"), context)
 
@@ -782,3 +801,84 @@ def set_language(request, language_code):
 
     messages.success(request, "Language preference updated successfully.")
     return redirect(request.META.get("HTTP_REFERER", "forecast:index"))
+
+
+@login_required
+def user_list(request):
+    """
+    View for listing all users in the system.
+    Only accessible to superusers.
+    """
+    if not request.user.is_superuser:
+        raise PermissionDenied("Only administrators can access this page.")
+
+    users_queryset = User.objects.all().order_by("username")
+
+    # Pagination - show 20 users per page
+    paginator = Paginator(users_queryset, 20)
+    page = request.GET.get("page", 1)
+
+    try:
+        users = paginator.page(page)
+    except PageNotAnInteger:
+        users = paginator.page(1)
+    except EmptyPage:
+        users = paginator.page(paginator.num_pages)
+
+    context = {
+        "users": users,
+    }
+
+    return render(request, get_template_name(request, "user_list.html"), context)
+
+
+@login_required
+def impersonate_user(request, user_id):
+    """
+    Start impersonating another user.
+    Only accessible to superusers.
+    Preserves the admin's original session.
+    """
+    if not request.user.is_superuser:
+        raise PermissionDenied("Only administrators can impersonate users.")
+
+    # Get the user to impersonate
+    target_user = get_object_or_404(User, id=user_id)
+
+    # Don't allow impersonating other superusers
+    if target_user.is_superuser:
+        messages.error(request, "You cannot impersonate other administrators.")
+        return redirect("forecast:user_list")
+
+    # Store the original user ID in the session
+    request.session["_impersonate_original_user_id"] = request.user.id
+
+    # Log in as the target user
+    login(request, target_user, backend="django.contrib.auth.backends.ModelBackend")
+
+    messages.success(request, f"You are now impersonating {target_user.username}.")
+    return redirect("forecast:dashboard")
+
+
+@login_required
+def stop_impersonation(request):
+    """
+    Stop impersonating and return to the original admin user.
+    """
+    original_user_id = request.session.get("_impersonate_original_user_id")
+
+    if not original_user_id:
+        messages.error(request, "You are not currently impersonating anyone.")
+        return redirect("forecast:dashboard")
+
+    # Get the original user
+    original_user = get_object_or_404(User, id=original_user_id)
+
+    # Remove the impersonation flag from session
+    del request.session["_impersonate_original_user_id"]
+
+    # Log back in as the original user
+    login(request, original_user, backend="django.contrib.auth.backends.ModelBackend")
+
+    messages.success(request, f"Stopped impersonating. You are now logged in as {original_user.username}.")
+    return redirect("forecast:user_list")

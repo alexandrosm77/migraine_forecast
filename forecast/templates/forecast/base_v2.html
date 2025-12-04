@@ -197,6 +197,15 @@
                                     </svg>
                                     {% trans "Profile" %}
                                 </a>
+                                {% if user.is_superuser %}
+                                <div class="border-t border-gray-100 dark:border-gray-700"></div>
+                                <a href="{% url 'forecast:user_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 hover:text-teal-600 dark:hover:text-teal-400">
+                                    <svg class="inline h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                    {% trans "Manage Users" %}
+                                </a>
+                                {% endif %}
                                 <div class="border-t border-gray-100 dark:border-gray-700"></div>
                                 <form method="post" action="{% url 'logout' %}">
                                     {% csrf_token %}
@@ -271,6 +280,31 @@
             </div>
         </div>
     </nav>
+
+    <!-- Impersonation Banner -->
+    {% if request.session._impersonate_original_user_id %}
+    <div class="bg-amber-500 dark:bg-amber-600">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span class="text-white font-medium">
+                        <strong>{% trans "Impersonation Mode" %}:</strong>
+                        {% trans "You are currently viewing the site as" %} <strong>{{ user.username }}</strong>
+                    </span>
+                </div>
+                <a href="{% url 'forecast:stop_impersonation' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-amber-600 bg-white hover:bg-gray-50 rounded-lg transition">
+                    <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    {% trans "Stop Impersonation" %}
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Messages/Alerts -->
     {% if messages %}

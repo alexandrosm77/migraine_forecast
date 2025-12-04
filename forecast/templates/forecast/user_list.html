@@ -1,0 +1,116 @@
+{% extends 'forecast/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "User Management" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">{% trans "User Management" %}</h2>
+                    <a href="{% url 'forecast:dashboard' %}" class="btn btn-sm btn-outline-secondary">{% trans "Back to Dashboard" %}</a>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">{% trans "Manage and impersonate users in the system." %}</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Username" %}</th>
+                                    <th>{% trans "Email" %}</th>
+                                    <th>{% trans "Date Joined" %}</th>
+                                    <th>{% trans "Status" %}</th>
+                                    <th>{% trans "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user_item in users %}
+                                <tr>
+                                    <td>
+                                        {{ user_item.username }}
+                                        {% if user_item.is_superuser %}
+                                            <span class="badge bg-danger">{% trans "Admin" %}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user_item.email|default:"—" }}</td>
+                                    <td>{{ user_item.date_joined|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if user_item.is_active %}
+                                            <span class="badge bg-success">{% trans "Active" %}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{% trans "Inactive" %}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'forecast:profile_view' user_item.id %}"
+                                           class="btn btn-sm btn-outline-primary me-2">
+                                            {% trans "View Profile" %}
+                                        </a>
+                                        {% if not user_item.is_superuser %}
+                                            <a href="{% url 'forecast:impersonate_user' user_item.id %}"
+                                               class="btn btn-sm btn-primary"
+                                               onclick="return confirm('{% trans "Are you sure you want to impersonate" %} {{ user_item.username }}?');">
+                                                {% trans "Impersonate" %}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">{% trans "Cannot impersonate admin" %}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">{% trans "No users found." %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if users.has_other_pages %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if users.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ users.previous_page_number }}">{% trans "Previous" %}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">{% trans "Previous" %}</span>
+                            </li>
+                            {% endif %}
+
+                            {% for num in users.paginator.page_range %}
+                                {% if users.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if users.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ users.next_page_number }}">{% trans "Next" %}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">{% trans "Next" %}</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

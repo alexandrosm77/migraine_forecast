@@ -85,6 +85,10 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{% url 'forecast:profile' %}">{% trans "Profile" %}</a></li>
+                            {% if user.is_superuser %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'forecast:user_list' %}">👥 {% trans "Manage Users" %}</a></li>
+                            {% endif %}
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="post" action="{% url 'logout' %}" style="display: inline;">
@@ -108,6 +112,23 @@
             </div>
         </div>
     </nav>
+
+    <!-- Impersonation Banner -->
+    {% if request.session._impersonate_original_user_id %}
+    <div class="bg-warning text-dark py-2">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>⚠️ {% trans "Impersonation Mode" %}:</strong>
+                    {% trans "You are currently viewing the site as" %} <strong>{{ user.username }}</strong>
+                </div>
+                <a href="{% url 'forecast:stop_impersonation' %}" class="btn btn-sm btn-dark">
+                    {% trans "Stop Impersonation" %}
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Messages -->
     <div class="container">
