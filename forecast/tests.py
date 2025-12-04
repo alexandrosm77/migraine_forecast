@@ -99,7 +99,7 @@ class WeatherForecastModelTest(TestCase):
 
 
 class OpenMeteoClientTest(TestCase):
-    @patch("forecast.weather_api.requests.get")
+    @patch("forecast.weather_api.requests.Session.get")
     def test_get_forecast(self, mock_get):
         # Mock the API response
         mock_response = MagicMock()

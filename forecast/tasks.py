@@ -345,7 +345,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     # Log retry attempts
     retry_count = self.request.retries
     if retry_count > 0:
-        logger.warning(f"LLM prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")
+        logger.warning(f"LLM prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
 
     logger.info(f"Generating {prediction_type} prediction for user {user_id}, location {location_id}")
 
@@ -409,7 +409,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     # Log retry attempts
     retry_count = self.request.retries
     if retry_count > 0:
-        logger.warning(f"LLM digest prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")
+        logger.warning(f"LLM digest prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
 
     logger.info(f"Generating {prediction_type} digest prediction for user {user_id}, location {location_id}")
 
