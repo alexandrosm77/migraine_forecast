@@ -10,6 +10,11 @@ from sentry_sdk import capture_exception, capture_message, set_context, add_brea
 logger = logging.getLogger(__name__)
 
 
+class LLMInvalidResponseError(Exception):
+    """Raised when LLM returns an invalid or malformed response."""
+    pass
+
+
 class MigrainePredictionService:
     """
     Service for predicting migraine probability based on weather forecast data.
@@ -400,14 +405,22 @@ class MigrainePredictionService:
                         },
                     )
                 else:
-                    logger.warning("LLM returned invalid probability level, will fall back to manual calculation")
+                    # Raise exception to trigger task retry instead of falling back to manual calculation
+                    error_msg = f"LLM returned invalid probability level: {llm_level}"
+                    logger.warning(error_msg)
 
                     set_context(
                         "llm_invalid_response",
                         {"location": loc_label, "llm_level": llm_level, "llm_detail": llm_detail},
                     )
-                    capture_message(f"LLM returned invalid probability level: {llm_level}", level="warning")
+                    capture_message(error_msg, level="warning")
 
+                    # Raise exception to trigger Celery task retry
+                    raise LLMInvalidResponseError(error_msg)
+
+            except LLMInvalidResponseError:
+                # Re-raise to trigger Celery task retry
+                raise
             except Exception as e:
                 logger.exception("LLM prediction failed; falling back to manual calculation")
 

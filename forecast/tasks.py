@@ -322,7 +322,7 @@ def cleanup_old_data():
 # =============================================================================
 
 
-@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 2, "countdown": 120})
+@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 1, "countdown": 10})
 def generate_prediction(self, user_id, location_id, prediction_type):
     """
     Generate a single prediction using LLM inference.
@@ -330,7 +330,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
 
     Includes automatic retry logic:
     - HTTP-level: 3 retries with exponential backoff (2s, 4s, 8s) for transient errors
-    - Task-level: 2 retries with 2-minute delays if all HTTP retries fail
+    - Task-level: 1 retry with 10-second delay for malformed LLM responses or other failures
 
     Args:
         user_id: ID of the user
@@ -345,7 +345,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     # Log retry attempts
     retry_count = self.request.retries
     if retry_count > 0:
-        logger.warning(f"LLM prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
+        logger.warning(f"LLM prediction retry attempt {retry_count}/1 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
 
     logger.info(f"Generating {prediction_type} prediction for user {user_id}, location {location_id}")
 
@@ -384,7 +384,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     }
 
 
-@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 2, "countdown": 120})
+@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 1, "countdown": 10})
 def generate_digest_predictions(self, user_id, location_id, prediction_type):
     """
     Generate predictions for DIGEST mode user (waking hours window).
@@ -392,7 +392,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
 
     Includes automatic retry logic:
     - HTTP-level: 3 retries with exponential backoff (2s, 4s, 8s) for transient errors
-    - Task-level: 2 retries with 2-minute delays if all HTTP retries fail
+    - Task-level: 1 retry with 10-second delay for malformed LLM responses or other failures
 
     Args:
         user_id: ID of the user
@@ -409,7 +409,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     # Log retry attempts
     retry_count = self.request.retries
     if retry_count > 0:
-        logger.warning(f"LLM digest prediction retry attempt {retry_count}/2 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
+        logger.warning(f"LLM digest prediction retry attempt {retry_count}/1 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
 
     logger.info(f"Generating {prediction_type} digest prediction for user {user_id}, location {location_id}")
 

@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from .models import WeatherForecast, SinusitisPrediction, UserHealthProfile, LLMResponse
 from .llm_client import LLMClient
+from .prediction_service import LLMInvalidResponseError
 
 logger = logging.getLogger(__name__)
 
@@ -364,7 +365,15 @@ class SinusitisPredictionService:
                             f"LLM sinusitis prediction successful: {probability_level} (confidence: {confidence_str})"
                         )
                 else:
-                    logger.warning("LLM returned invalid probability level, will fall back to manual calculation")
+                    # Raise exception to trigger task retry instead of falling back to manual calculation
+                    error_msg = f"LLM returned invalid probability level for sinusitis: {llm_level}"
+                    logger.warning(error_msg)
+
+                    # Raise exception to trigger Celery task retry
+                    raise LLMInvalidResponseError(error_msg)
+            except LLMInvalidResponseError:
+                # Re-raise to trigger Celery task retry
+                raise
             except Exception:
                 logger.exception("LLM sinusitis prediction failed; falling back to manual calculation")
 
