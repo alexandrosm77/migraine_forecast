@@ -176,3 +176,6 @@ cython_debug/
 
 # Kubernetes secrets (created from GitHub secrets during deployment)
 k8s/secrets.yaml
+
+# Exclude local documentation (local-docs folder)
+local-docs/
