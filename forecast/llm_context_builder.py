@@ -76,6 +76,7 @@ class LLMContextBuilder:
                              If False (default), use compact summaries.
         """
         self.high_token_budget = high_token_budget
+        self.outlook_forecasts: Optional[List[Any]] = None
 
     def build_migraine_context(
         self,
@@ -83,6 +84,7 @@ class LLMContextBuilder:
         previous_forecasts: List[Any],
         location: Any,
         user_profile: Optional[Dict[str, Any]] = None,
+        outlook_forecasts: Optional[List[Any]] = None,
     ) -> str:
         """
         Build context string for migraine prediction.
@@ -92,10 +94,12 @@ class LLMContextBuilder:
             previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
             user_profile: Optional user health profile dict
+            outlook_forecasts: Optional list of WeatherForecast objects for the next 24 hours
 
         Returns:
             Formatted context string for LLM prompt
         """
+        self.outlook_forecasts = outlook_forecasts
         return self._build_context(
             forecasts=forecasts,
             previous_forecasts=previous_forecasts,
@@ -110,6 +114,7 @@ class LLMContextBuilder:
         previous_forecasts: List[Any],
         location: Any,
         user_profile: Optional[Dict[str, Any]] = None,
+        outlook_forecasts: Optional[List[Any]] = None,
     ) -> str:
         """
         Build context string for sinusitis prediction.
@@ -119,10 +124,12 @@ class LLMContextBuilder:
             previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
             user_profile: Optional user health profile dict
+            outlook_forecasts: Optional list of WeatherForecast objects for the next 24 hours
 
         Returns:
             Formatted context string for LLM prompt
         """
+        self.outlook_forecasts = outlook_forecasts
         return self._build_context(
             forecasts=forecasts,
             previous_forecasts=previous_forecasts,
@@ -169,6 +176,10 @@ class LLMContextBuilder:
 
         # Stability within forecast window
         parts.append(self._format_window_stability(forecasts))
+
+        # 24-hour outlook (if outlook forecasts provided)
+        if self.outlook_forecasts:
+            parts.append(self._format_24h_outlook(self.outlook_forecasts))
 
         # User sensitivity profile
         if user_profile:
@@ -547,6 +558,129 @@ class LLMContextBuilder:
                 f"Window stability: Δ{max_temp_change:.1f}°C/hr temp, Δ{max_pressure_change:.1f}hPa/hr pressure "
                 f"({temp_stability})"
             )
+
+    def _format_24h_outlook(self, outlook_forecasts: List[Any]) -> str:
+        """
+        Format 24-hour outlook in 6-hour chunks.
+
+        This provides the LLM with trend context to detect approaching weather systems
+        that may not be visible in the immediate prediction window.
+
+        Args:
+            outlook_forecasts: List of WeatherForecast objects for the next 24 hours
+
+        Returns:
+            Formatted 24-hour outlook string
+        """
+        if not outlook_forecasts or len(outlook_forecasts) < 4:
+            return ""
+
+        # Group forecasts into 6-hour chunks
+        chunks = []
+        chunk_size = 6
+
+        for i in range(0, min(24, len(outlook_forecasts)), chunk_size):
+            chunk = outlook_forecasts[i : i + chunk_size]
+            if chunk:
+                chunks.append(chunk)
+
+        if len(chunks) < 2:
+            return ""
+
+        def summarize_chunk(chunk: List[Any], chunk_index: int) -> Dict[str, Any]:
+            """Summarize a 6-hour chunk of forecasts."""
+            temps = [f.temperature for f in chunk]
+            pressures = [f.pressure for f in chunk]
+            humidities = [f.humidity for f in chunk]
+            precip_total = sum(f.precipitation for f in chunk)
+
+            start_hour = chunk_index * chunk_size
+            end_hour = start_hour + len(chunk)
+
+            return {
+                "label": f"{start_hour}-{end_hour}h",
+                "temp_start": temps[0],
+                "temp_end": temps[-1],
+                "temp_avg": np.mean(temps),
+                "pressure_start": pressures[0],
+                "pressure_end": pressures[-1],
+                "pressure_avg": np.mean(pressures),
+                "humidity_avg": np.mean(humidities),
+                "precip_total": precip_total,
+            }
+
+        summaries = [summarize_chunk(chunk, i) for i, chunk in enumerate(chunks)]
+
+        # Calculate overall 24h trends
+        first_chunk = summaries[0]
+        last_chunk = summaries[-1]
+        total_pressure_change = last_chunk["pressure_end"] - first_chunk["pressure_start"]
+        total_temp_change = last_chunk["temp_end"] - first_chunk["temp_start"]
+
+        # Detect significant patterns
+        patterns = []
+
+        # Pressure drop detection (approaching front)
+        if total_pressure_change <= -5:
+            patterns.append("significant pressure drop (possible approaching front)")
+        elif total_pressure_change <= -3:
+            patterns.append("moderate pressure drop")
+        elif total_pressure_change >= 5:
+            patterns.append("significant pressure rise (clearing conditions)")
+        elif total_pressure_change >= 3:
+            patterns.append("moderate pressure rise")
+
+        # Temperature swing detection
+        if abs(total_temp_change) >= 8:
+            direction = "warming" if total_temp_change > 0 else "cooling"
+            patterns.append(f"major {direction} trend ({total_temp_change:+.1f}°C)")
+        elif abs(total_temp_change) >= 5:
+            direction = "warming" if total_temp_change > 0 else "cooling"
+            patterns.append(f"notable {direction} trend ({total_temp_change:+.1f}°C)")
+
+        # Check for rapid changes within any chunk
+        for i, summary in enumerate(summaries):
+            chunk_pressure_change = summary["pressure_end"] - summary["pressure_start"]
+            if abs(chunk_pressure_change) >= 4:
+                patterns.append(f"rapid pressure change in {summary['label']} window")
+                break
+
+        if self.high_token_budget:
+            lines = ["## 24-Hour Outlook (6-hour chunks)"]
+            lines.append("Period | Temp | Pressure | Humidity | Precip")
+            lines.append("-------|------|----------|----------|-------")
+
+            for s in summaries:
+                temp_str = f"{s['temp_start']:.0f}→{s['temp_end']:.0f}°C"
+                pressure_str = f"{s['pressure_start']:.0f}→{s['pressure_end']:.0f}hPa"
+                humidity_str = f"{s['humidity_avg']:.0f}%"
+                precip_str = f"{s['precip_total']:.1f}mm"
+                lines.append(f"{s['label']:>6} | {temp_str:>10} | {pressure_str:>12} | {humidity_str:>8} | {precip_str:>6}")  # noqa
+
+            if patterns:
+                lines.append("")
+                lines.append(f"24h patterns: {'; '.join(patterns)}")
+
+            return "\n".join(lines)
+        else:
+            # Compact format
+            parts = []
+            for s in summaries:
+                pressure_change = s["pressure_end"] - s["pressure_start"]
+                pressure_indicator = ""
+                if pressure_change <= -2:
+                    pressure_indicator = "↓"
+                elif pressure_change >= 2:
+                    pressure_indicator = "↑"
+                parts.append(
+                    f"{s['label']}: {s['temp_avg']:.0f}°C, {s['pressure_avg']:.0f}hPa{pressure_indicator}"
+                )
+
+            result = "24h outlook: " + " | ".join(parts)
+            if patterns:
+                result += f" [{patterns[0]}]"
+
+            return result
 
     def _format_user_sensitivity(self, user_profile: Dict[str, Any]) -> str:
         """Format user sensitivity profile in natural language."""

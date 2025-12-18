@@ -100,6 +100,15 @@ class SinusitisPredictionService:
             target_time__lt=start_time
         ).order_by("-target_time")
 
+        # Get 24-hour outlook forecasts (from now to 24 hours ahead)
+        outlook_start = timezone.now()
+        outlook_end = timezone.now() + timedelta(hours=24)
+        outlook_forecasts = WeatherForecast.objects.filter(
+            location=location,
+            target_time__gte=outlook_start,
+            target_time__lte=outlook_end
+        ).order_by("target_time")
+
         # Calculate scores for different weather factors
         scores = self._calculate_weather_scores(forecasts, previous_forecasts)
 
@@ -332,6 +341,7 @@ class SinusitisPredictionService:
                     previous_forecasts=list(previous_forecasts),
                     location=location,
                     high_token_budget=llm_config.high_token_budget,
+                    outlook_forecasts=list(outlook_forecasts),
                 )
                 if llm_level in {"LOW", "MEDIUM", "HIGH"}:
                     llm_used = True

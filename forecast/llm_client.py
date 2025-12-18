@@ -183,6 +183,7 @@ class LLMClient:
         previous_forecasts: Optional[List[Any]] = None,
         location: Optional[Any] = None,
         high_token_budget: bool = False,
+        outlook_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
         Ask the LLM to output a JSON with keys:
@@ -200,6 +201,7 @@ class LLMClient:
             previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
             high_token_budget: Whether to use detailed context (default: False)
+            outlook_forecasts: List of WeatherForecast objects for the next 24 hours
         """
         # Determine user's preferred language
         user_language = None
@@ -246,6 +248,7 @@ class LLMClient:
                 previous_forecasts=previous_forecasts or [],
                 location=location,
                 user_profile=user_profile,
+                outlook_forecasts=outlook_forecasts or [],
             )
         else:
             # Fallback to legacy context building (for backwards compatibility)
@@ -384,6 +387,7 @@ class LLMClient:
         previous_forecasts: Optional[List[Any]] = None,
         location: Optional[Any] = None,
         high_token_budget: bool = False,
+        outlook_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
         Ask the LLM to output a JSON with keys for sinusitis risk assessment:
@@ -401,6 +405,7 @@ class LLMClient:
             previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
             location: Location model instance
             high_token_budget: Whether to use detailed context (default: False)
+            outlook_forecasts: List of WeatherForecast objects for the next 24 hours
         """
         # Determine user's preferred language
         user_language = None
@@ -448,6 +453,7 @@ class LLMClient:
                 previous_forecasts=previous_forecasts or [],
                 location=location,
                 user_profile=user_profile,
+                outlook_forecasts=outlook_forecasts or [],
             )
         else:
             # Fallback to legacy context building (for backwards compatibility)

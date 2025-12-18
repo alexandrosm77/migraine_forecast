@@ -179,3 +179,4 @@ k8s/secrets.yaml
 
 # Exclude local documentation (local-docs folder)
 local-docs/
+/.kilocode/mcp.json
