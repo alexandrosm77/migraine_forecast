@@ -497,6 +497,11 @@ class LLMResponse(models.Model):
     rationale = models.TextField(blank=True)
     analysis_text = models.TextField(blank=True)
     prevention_tips = JSONField(default=list, null=True, blank=True)
+    inference_time = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="LLM inference time in seconds"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -90,17 +91,21 @@ class LLMClient:
 
         try:
             with start_span(op="llm.chat", description=f"LLM chat completion ({self.model})"):
+                start_time = time.perf_counter()
                 resp = self._session.post(url, headers=self._headers(), json=payload, timeout=self.timeout)
+                inference_time = time.perf_counter() - start_time
                 resp.raise_for_status()
 
                 add_breadcrumb(
                     category="llm",
                     message="LLM response received",
                     level="info",
-                    data={"status_code": resp.status_code},
+                    data={"status_code": resp.status_code, "inference_time": inference_time},
                 )
 
-                return resp.json()
+                result = resp.json()
+                result["_inference_time"] = inference_time
+                return result
 
         except requests.exceptions.Timeout as e:
             set_context(
@@ -287,12 +292,13 @@ class LLMClient:
             return None, {"error": str(e), "request_payload": request_payload}
 
         try:
+            inference_time = result.pop("_inference_time", None)
             choices = result.get("choices", [])
             content = (choices[0]["message"]["content"] if choices else "").strip()
             parsed = self._extract_json(content) if content else None
             if not parsed:
                 logger.warning("LLM response not JSON parsable: %s", content[:200])
-                return None, {"raw": result, "request_payload": request_payload}
+                return None, {"raw": result, "request_payload": request_payload, "inference_time": inference_time}
             level = parsed.get("probability_level")
 
             # Log the LLM response for debugging
@@ -302,9 +308,9 @@ class LLMClient:
                 level_up = level.strip().upper()
                 if level_up in {"LOW", "MEDIUM", "HIGH"}:
                     logger.info(f"LLM classified as {level_up} for {location_label}")
-                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
+                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
             logger.warning("LLM response missing/invalid probability_level: %s", parsed)
-            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
+            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
         except Exception:
             logger.exception("Failed to process LLM response")
             return None, {"raw": result, "request_payload": request_payload}
@@ -487,19 +493,20 @@ class LLMClient:
             return None, {"error": str(e), "request_payload": request_payload}
 
         try:
+            inference_time = result.pop("_inference_time", None)
             choices = result.get("choices", [])
             content = (choices[0]["message"]["content"] if choices else "").strip()
             parsed = self._extract_json(content) if content else None
             if not parsed:
                 logger.warning("LLM sinusitis response not JSON parsable: %s", content[:200])
-                return None, {"raw": result, "request_payload": request_payload}
+                return None, {"raw": result, "request_payload": request_payload, "inference_time": inference_time}
             level = parsed.get("probability_level")
             if isinstance(level, str):
                 level_up = level.strip().upper()
                 if level_up in {"LOW", "MEDIUM", "HIGH"}:
-                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
+                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
             logger.warning("LLM sinusitis response missing/invalid probability_level: %s", parsed)
-            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload}
+            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
         except Exception:
             logger.exception("Failed to process LLM sinusitis response")
             return None, {"raw": result, "request_payload": request_payload}

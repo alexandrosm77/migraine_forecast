@@ -464,6 +464,7 @@ class SinusitisPredictionService:
                             rationale=(llm_detail or {}).get("raw", {}).get("rationale") or "",
                             analysis_text=(llm_detail or {}).get("raw", {}).get("analysis_text") or "",
                             prevention_tips=(llm_detail or {}).get("raw", {}).get("prevention_tips") or [],
+                            inference_time=(llm_detail or {}).get("inference_time"),
                         )
                 except Exception:
                     logger.exception("Failed to store LLMResponse for sinusitis prediction")
