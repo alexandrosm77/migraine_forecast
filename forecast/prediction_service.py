@@ -88,6 +88,10 @@ class MigrainePredictionService:
             logger.warning(
                 f"No forecasts available for location {location} in the {window_start_hours}-{window_end_hours} hour window"  # noqa: E501
             )  # noqa: E501
+            capture_message(
+                f"No forecasts available for location {location.city}, {location.country}",
+                level="warning",
+            )
             return None, None
 
         # Get previous forecasts for comparison (24h ago)
@@ -526,6 +530,25 @@ class MigrainePredictionService:
                         )
                 except Exception:
                     logger.exception("Failed to store LLMResponse")
+
+                # Send Sentry message with prediction details
+                set_context(
+                    "migraine_prediction",
+                    {
+                        "location": f"{location.city}, {location.country}",
+                        "user_id": user.id,
+                        "probability_level": probability_level,
+                        "original_probability_level": original_probability_level,
+                        "confidence_adjusted": confidence_adjusted,
+                        "llm_used": llm_used,
+                        "window_start": str(start_time),
+                        "window_end": str(end_time),
+                    },
+                )
+                capture_message(
+                    f"Migraine prediction generated: {probability_level} for {location.city}, {location.country}",
+                    level="info",
+                )
         else:
             prediction = None
 
