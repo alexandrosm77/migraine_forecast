@@ -266,6 +266,11 @@ def send_digest_email(self, user_id):
                 if pred.probability in ["MEDIUM", "HIGH"]:
                     sinusitis_predictions.append(pred)
 
+    # Apply severity threshold for digest notifications
+    if profile.notification_severity_threshold == "HIGH":
+        migraine_predictions = [pred for pred in migraine_predictions if pred.probability == "HIGH"]
+        sinusitis_predictions = [pred for pred in sinusitis_predictions if pred.probability == "HIGH"]
+
     # Send combined email if we have any predictions
     if migraine_predictions or sinusitis_predictions:
         service = NotificationService()
