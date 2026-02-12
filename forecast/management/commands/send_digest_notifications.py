@@ -6,14 +6,13 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from datetime import timedelta, time
 import logging
-
-# Default digest time (6 AM) for users who haven't set one
-DEFAULT_DIGEST_TIME = time(6, 0)
-
 from forecast.models import MigrainePrediction, SinusitisPrediction, NotificationLog
 from forecast.management.commands.base import SilentStdoutCommand
 
 logger = logging.getLogger(__name__)
+
+# Default digest time (6 AM) for users who haven't set one
+DEFAULT_DIGEST_TIME = time(6, 0)
 
 
 class Command(SilentStdoutCommand):
