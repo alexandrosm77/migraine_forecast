@@ -4,8 +4,11 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from datetime import timedelta
+from datetime import timedelta, time
 import logging
+
+# Default digest time (6 AM) for users who haven't set one
+DEFAULT_DIGEST_TIME = time(6, 0)
 
 from forecast.models import MigrainePrediction, SinusitisPrediction, NotificationLog
 from forecast.management.commands.base import SilentStdoutCommand
@@ -63,15 +66,20 @@ class Command(SilentStdoutCommand):
 
                 # Check if it's time to send digest (unless forced)
                 if not force:
+                    # Use user's digest time or default to 6 AM
+                    digest_time = profile.digest_time or DEFAULT_DIGEST_TIME
                     if not profile.digest_time:
-                        self.stdout.write(self.style.WARNING(f"User {user.username} has no digest time set, skipping"))
-                        continue
+                        self.stdout.write(f"User {user.username} has no digest time set, using default (6 AM)")
+                    current_minutes = current_time.hour * 60 + current_time.minute
+                    digest_minutes = digest_time.hour * 60 + digest_time.minute
 
-                    # Check if current time is within 30 minutes of digest time
-                    digest_time = profile.digest_time
-                    time_diff = abs(
-                        (current_time.hour * 60 + current_time.minute) - (digest_time.hour * 60 + digest_time.minute)
-                    )
+                    # Calculate time difference, handling midnight wraparound
+                    # For example: digest_time=23:45 (1425 min), current_time=00:15 (15 min)
+                    # Direct diff: |15 - 1425| = 1410 (wrong)
+                    # Wraparound diff: 1440 - 1410 = 30 (correct)
+                    direct_diff = abs(current_minutes - digest_minutes)
+                    wraparound_diff = 1440 - direct_diff  # 1440 = 24 * 60 minutes in a day
+                    time_diff = min(direct_diff, wraparound_diff)
 
                     if time_diff > 30:  # More than 30 minutes difference
                         self.stdout.write(
