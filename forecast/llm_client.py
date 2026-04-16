@@ -377,11 +377,11 @@ class LLMClient:
             if weather_summary:
                 user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
 
-        # Add user sensitivity if available
+        # Add user sensitivity preset if available
         if user_profile:
-            sensitivity = user_profile.get("sensitivity_overall", 1.0)
-            if sensitivity != 1.0:
-                user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
+            preset = user_profile.get("sensitivity_preset", "NORMAL")
+            if preset != "NORMAL":
+                user_prompt_parts.append(f"User sensitivity: {preset}")
 
         return "\n".join(user_prompt_parts)
 

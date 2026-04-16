@@ -23,17 +23,6 @@ class UserHealthProfile(models.Model):
         help_text="Your sensitivity to weather changes (passed directly to the prediction model)",
     )
 
-    # DEPRECATED: Old granular sensitivity fields (kept for migration compatibility)
-    # These will be removed in a future version
-    sensitivity_overall = models.FloatField(
-        default=1.0,
-        help_text="DEPRECATED: Use sensitivity_preset instead"
-    )
-    sensitivity_temperature = models.FloatField(default=1.0)
-    sensitivity_humidity = models.FloatField(default=1.0)
-    sensitivity_pressure = models.FloatField(default=1.0)
-    sensitivity_cloud_cover = models.FloatField(default=1.0)
-    sensitivity_precipitation = models.FloatField(default=1.0)
     email_notifications_enabled = models.BooleanField(
         default=True, help_text="Enable or disable email notifications for migraine and sinusitis alerts"
     )

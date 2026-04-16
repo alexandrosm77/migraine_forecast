@@ -687,55 +687,21 @@ class LLMContextBuilder:
         if not user_profile:
             return ""
 
-        # Collect sensitivities
-        sensitivity_map = {
-            "sensitivity_pressure": ("barometric pressure", "pressure changes"),
-            "sensitivity_temperature": ("temperature", "temperature changes"),
-            "sensitivity_humidity": ("humidity", "humidity levels"),
-            "sensitivity_precipitation": ("precipitation", "rain/precipitation"),
-            "sensitivity_cloud_cover": ("cloud cover", "overcast conditions"),
-        }
-
-        high_sensitivities = []
-        moderate_sensitivities = []
-
-        for key, (name, description) in sensitivity_map.items():
-            value = user_profile.get(key, 1.0)
-            if value >= 1.5:
-                high_sensitivities.append(name)
-            elif value >= 1.2:
-                moderate_sensitivities.append(name)
-
-        overall = user_profile.get("sensitivity_overall", 1.0)
+        preset = user_profile.get("sensitivity_preset", "NORMAL")
 
         if self.high_token_budget:
             lines = ["## User Health Profile"]
-
-            if overall > 1.2:
-                lines.append("This user has elevated overall sensitivity to weather changes.")
-            elif overall < 0.8:
-                lines.append("This user has lower than average sensitivity to weather changes.")
-
-            if high_sensitivities:
-                lines.append(f"High sensitivity to: {', '.join(high_sensitivities)}")
-            if moderate_sensitivities:
-                lines.append(f"Moderate sensitivity to: {', '.join(moderate_sensitivities)}")
-
-            if not high_sensitivities and not moderate_sensitivities:
-                lines.append("No specific elevated sensitivities reported.")
-
+            if preset == "HIGH":
+                lines.append("This user has HIGH sensitivity to weather changes. "
+                             "Use lower thresholds when assessing risk.")
+            elif preset == "LOW":
+                lines.append("This user has LOW sensitivity to weather changes. "
+                             "Use higher thresholds when assessing risk.")
+            else:
+                lines.append("This user has NORMAL sensitivity to weather changes.")
             return "\n".join(lines)
         else:
-            parts = []
-            if high_sensitivities:
-                parts.append(f"High: {', '.join(high_sensitivities)}")
-            if moderate_sensitivities:
-                parts.append(f"Moderate: {', '.join(moderate_sensitivities)}")
-
-            if parts:
-                return f"User sensitivity: {'; '.join(parts)}"
-            else:
-                return "User sensitivity: Normal"
+            return f"User sensitivity: {preset}"
 
     def _get_season(self, dt: datetime, latitude: float) -> str:
         """Determine season based on date and hemisphere."""

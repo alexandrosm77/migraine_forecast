@@ -128,10 +128,7 @@ def create_pressure_drop_scenario():
     ]
 
     user_profile = {
-        "sensitivity_overall": 1.3,
-        "sensitivity_pressure": 1.5,
-        "sensitivity_temperature": 1.0,
-        "sensitivity_humidity": 1.2,
+        "sensitivity_preset": "HIGH",
     }
 
     return location, forecasts, previous_forecasts, [], user_profile
@@ -163,10 +160,7 @@ def create_stable_scenario():
     ]
 
     user_profile = {
-        "sensitivity_overall": 1.0,
-        "sensitivity_pressure": 1.0,
-        "sensitivity_temperature": 1.0,
-        "sensitivity_humidity": 1.0,
+        "sensitivity_preset": "NORMAL",
     }
 
     return location, forecasts, previous_forecasts, [], user_profile
@@ -198,10 +192,7 @@ def create_humidity_spike_scenario():
     ]
 
     user_profile = {
-        "sensitivity_overall": 1.2,
-        "sensitivity_pressure": 1.0,
-        "sensitivity_temperature": 1.0,
-        "sensitivity_humidity": 1.5,
+        "sensitivity_preset": "HIGH",
     }
 
     return location, forecasts, previous_forecasts, [], user_profile
@@ -233,10 +224,7 @@ def create_temp_swing_scenario():
     ]
 
     user_profile = {
-        "sensitivity_overall": 1.2,
-        "sensitivity_pressure": 1.0,
-        "sensitivity_temperature": 1.5,
-        "sensitivity_humidity": 1.0,
+        "sensitivity_preset": "HIGH",
     }
 
     return location, forecasts, previous_forecasts, [], user_profile
@@ -268,10 +256,7 @@ def create_dry_cold_scenario():
     ]
 
     user_profile = {
-        "sensitivity_overall": 1.1,
-        "sensitivity_pressure": 1.2,
-        "sensitivity_temperature": 1.3,
-        "sensitivity_humidity": 1.4,
+        "sensitivity_preset": "HIGH",
     }
 
     return location, forecasts, previous_forecasts, [], user_profile
@@ -314,7 +299,7 @@ def create_24h_scenario():
         for i in range(6)
     ]
 
-    user_profile = {"sensitivity_overall": 1.0}
+    user_profile = {"sensitivity_preset": "NORMAL"}
 
     return location, forecasts, previous_forecasts, [], user_profile
 
@@ -367,8 +352,7 @@ def create_72h_scenario():
     ]
 
     user_profile = {
-        "sensitivity_overall": 1.2,
-        "sensitivity_pressure": 1.4,
+        "sensitivity_preset": "HIGH",
     }
 
     return location, forecasts, previous_forecasts, [], user_profile

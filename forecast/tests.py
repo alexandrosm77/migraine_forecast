@@ -421,7 +421,7 @@ class LLMClientTest(TestCase):
         mock_post.return_value = mock_response
 
         scores = {"temperature_change": 0.5}
-        user_profile = {"sensitivity_overall": 1.5}
+        user_profile = {"sensitivity_preset": "HIGH"}
         context = {
             "temporal_context": {
                 "current_time": "2025-11-03 14:30",
@@ -749,8 +749,7 @@ class UserHealthProfileTest(TestCase):
             user=self.user,
             age=30,
             prior_conditions="Aura, hypertension",
-            sensitivity_overall=1.5,
-            sensitivity_temperature=2.0,
+            sensitivity_preset="HIGH",
             email_notifications_enabled=True,
             migraine_predictions_enabled=True,
             sinusitis_predictions_enabled=False,
@@ -758,7 +757,7 @@ class UserHealthProfileTest(TestCase):
 
         self.assertEqual(profile.user, self.user)
         self.assertEqual(profile.age, 30)
-        self.assertEqual(profile.sensitivity_overall, 1.5)
+        self.assertEqual(profile.sensitivity_preset, "HIGH")
         self.assertTrue(profile.email_notifications_enabled)
         self.assertTrue(profile.migraine_predictions_enabled)
         self.assertFalse(profile.sinusitis_predictions_enabled)
@@ -767,10 +766,7 @@ class UserHealthProfileTest(TestCase):
         """Test default values for user health profile"""
         profile = UserHealthProfile.objects.create(user=self.user)
 
-        self.assertEqual(profile.sensitivity_overall, 1.0)
-        self.assertEqual(profile.sensitivity_temperature, 1.0)
-        self.assertEqual(profile.sensitivity_humidity, 1.0)
-        self.assertEqual(profile.sensitivity_pressure, 1.0)
+        self.assertEqual(profile.sensitivity_preset, "NORMAL")
         self.assertTrue(profile.email_notifications_enabled)
         self.assertTrue(profile.migraine_predictions_enabled)
         self.assertTrue(profile.sinusitis_predictions_enabled)
@@ -1944,7 +1940,7 @@ class LanguageSwitchingTest(TestCase):
 
         # Call predict_probability with user profile including language
         user_profile = {
-            "sensitivity_overall": 1.0,
+            "sensitivity_preset": "NORMAL",
             "language": "el",
         }
 
@@ -2059,12 +2055,9 @@ class LLMContextBuilderTest(TestCase):
         self.assertTrue(has_seasonal)
 
     def test_user_sensitivity_translation(self):
-        """Test that user sensitivity is translated to natural language"""
+        """Test that user sensitivity preset is translated to natural language"""
         user_profile = {
-            "sensitivity_overall": 1.5,
-            "sensitivity_pressure": 1.8,
-            "sensitivity_temperature": 1.0,
-            "sensitivity_humidity": 1.3,
+            "sensitivity_preset": "HIGH",
         }
         context = self.builder_low.build_migraine_context(
             forecasts=self.forecasts,
@@ -2074,8 +2067,7 @@ class LLMContextBuilderTest(TestCase):
         )
         # Should contain sensitivity information in natural language
         self.assertIn("sensitivity", context.lower())
-        # Should mention pressure sensitivity (highest)
-        self.assertIn("pressure", context.lower())
+        self.assertIn("high", context.lower())
 
     def test_weather_changes_calculation(self):
         """Test that weather changes are calculated correctly"""

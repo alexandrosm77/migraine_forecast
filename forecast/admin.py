@@ -171,19 +171,6 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Sensitivity Settings",
-            {
-                "fields": (
-                    "sensitivity_overall",
-                    "sensitivity_temperature",
-                    "sensitivity_humidity",
-                    "sensitivity_pressure",
-                    "sensitivity_cloud_cover",
-                    "sensitivity_precipitation",
-                ),
-            },
-        ),
-        (
             "Timestamps",
             {
                 "fields": (

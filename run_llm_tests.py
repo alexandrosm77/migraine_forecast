@@ -286,35 +286,32 @@ def calculate_weighted_score(scores, weights):
     return round(total, 3)
 
 
-def get_expected_classification(weighted_score, prediction_type="migraine", sensitivity_overall=1.0):
+def get_expected_classification(weighted_score, prediction_type="migraine", sensitivity_preset="NORMAL"):
     """
     Determine expected classification based on weighted score and thresholds.
 
     Args:
         weighted_score: The calculated weighted score (0-1)
         prediction_type: "migraine" or "sinusitis"
-        sensitivity_overall: User sensitivity multiplier (default 1.0)
+        sensitivity_preset: "LOW", "NORMAL", or "HIGH"
 
     Returns:
         Expected classification: "LOW", "MEDIUM", or "HIGH"
     """
     if prediction_type == "migraine":
-        high_thr = 0.7
-        med_thr = 0.4
+        if sensitivity_preset == "HIGH":
+            high_thr, med_thr = 0.6, 0.3
+        elif sensitivity_preset == "LOW":
+            high_thr, med_thr = 0.8, 0.5
+        else:
+            high_thr, med_thr = 0.7, 0.4
     else:  # sinusitis
-        high_thr = 0.65
-        med_thr = 0.35
-
-    # Apply sensitivity adjustment
-    shift = (sensitivity_overall - 1.0) * 0.15
-    high_thr = min(
-        max(high_thr - shift, 0.5 if prediction_type == "migraine" else 0.45),
-        0.9 if prediction_type == "migraine" else 0.85,
-    )
-    med_thr = min(
-        max(med_thr - shift, 0.25 if prediction_type == "migraine" else 0.20),
-        0.7 if prediction_type == "migraine" else 0.65,
-    )
+        if sensitivity_preset == "HIGH":
+            high_thr, med_thr = 0.55, 0.25
+        elif sensitivity_preset == "LOW":
+            high_thr, med_thr = 0.75, 0.45
+        else:
+            high_thr, med_thr = 0.65, 0.35
 
     if weighted_score >= high_thr:
         return "HIGH"
@@ -324,7 +321,7 @@ def get_expected_classification(weighted_score, prediction_type="migraine", sens
         return "LOW"
 
 
-def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_overall=1.0):
+def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_preset="NORMAL"):
     """
     Run a single test scenario and return results.
 
@@ -332,7 +329,7 @@ def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_
         client: LLMClient instance
         scenario: Test scenario dictionary
         prediction_type: "migraine" or "sinusitis"
-        sensitivity_overall: User sensitivity multiplier
+        sensitivity_preset: "LOW", "NORMAL", or "HIGH"
 
     Returns:
         Dictionary with test results
@@ -351,40 +348,34 @@ def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_
     weighted_score = calculate_weighted_score(scenario["scores"], weights)
 
     # Get expected classification
-    expected = get_expected_classification(weighted_score, prediction_type, sensitivity_overall)
+    expected = get_expected_classification(weighted_score, prediction_type, sensitivity_preset)
 
     # Prepare user profile if sensitivity is not default
     user_profile = None
-    if sensitivity_overall != 1.0:
+    if sensitivity_preset != "NORMAL":
         user_profile = {
-            "sensitivity_overall": sensitivity_overall,
-            "sensitivity_temperature": 1.0,
-            "sensitivity_humidity": 1.0,
-            "sensitivity_pressure": 1.0,
-            "sensitivity_cloud_cover": 1.0,
-            "sensitivity_precipitation": 1.0,
+            "sensitivity_preset": sensitivity_preset,
             "language": "en",
         }
 
     # Call LLM
     location_label = f"Test: {scenario['name']}"
 
-    # Calculate adjusted thresholds based on user sensitivity (same logic as in llm_client.py)
+    # Calculate thresholds based on sensitivity preset (for reporting)
     if prediction_type == "migraine":
-        high_thr = 0.7
-        med_thr = 0.4
-    else:
-        high_thr = 0.65
-        med_thr = 0.35
-
-    if sensitivity_overall != 1.0:
-        shift = (sensitivity_overall - 1.0) * 0.15
-        if prediction_type == "migraine":
-            high_thr = min(max(high_thr - shift, 0.5), 0.9)
-            med_thr = min(max(med_thr - shift, 0.25), 0.7)
+        if sensitivity_preset == "HIGH":
+            high_thr, med_thr = 0.6, 0.3
+        elif sensitivity_preset == "LOW":
+            high_thr, med_thr = 0.8, 0.5
         else:
-            high_thr = min(max(high_thr - shift, 0.45), 0.85)
-            med_thr = min(max(med_thr - shift, 0.20), 0.65)
+            high_thr, med_thr = 0.7, 0.4
+    else:
+        if sensitivity_preset == "HIGH":
+            high_thr, med_thr = 0.55, 0.25
+        elif sensitivity_preset == "LOW":
+            high_thr, med_thr = 0.75, 0.45
+        else:
+            high_thr, med_thr = 0.65, 0.35
 
     try:
         if prediction_type == "migraine":
@@ -456,7 +447,7 @@ def run_test_scenario(client, scenario, prediction_type="migraine", sensitivity_
         }
 
 
-def run_test_suite(model_name, base_url, api_key=None, timeout=120, verbose=False, sensitivity=1.0):
+def run_test_suite(model_name, base_url, api_key=None, timeout=120, verbose=False, sensitivity="NORMAL"):
     """
     Run the complete test suite for a given LLM model.
 
@@ -466,7 +457,7 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120, verbose=Fals
         api_key: API key (optional for local models)
         timeout: Request timeout in seconds
         verbose: If True, print detailed request/response information
-        sensitivity: User sensitivity multiplier (default 1.0)
+        sensitivity: User sensitivity preset ("LOW", "NORMAL", or "HIGH")
 
     Returns:
         Dictionary with complete test results
@@ -477,8 +468,8 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120, verbose=Fals
     print(f"\nModel: {model_name}")
     print(f"Base URL: {base_url}")
     print(f"Timestamp: {datetime.now().isoformat()}")
-    if sensitivity != 1.0:
-        print(f"User Sensitivity: {sensitivity:.1f}x")
+    if sensitivity != "NORMAL":
+        print(f"User Sensitivity: {sensitivity}")
     if verbose:
         print("Verbose mode: ON")
     print("\n" + "=" * 80)
@@ -510,7 +501,7 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120, verbose=Fals
         print(f"\n[{i}/{len(MIGRAINE_TEST_SCENARIOS)}] Testing: {scenario['name']}")
         print(f"    Description: {scenario['description']}")
 
-        result = run_test_scenario(client, scenario, "migraine", sensitivity_overall=sensitivity)
+        result = run_test_scenario(client, scenario, "migraine", sensitivity_preset=sensitivity)
         results["migraine_tests"].append(result)
 
         # Print result
@@ -553,7 +544,7 @@ def run_test_suite(model_name, base_url, api_key=None, timeout=120, verbose=Fals
         print(f"\n[{i}/{len(SINUSITIS_TEST_SCENARIOS)}] Testing: {scenario['name']}")
         print(f"    Description: {scenario['description']}")
 
-        result = run_test_scenario(client, scenario, "sinusitis", sensitivity_overall=sensitivity)
+        result = run_test_scenario(client, scenario, "sinusitis", sensitivity_preset=sensitivity)
         results["sinusitis_tests"].append(result)
 
         # Print result
@@ -785,9 +776,10 @@ Examples:
     )
     parser.add_argument(
         "--sensitivity",
-        type=float,
-        default=1.0,
-        help="User sensitivity multiplier (default: 1.0, range: 0.5-1.5)",
+        type=str,
+        default="NORMAL",
+        choices=["LOW", "NORMAL", "HIGH"],
+        help="User sensitivity preset (default: NORMAL)",
     )
 
     args = parser.parse_args()

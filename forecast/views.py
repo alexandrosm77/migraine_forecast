@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import timedelta
 
 import numpy as np
-from django.db.models import Max
+from django.db.models import Max, Subquery, OuterRef
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
@@ -297,28 +297,46 @@ def dashboard(request):
     migraine_history_json = json.dumps(migraine_history)
     sinusitis_history_json = json.dumps(sinusitis_history)
 
-    # Get latest predictions for each location
+    # Get latest predictions for each location (batch queries instead of N+1)
+    latest_migraine_map = {}
+    latest_sinusitis_map = {}
+
+    if migraine_enabled and locations:
+        latest_migraine_ids = MigrainePrediction.objects.filter(
+            user=request.user,
+            location=OuterRef('pk'),
+        ).order_by('-prediction_time').values('id')[:1]
+
+        location_ids_with_migraine = locations.annotate(
+            latest_migraine_id=Subquery(latest_migraine_ids)
+        ).values_list('latest_migraine_id', flat=True)
+
+        migraine_ids = [mid for mid in location_ids_with_migraine if mid is not None]
+        if migraine_ids:
+            for pred in MigrainePrediction.objects.filter(id__in=migraine_ids).select_related('location'):
+                latest_migraine_map[pred.location_id] = pred
+
+    if sinusitis_enabled and locations:
+        latest_sinusitis_ids = SinusitisPrediction.objects.filter(
+            user=request.user,
+            location=OuterRef('pk'),
+        ).order_by('-prediction_time').values('id')[:1]
+
+        location_ids_with_sinusitis = locations.annotate(
+            latest_sinusitis_id=Subquery(latest_sinusitis_ids)
+        ).values_list('latest_sinusitis_id', flat=True)
+
+        sinusitis_ids = [sid for sid in location_ids_with_sinusitis if sid is not None]
+        if sinusitis_ids:
+            for pred in SinusitisPrediction.objects.filter(id__in=sinusitis_ids).select_related('location'):
+                latest_sinusitis_map[pred.location_id] = pred
+
     locations_with_predictions = []
     for location in locations:
-        latest_migraine = None
-        latest_sinusitis = None
-
-        if migraine_enabled:
-            latest_migraine = MigrainePrediction.objects.filter(
-                user=request.user,
-                location=location
-            ).order_by('-prediction_time').first()
-
-        if sinusitis_enabled:
-            latest_sinusitis = SinusitisPrediction.objects.filter(
-                user=request.user,
-                location=location
-            ).order_by('-prediction_time').first()
-
         locations_with_predictions.append({
             'location': location,
-            'latest_migraine': latest_migraine,
-            'latest_sinusitis': latest_sinusitis,
+            'latest_migraine': latest_migraine_map.get(location.id),
+            'latest_sinusitis': latest_sinusitis_map.get(location.id),
         })
 
     context = {
