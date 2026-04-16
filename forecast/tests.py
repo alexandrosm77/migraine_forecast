@@ -203,7 +203,7 @@ class MigrainePredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
-        with patch("forecast.prediction_service.LLMClient") as mock_llm_class:
+        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_probability.return_value = (
                 "HIGH",
@@ -933,7 +933,7 @@ class SinusitisPredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
-        with patch("forecast.prediction_service_sinusitis.LLMClient") as mock_llm_class:
+        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_sinusitis_probability.return_value = (
                 "MEDIUM",
