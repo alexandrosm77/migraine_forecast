@@ -113,7 +113,7 @@ class ViewsIntegrationTest(TestCase):
         self.assertTemplateUsed(response, "forecast/location_add_v2.html")
 
         # Test form submission
-        with patch("forecast.views.weather_service.update_forecast_for_location") as mock_update:
+        with patch("forecast.views.WeatherService.update_forecast_for_location_upsert") as mock_update:
             mock_update.return_value = []
 
             response = self.client.post(
