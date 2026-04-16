@@ -257,7 +257,7 @@ class LLMClient:
             )
         else:
             # Fallback to legacy context building (for backwards compatibility)
-            user_prompt_str = self._build_legacy_migraine_prompt(
+            user_prompt_str = self._build_legacy_prompt(
                 scores=scores,
                 location_label=location_label,
                 user_profile=user_profile,
@@ -315,7 +315,7 @@ class LLMClient:
             logger.exception("Failed to process LLM response")
             return None, {"raw": result, "request_payload": request_payload}
 
-    def _build_legacy_migraine_prompt(
+    def _build_legacy_prompt(
         self,
         scores: Dict[str, float],
         location_label: str,
@@ -354,8 +354,10 @@ class LLMClient:
             changes = context.get("changes", {})
             weather_summary = []
 
-            if agg.get("avg_forecast_temperature") is not None:
-                temp_info = f"temp avg {agg['avg_forecast_temperature']:.1f}°C"
+            # Support both key naming conventions
+            avg_temp = agg.get("avg_forecast_temperature") or agg.get("avg_forecast_temp")
+            if avg_temp is not None:
+                temp_info = f"temp avg {avg_temp:.1f}°C"
                 if agg.get("temperature_range") is not None and agg["temperature_range"] > 0:
                     temp_info += f" (range {agg['temperature_range']:.1f}°C)"
                 weather_summary.append(temp_info)
@@ -382,6 +384,14 @@ class LLMClient:
                 user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
 
         return "\n".join(user_prompt_parts)
+
+    def _build_legacy_migraine_prompt(self, **kwargs) -> str:
+        """Backward-compatible wrapper."""
+        return self._build_legacy_prompt(**kwargs)
+
+    def _build_legacy_sinusitis_prompt(self, **kwargs) -> str:
+        """Backward-compatible wrapper."""
+        return self._build_legacy_prompt(**kwargs)
 
     def predict_sinusitis_probability(
         self,
@@ -463,7 +473,7 @@ class LLMClient:
             )
         else:
             # Fallback to legacy context building (for backwards compatibility)
-            user_prompt_str = self._build_legacy_sinusitis_prompt(
+            user_prompt_str = self._build_legacy_prompt(
                 scores=scores,
                 location_label=location_label,
                 user_profile=user_profile,
@@ -510,71 +520,3 @@ class LLMClient:
         except Exception:
             logger.exception("Failed to process LLM sinusitis response")
             return None, {"raw": result, "request_payload": request_payload}
-
-    def _build_legacy_sinusitis_prompt(
-        self,
-        scores: Dict[str, float],
-        location_label: str,
-        user_profile: Optional[Dict[str, Any]],
-        context: Optional[Dict[str, Any]],
-    ) -> str:
-        """Build user prompt using legacy context format (for backwards compatibility)."""
-        user_prompt_parts = [f"Location: {location_label}"]
-
-        # Add temporal context if available (compact format)
-        if context and "temporal_context" in context:
-            temporal = context["temporal_context"]
-            time_parts = []
-
-            if temporal.get("current_time"):
-                time_parts.append(f"Now: {temporal['current_time']}")
-            if temporal.get("day_of_week"):
-                day_info = temporal["day_of_week"]
-                if temporal.get("is_weekend"):
-                    day_info += " (weekend)"
-                time_parts.append(day_info)
-            if temporal.get("season"):
-                time_parts.append(f"{temporal['season']}")
-
-            if temporal.get("window_start_time") and temporal.get("window_end_time"):
-                time_parts.append(f"Window: {temporal['window_start_time']} to {temporal['window_end_time']}")
-            elif temporal.get("window_duration_hours"):
-                time_parts.append(f"Window: {temporal['window_duration_hours']:.1f}h ahead")
-
-            if time_parts:
-                user_prompt_parts.append(f"Timing: {' | '.join(time_parts)}")
-
-        # Add key weather changes from context if available
-        if context and "aggregates" in context:
-            agg = context["aggregates"]
-            changes = context.get("changes", {})
-            weather_summary = []
-
-            if agg.get("avg_forecast_temp") is not None:
-                temp_info = f"temp avg {agg['avg_forecast_temp']:.1f}°C"
-                if agg.get("temperature_range") is not None and agg["temperature_range"] > 0:
-                    temp_info += f" (range {agg['temperature_range']:.1f}°C)"
-                weather_summary.append(temp_info)
-
-            if agg.get("avg_forecast_pressure") is not None:
-                pressure_info = f"pressure avg {agg['avg_forecast_pressure']:.1f}hPa"
-                if agg.get("pressure_range") is not None and agg["pressure_range"] > 0:
-                    pressure_info += f" (range {agg['pressure_range']:.1f}hPa)"
-                weather_summary.append(pressure_info)
-
-            if changes.get("pressure_change"):
-                weather_summary.append(f"pressure Δ{changes['pressure_change']:.1f}hPa")
-
-            if agg.get("avg_forecast_humidity"):
-                weather_summary.append(f"humidity {agg['avg_forecast_humidity']:.0f}%")
-
-            if weather_summary:
-                user_prompt_parts.append(f"Weather: {', '.join(weather_summary)}")
-
-        # Add user sensitivity if available
-        if user_profile:
-            sensitivity = user_profile.get("sensitivity_overall", 1.0)
-            if sensitivity != 1.0:
-                user_prompt_parts.append(f"User sensitivity: {sensitivity:.1f}x")
-
-        return "\n".join(user_prompt_parts)
