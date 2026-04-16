@@ -42,7 +42,7 @@ class NotificationService:
         except Exception:
             return None
 
-    def _should_send_notification(self, user, severity_level, notification_type="general"):
+    def _should_send_notification(self, user, severity_level, notification_type="general", is_digest=False):
         """
         Check if a notification should be sent based on all user preferences.
 
@@ -50,6 +50,7 @@ class NotificationService:
             user: User object
             severity_level: "LOW", "MEDIUM", or "HIGH"
             notification_type: "migraine", "sinusitis", or "general"
+            is_digest: If True, skip the DIGEST mode check (used when intentionally sending a digest)
 
         Returns:
             tuple: (should_send: bool, reason: str)
@@ -65,7 +66,8 @@ class NotificationService:
             return False, "Email notifications disabled"
 
         # Check notification mode - if digest mode, don't send immediate notifications
-        if profile.notification_mode == "DIGEST":
+        # (but allow if this is an intentional digest send)
+        if profile.notification_mode == "DIGEST" and not is_digest:
             return False, "User is in digest mode"
 
         # Check severity threshold
@@ -340,13 +342,14 @@ class NotificationService:
 
             return False
 
-    def send_combined_alert(self, migraine_predictions=None, sinusitis_predictions=None):
+    def send_combined_alert(self, migraine_predictions=None, sinusitis_predictions=None, is_digest=False):
         """
         Send a combined alert email for migraine and/or sinusitis predictions across multiple locations.
 
         Args:
             migraine_predictions (list, optional): List of MigrainePrediction instances
             sinusitis_predictions (list, optional): List of SinusitisPrediction instances
+            is_digest (bool): If True, this is a digest send and DIGEST mode check is bypassed
 
         Returns:
             bool: True if email was sent successfully, False otherwise
@@ -404,7 +407,7 @@ class NotificationService:
         highest_severity = max(all_severities, key=lambda x: severity_order.get(x, 0))
 
         # Check if notification should be sent
-        should_send, reason = self._should_send_notification(user, highest_severity, "general")
+        should_send, reason = self._should_send_notification(user, highest_severity, "general", is_digest=is_digest)
         if not should_send:
             logger.info(f"Skipping combined alert for user {user.username}: {reason}")
             notification_log.mark_skipped(reason)
@@ -1053,6 +1056,15 @@ class NotificationService:
 
             # Mark this user as processed
             processed_users.add(user.id)
+
+            # Skip DIGEST mode users - their predictions are generated once a day
+            # in the send_digest_email task, not in the regular prediction pipeline
+            try:
+                if user.health_profile.notification_mode == "DIGEST":
+                    logger.debug(f"Skipping DIGEST mode user {user.username} (predictions run via digest task)")
+                    continue
+            except Exception:
+                pass
 
             # Check user-level daily notification limit and frequency preference
             try:

@@ -1461,6 +1461,297 @@ class NotificationServiceTest(TestCase):
         self.assertEqual(result, 1)
         mock_send_mail.assert_called_once()
 
+    @patch("forecast.notification_service.send_mail")
+    def test_digest_user_skipped_in_check_and_send_combined(self, mock_send_mail):
+        """Test that DIGEST mode users are skipped in check_and_send_combined_notifications"""
+        # Create user profile in DIGEST mode
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+        )
+
+        now = timezone.now()
+        forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            temperature=25.0,
+            humidity=70.0,
+            pressure=1010.0,
+            wind_speed=15.0,
+            precipitation=2.0,
+            cloud_cover=80.0,
+        )
+
+        prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.8},
+            notification_sent=False,
+        )
+
+        migraine_predictions = {
+            self.location.id: {
+                "probability": "HIGH",
+                "prediction": prediction,
+            }
+        }
+        sinusitis_predictions = {}
+
+        result = self.service.check_and_send_combined_notifications(migraine_predictions, sinusitis_predictions)
+
+        # Should NOT send because user is in DIGEST mode
+        self.assertEqual(result, 0)
+        mock_send_mail.assert_not_called()
+
+    def test_should_send_notification_blocks_digest_users(self):
+        """Test that _should_send_notification blocks DIGEST mode users for immediate notifications"""
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+        )
+
+        should_send, reason = self.service._should_send_notification(self.user, "HIGH", "migraine")
+
+        self.assertFalse(should_send)
+        self.assertIn("digest", reason.lower())
+
+    def test_should_send_notification_allows_digest_when_is_digest(self):
+        """Test that _should_send_notification allows DIGEST mode users when is_digest=True"""
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+        )
+
+        should_send, reason = self.service._should_send_notification(
+            self.user, "HIGH", "general", is_digest=True
+        )
+
+        self.assertTrue(should_send)
+        self.assertEqual(reason, "All checks passed")
+
+    @patch("forecast.notification_service.send_mail")
+    def test_send_combined_alert_with_is_digest_bypasses_digest_block(self, mock_send_mail):
+        """Test that send_combined_alert with is_digest=True works for DIGEST mode users"""
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+        )
+
+        now = timezone.now()
+        forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            temperature=25.0,
+            humidity=70.0,
+            pressure=1010.0,
+            wind_speed=15.0,
+            precipitation=2.0,
+            cloud_cover=80.0,
+        )
+
+        prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.8},
+        )
+
+        # Without is_digest, should be blocked
+        result_blocked = self.service.send_combined_alert(
+            migraine_predictions=[prediction], is_digest=False
+        )
+        self.assertFalse(result_blocked)
+        mock_send_mail.assert_not_called()
+
+        # With is_digest=True, should send
+        result_sent = self.service.send_combined_alert(
+            migraine_predictions=[prediction], is_digest=True
+        )
+        self.assertTrue(result_sent)
+        mock_send_mail.assert_called_once()
+
+    @patch("forecast.notification_service.send_mail")
+    def test_send_migraine_alert_blocked_for_digest_user(self, mock_send_mail):
+        """Test that individual migraine alerts are blocked for DIGEST mode users"""
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+        )
+
+        now = timezone.now()
+        forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            temperature=25.0,
+            humidity=70.0,
+            pressure=1010.0,
+            wind_speed=15.0,
+            precipitation=2.0,
+            cloud_cover=80.0,
+        )
+
+        prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"temperature_score": 0.8},
+        )
+
+        result = self.service.send_migraine_alert(prediction)
+
+        # Should NOT send because user is in DIGEST mode
+        self.assertFalse(result)
+        mock_send_mail.assert_not_called()
+
+
+class DigestPredictionWindowTest(TestCase):
+    """Test that digest mode uses a fixed 0-24 hour prediction window"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="digestuser", email="digest@example.com", password="testpassword")
+        self.location = Location.objects.create(
+            user=self.user, city="Athens", country="Greece", latitude=37.9838, longitude=23.7275
+        )
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_generate_digest_predictions_uses_24h_window(self, mock_get_config):
+        """Test that generate_digest_predictions uses fixed 0-24 hour window"""
+        # Mock LLM configuration as inactive
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        # Create profile with custom prediction window (should be ignored in digest mode)
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+            prediction_window_start_hours=2,
+            prediction_window_end_hours=8,
+        )
+
+        now = timezone.now()
+        # Create forecasts covering 0-24 hours ahead
+        for i in range(25):
+            WeatherForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=now + timedelta(hours=i),
+                temperature=20.0 + i * 0.5,
+                humidity=50.0,
+                pressure=1013.0 - i * 0.3,
+                wind_speed=10.0,
+                precipitation=0.0,
+                cloud_cover=30.0,
+            )
+
+        with patch("forecast.prediction_service.MigrainePredictionService.predict_migraine_probability") as mock_predict:  # noqa
+            mock_prediction = MagicMock()
+            mock_prediction.id = 1
+            mock_predict.return_value = ("LOW", mock_prediction)
+
+            from forecast.tasks import generate_digest_predictions
+
+            # Call the underlying function (not as a Celery task)
+            result = generate_digest_predictions(self.user.id, self.location.id, "migraine")
+
+            # Verify predict was called with 0-24 hour window
+            call_kwargs = mock_predict.call_args[1]
+            self.assertEqual(call_kwargs["window_start_hours"], 0)
+            self.assertEqual(call_kwargs["window_end_hours"], 24)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_generate_digest_predictions_ignores_custom_window(self, mock_get_config):
+        """Test that digest predictions ignore user's custom prediction_window settings"""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        # Create profile with very narrow custom window
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+            prediction_window_start_hours=1,
+            prediction_window_end_hours=2,
+        )
+
+        with patch("forecast.prediction_service_sinusitis.SinusitisPredictionService.predict_sinusitis_probability") as mock_predict:  # noqa
+            mock_prediction = MagicMock()
+            mock_prediction.id = 1
+            mock_predict.return_value = ("LOW", mock_prediction)
+
+            from forecast.tasks import generate_digest_predictions
+
+            result = generate_digest_predictions(self.user.id, self.location.id, "sinusitis")
+
+            # Should use 0-24, NOT the user's 1-2 hour window
+            call_kwargs = mock_predict.call_args[1]
+            self.assertEqual(call_kwargs["window_start_hours"], 0)
+            self.assertEqual(call_kwargs["window_end_hours"], 24)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_generate_predictions_command_skips_digest_users(self, mock_get_config):
+        """Test that the generate_predictions management command skips DIGEST mode users"""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+        )
+
+        now = timezone.now()
+        # Create some forecasts
+        for i in range(7):
+            WeatherForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=now + timedelta(hours=i + 3),
+                temperature=25.0,
+                humidity=70.0,
+                pressure=1010.0,
+                wind_speed=15.0,
+                precipitation=2.0,
+                cloud_cover=80.0,
+            )
+
+        from forecast.management.commands.generate_predictions import Command
+
+        cmd = Command()
+        cmd.stdout = MagicMock()
+        cmd.style = cmd.stdout.style = MagicMock()
+        # Mock style methods to return string
+        cmd.style.SUCCESS = lambda x: x
+        cmd.style.WARNING = lambda x: x
+        cmd.style.ERROR = lambda x: x
+
+        with patch.object(MigrainePredictionService, "predict_migraine_probability") as mock_predict:
+            cmd.handle(skip_cleanup=True, location_id=None, cleanup_days=7)
+
+            # Should NOT have been called because user is in DIGEST mode
+            mock_predict.assert_not_called()
+
 
 class LanguageSwitchingTest(TestCase):
     """Test language switching functionality including middleware and views."""

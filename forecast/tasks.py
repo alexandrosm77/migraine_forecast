@@ -275,7 +275,8 @@ def send_digest_email(self, user_id):
     if migraine_predictions or sinusitis_predictions:
         service = NotificationService()
         result = service.send_combined_alert(
-            migraine_predictions=migraine_predictions, sinusitis_predictions=sinusitis_predictions
+            migraine_predictions=migraine_predictions, sinusitis_predictions=sinusitis_predictions,
+            is_digest=True,
         )
 
         return {
@@ -392,8 +393,11 @@ def generate_prediction(self, user_id, location_id, prediction_type):
 @shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 1, "countdown": 10})
 def generate_digest_predictions(self, user_id, location_id, prediction_type):
     """
-    Generate predictions for DIGEST mode user (waking hours window).
+    Generate predictions for DIGEST mode user (next 24 hours).
     CRITICAL: This task MUST run with concurrency=1 due to LLM API constraints.
+
+    In digest mode the prediction always covers the next 24 hours starting from
+    now, ignoring the user's custom prediction_window_start/end_hours settings.
 
     Includes automatic retry logic:
     - HTTP-level: 3 retries with exponential backoff (2s, 4s, 8s) for transient errors
@@ -408,8 +412,6 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
-    from datetime import datetime
-    import pytz
 
     # Log retry attempts
     retry_count = self.request.retries
@@ -421,32 +423,12 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     user = User.objects.get(id=user_id)
     location = Location.objects.get(id=location_id)
 
-    # Get location timezone
-    # Assuming location has a timezone field - if not, default to UTC
-    location_tz = pytz.timezone(getattr(location, "timezone", "UTC"))
+    # Digest mode always uses a fixed 0-24 hour window from now,
+    # ignoring the user's custom prediction window settings.
+    window_start_hours = 0
+    window_end_hours = 24
 
-    # Calculate waking hours window (6 AM - 10 PM in location timezone)
-    now_local = timezone.now().astimezone(location_tz)
-    today = now_local.date()
-
-    # Start at 6 AM today (or now if it's already past 6 AM)
-    waking_start = location_tz.localize(datetime.combine(today, datetime.min.time().replace(hour=6)))
-    if now_local > waking_start:
-        waking_start = now_local
-
-    # End at 10 PM today
-    waking_end = location_tz.localize(datetime.combine(today, datetime.min.time().replace(hour=22)))
-
-    # Calculate hours ahead for the window
-    now_utc = timezone.now()
-    window_start_hours = int((waking_start - now_utc).total_seconds() / 3600)
-    window_end_hours = int((waking_end - now_utc).total_seconds() / 3600)
-
-    # Ensure window is valid (at least 0 hours ahead)
-    window_start_hours = max(0, window_start_hours)
-    window_end_hours = max(window_start_hours + 1, window_end_hours)
-
-    # Generate prediction for waking hours
+    # Generate prediction for the next 24 hours
     prediction = None
     probability_level = None
     if prediction_type == "migraine":
@@ -472,5 +454,5 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
         "status": "completed",
         "prediction_id": prediction.id if prediction else None,
         "probability_level": probability_level,
-        "waking_hours": f"{waking_start} to {waking_end}",
+        "window_hours": f"{window_start_hours}-{window_end_hours}",
     }

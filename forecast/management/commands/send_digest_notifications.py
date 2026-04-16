@@ -4,9 +4,11 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from datetime import timedelta, time
+from datetime import time
 import logging
-from forecast.models import MigrainePrediction, SinusitisPrediction, NotificationLog
+from forecast.models import NotificationLog
+from forecast.prediction_service import MigrainePredictionService
+from forecast.prediction_service_sinusitis import SinusitisPredictionService
 from forecast.management.commands.base import SilentStdoutCommand
 
 logger = logging.getLogger(__name__)
@@ -97,39 +99,65 @@ class Command(SilentStdoutCommand):
                     self.stdout.write(f"Digest already sent today for {user.username}")
                     continue
 
-                # Collect predictions from the last 24 hours that haven't been sent
-                yesterday = now - timedelta(hours=24)
+                # Generate predictions for the next 24 hours (fixed window,
+                # ignoring user's custom prediction_window settings).
+                migraine_service = MigrainePredictionService()
+                sinusitis_service = SinusitisPredictionService()
 
-                migraine_preds = (
-                    MigrainePrediction.objects.filter(
-                        user=user, prediction_time__gte=yesterday, notification_sent=False
-                    )
-                    .select_related("location", "forecast")
-                    .order_by("-prediction_time")
-                )
+                migraine_preds = []
+                sinusitis_preds = []
 
-                # Filter by severity threshold
+                for location in user.locations.all():
+                    if profile.migraine_predictions_enabled:
+                        try:
+                            prob, pred = migraine_service.predict_migraine_probability(
+                                location=location,
+                                user=user,
+                                store_prediction=True,
+                                window_start_hours=0,
+                                window_end_hours=24,
+                            )
+                            if pred and prob in ["MEDIUM", "HIGH"]:
+                                migraine_preds.append(pred)
+                        except Exception as e:
+                            self.stdout.write(
+                                self.style.ERROR(
+                                    f"Error generating migraine prediction for "
+                                    f"{user.username}/{location}: {e}"
+                                )
+                            )
+                            logger.error(
+                                "Digest migraine prediction error for %s/%s: %s",
+                                user.username, location, e, exc_info=True,
+                            )
+
+                    if profile.sinusitis_predictions_enabled:
+                        try:
+                            prob, pred = sinusitis_service.predict_sinusitis_probability(
+                                location=location,
+                                user=user,
+                                store_prediction=True,
+                                window_start_hours=0,
+                                window_end_hours=24,
+                            )
+                            if pred and prob in ["MEDIUM", "HIGH"]:
+                                sinusitis_preds.append(pred)
+                        except Exception as e:
+                            self.stdout.write(
+                                self.style.ERROR(
+                                    f"Error generating sinusitis prediction for "
+                                    f"{user.username}/{location}: {e}"
+                                )
+                            )
+                            logger.error(
+                                "Digest sinusitis prediction error for %s/%s: %s",
+                                user.username, location, e, exc_info=True,
+                            )
+
+                # Apply severity threshold
                 if profile.notification_severity_threshold == "HIGH":
-                    migraine_preds = migraine_preds.filter(probability="HIGH")
-                else:
-                    migraine_preds = migraine_preds.filter(probability__in=["MEDIUM", "HIGH"])
-
-                sinusitis_preds = (
-                    SinusitisPrediction.objects.filter(
-                        user=user, prediction_time__gte=yesterday, notification_sent=False
-                    )
-                    .select_related("location", "forecast")
-                    .order_by("-prediction_time")
-                )
-
-                # Filter by severity threshold
-                if profile.notification_severity_threshold == "HIGH":
-                    sinusitis_preds = sinusitis_preds.filter(probability="HIGH")
-                else:
-                    sinusitis_preds = sinusitis_preds.filter(probability__in=["MEDIUM", "HIGH"])
-
-                migraine_preds = list(migraine_preds)
-                sinusitis_preds = list(sinusitis_preds)
+                    migraine_preds = [p for p in migraine_preds if p.probability == "HIGH"]
+                    sinusitis_preds = [p for p in sinusitis_preds if p.probability == "HIGH"]
 
                 # Skip if no predictions
                 if not migraine_preds and not sinusitis_preds:

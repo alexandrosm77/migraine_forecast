@@ -114,6 +114,15 @@ class Command(SilentStdoutCommand):
                     user_profile = user.health_profile
                     migraine_enabled = user_profile.migraine_predictions_enabled
                     sinusitis_enabled = user_profile.sinusitis_predictions_enabled
+
+                    # Skip DIGEST mode users - their predictions are generated once a day
+                    # in the send_digest_email task, not in the regular prediction pipeline
+                    if user_profile.notification_mode == "DIGEST":
+                        self.stdout.write(
+                            f"  - Skipping DIGEST mode user {user.username} "
+                            "(predictions run via digest task)"
+                        )
+                        continue
                 except Exception:
                     # If no health profile exists, default to both enabled
                     pass
