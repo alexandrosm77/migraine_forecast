@@ -95,4 +95,4 @@ class Command(BaseCommand):
         else:
             self.stdout.write("LLM configuration 'Local Dev' already exists – skipped")
 
-        self.stdout.write(self.style.SUCCESS("\n✓ Seed data complete. Log in at http://localhost:8889/admin/ with admin / " + password))
+        self.stdout.write(self.style.SUCCESS("\n✓ Seed data complete. Log in at http://localhost:8889/admin/ with admin / " + password))  # noqa
