@@ -645,7 +645,7 @@ class NotificationService:
             if llm_response and llm_response.request_payload:
                 llm_context = llm_response.request_payload.get("context", {})
         except Exception:
-            pass
+            logger.debug("Could not retrieve LLM context for prediction %s", prediction.id)
 
         # Get forecasts for the prediction window
         forecasts = WeatherForecast.objects.filter(
@@ -1064,7 +1064,7 @@ class NotificationService:
                     logger.debug(f"Skipping DIGEST mode user {user.username} (predictions run via digest task)")
                     continue
             except Exception:
-                pass
+                pass  # No health profile, treat as non-DIGEST user
 
             # Check user-level daily notification limit and frequency preference
             try:
@@ -1161,11 +1161,10 @@ class NotificationService:
                 # Check migraine prediction
                 if migraine_data:
                     try:
-                        user_profile = user.health_profile
-                        if not user_profile.migraine_predictions_enabled:
+                        if not user.health_profile.migraine_predictions_enabled:
                             migraine_data = None
                     except Exception:
-                        pass
+                        pass  # No profile, keep predictions enabled by default
 
                     if migraine_data:
                         prob_level = migraine_data.get("probability")
@@ -1176,11 +1175,10 @@ class NotificationService:
                 # Check sinusitis prediction
                 if sinusitis_data:
                     try:
-                        user_profile = user.health_profile
-                        if not user_profile.sinusitis_predictions_enabled:
+                        if not user.health_profile.sinusitis_predictions_enabled:
                             sinusitis_data = None
                     except Exception:
-                        pass
+                        pass  # No profile, keep predictions enabled by default
 
                     if sinusitis_data:
                         prob_level = sinusitis_data.get("probability")

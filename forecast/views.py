@@ -1,3 +1,9 @@
+import json
+import logging
+from collections import defaultdict
+from datetime import timedelta
+
+import numpy as np
 from django.db.models import Max
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -9,19 +15,179 @@ from django.utils import timezone, translation
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import PermissionDenied
-from datetime import timedelta
 
 from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction
 from .weather_service import WeatherService
-from .prediction_service import MigrainePredictionService
-from .prediction_service_sinusitis import SinusitisPredictionService
 from .notification_service import NotificationService
 from .forms import UserHealthProfileForm
 
-# Initialize services
-weather_service = WeatherService()
-prediction_service = MigrainePredictionService()
-sinusitis_prediction_service = SinusitisPredictionService()
+logger = logging.getLogger(__name__)
+
+
+def _build_analysis_previews(predictions):
+    """
+    Build analysis preview data for a list of high-risk predictions.
+
+    Args:
+        predictions: QuerySet of MigrainePrediction or SinusitisPrediction
+
+    Returns:
+        list of dicts with prediction, analysis_preview, has_full_analysis, weather_trends
+    """
+    results = []
+    for pred in predictions:
+        wf = pred.weather_factors or {}
+        analysis_text = wf.get("llm_analysis_text", "")
+        preview = analysis_text[:150] + "..." if len(analysis_text) > 150 else analysis_text
+
+        trends = []
+        detailed_factors = wf.get("detailed_factors", {})
+        if detailed_factors:
+            for factor in detailed_factors.get("factors", []):
+                trends.append({
+                    "name": factor.get("name", ""),
+                    "severity": factor.get("severity", ""),
+                    "score": factor.get("score", 0),
+                })
+
+        results.append({
+            "prediction": pred,
+            "analysis_preview": preview,
+            "has_full_analysis": bool(analysis_text),
+            "weather_trends": trends,
+        })
+    return results
+
+
+def _build_prediction_history(predictions_qs):
+    """
+    Build daily prediction history for charting.
+
+    Args:
+        predictions_qs: QuerySet of predictions ordered by prediction_time
+
+    Returns:
+        list of dicts with date, high, medium, low counts
+    """
+    daily_counts = defaultdict(lambda: {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'date': None})
+
+    for pred in predictions_qs:
+        date_key = pred.prediction_time.date().isoformat()
+        daily_counts[date_key]['date'] = pred.prediction_time.date().strftime('%b %d')
+        daily_counts[date_key][pred.probability] += 1
+
+    return [
+        {
+            'date': data['date'],
+            'high': data['HIGH'],
+            'medium': data['MEDIUM'],
+            'low': data['LOW'],
+        }
+        for date_key, data in sorted(daily_counts.items())
+    ]
+
+
+def _compute_weather_factor_values(prediction):
+    """
+    Calculate human-readable weather factor values from forecasts for a prediction.
+
+    Args:
+        prediction: MigrainePrediction or SinusitisPrediction instance
+
+    Returns:
+        dict of weather factor values
+    """
+    weather_factor_values = {}
+    try:
+        forecasts = WeatherForecast.objects.filter(
+            location=prediction.location,
+            target_time__gte=prediction.target_time_start,
+            target_time__lte=prediction.target_time_end,
+        ).order_by("target_time")
+
+        previous_forecasts = WeatherForecast.objects.filter(
+            location=prediction.location, target_time__lt=prediction.target_time_start
+        ).order_by("-target_time")[:6]
+
+        if not forecasts:
+            return weather_factor_values
+
+        temps = [f.temperature for f in forecasts]
+        pressures = [f.pressure for f in forecasts]
+        humidities = [f.humidity for f in forecasts]
+        precipitations = [f.precipitation for f in forecasts]
+        cloud_covers = [f.cloud_cover for f in forecasts]
+
+        # Temperature range and change
+        temp_min, temp_max = min(temps), max(temps)
+        temp_range = temp_max - temp_min
+        if previous_forecasts:
+            prev_avg_temp = np.mean([f.temperature for f in previous_forecasts])
+            avg_temp = np.mean(temps)
+            temp_change = avg_temp - prev_avg_temp
+            weather_factor_values["temperature_change"] = {
+                "change": f"{temp_change:+.1f}°C",
+                "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
+            }
+        else:
+            weather_factor_values["temperature_change"] = {
+                "change": "N/A",
+                "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
+            }
+
+        # Pressure change and range
+        pressure_min, pressure_max = min(pressures), max(pressures)
+        pressure_range = pressure_max - pressure_min
+        if previous_forecasts:
+            prev_avg_pressure = np.mean([f.pressure for f in previous_forecasts])
+            avg_pressure = np.mean(pressures)
+            pressure_change = avg_pressure - prev_avg_pressure
+            weather_factor_values["pressure_change"] = {
+                "change": f"{pressure_change:+.1f} hPa",
+                "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
+            }
+        else:
+            weather_factor_values["pressure_change"] = {
+                "change": "N/A",
+                "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
+            }
+
+        # Humidity range and change
+        humidity_min, humidity_max = min(humidities), max(humidities)
+        humidity_range = humidity_max - humidity_min
+        if previous_forecasts:
+            prev_avg_humidity = np.mean([f.humidity for f in previous_forecasts])
+            avg_humidity = np.mean(humidities)
+            humidity_change = avg_humidity - prev_avg_humidity
+            weather_factor_values["humidity_extreme"] = {
+                "change": f"{humidity_change:+.0f}%",
+                "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
+            }
+        else:
+            weather_factor_values["humidity_extreme"] = {
+                "change": "N/A",
+                "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
+            }
+
+        # Precipitation
+        total_precip = sum(precipitations)
+        max_precip = max(precipitations)
+        weather_factor_values["precipitation"] = {
+            "total": f"{total_precip:.1f} mm",
+            "max": f"{max_precip:.1f} mm/hour"
+        }
+
+        # Cloud cover range
+        cloud_min, cloud_max = min(cloud_covers), max(cloud_covers)
+        avg_cloud = np.mean(cloud_covers)
+        weather_factor_values["cloud_cover"] = {
+            "average": f"{avg_cloud:.0f}%",
+            "range": f"{cloud_min:.0f}% to {cloud_max:.0f}%"
+        }
+    except Exception:
+        logger.exception("Failed to compute weather factor values for prediction %s", prediction.id)
+
+    return weather_factor_values
 
 
 def get_template_name(request, base_name):
@@ -41,7 +207,7 @@ def get_template_name(request, base_name):
         try:
             ui_version = request.user.health_profile.ui_version
         except Exception:
-            pass
+            pass  # No health profile yet, use default UI version
 
     if ui_version == "v2":
         name_without_ext = base_name.rsplit('.', 1)[0]
@@ -106,114 +272,28 @@ def dashboard(request):
         ).order_by("target_time_start")
 
     # Prepare high-risk predictions with analysis preview and weather trends
-    high_risk_with_analysis = []
-    for pred in upcoming_high_risk:
-        wf = pred.weather_factors or {}
-        analysis_text = wf.get("llm_analysis_text", "")
-        # Truncate to ~150 characters for preview
-        preview = analysis_text[:150] + "..." if len(analysis_text) > 150 else analysis_text
-
-        # Get weather trends from weather_factors
-        trends = []
-        detailed_factors = wf.get("detailed_factors", {})
-        if detailed_factors:
-            for factor in detailed_factors.get("factors", []):
-                trends.append({
-                    "name": factor.get("name", ""),
-                    "severity": factor.get("severity", ""),
-                    "score": factor.get("score", 0),
-                })
-
-        high_risk_with_analysis.append({
-            "prediction": pred,
-            "analysis_preview": preview,
-            "has_full_analysis": bool(analysis_text),
-            "weather_trends": trends,
-        })
-
-    sinusitis_high_risk_with_analysis = []
-    for pred in upcoming_sinusitis_high_risk:
-        wf = pred.weather_factors or {}
-        analysis_text = wf.get("llm_analysis_text", "")
-        # Truncate to ~150 characters for preview
-        preview = analysis_text[:150] + "..." if len(analysis_text) > 150 else analysis_text
-
-        # Get weather trends from weather_factors
-        trends = []
-        detailed_factors = wf.get("detailed_factors", {})
-        if detailed_factors:
-            for factor in detailed_factors.get("factors", []):
-                trends.append({
-                    "name": factor.get("name", ""),
-                    "severity": factor.get("severity", ""),
-                    "score": factor.get("score", 0),
-                })
-
-        sinusitis_high_risk_with_analysis.append({
-            "prediction": pred,
-            "analysis_preview": preview,
-            "has_full_analysis": bool(analysis_text),
-            "weather_trends": trends,
-        })
+    high_risk_with_analysis = _build_analysis_previews(upcoming_high_risk)
+    sinusitis_high_risk_with_analysis = _build_analysis_previews(upcoming_sinusitis_high_risk)
 
     # Get historical prediction data for charts (last 30 days)
     thirty_days_ago = timezone.now() - timedelta(days=30)
 
-    # Migraine prediction history
     migraine_history = []
     if migraine_enabled:
-        historical_predictions = MigrainePrediction.objects.filter(
-            user=request.user,
-            prediction_time__gte=thirty_days_ago
-        ).order_by('prediction_time')
+        migraine_history = _build_prediction_history(
+            MigrainePrediction.objects.filter(
+                user=request.user, prediction_time__gte=thirty_days_ago
+            ).order_by('prediction_time')
+        )
 
-        # Group by date and count by probability
-        from collections import defaultdict
-        daily_counts = defaultdict(lambda: {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'date': None})
-
-        for pred in historical_predictions:
-            date_key = pred.prediction_time.date().isoformat()
-            daily_counts[date_key]['date'] = pred.prediction_time.date().strftime('%b %d')
-            daily_counts[date_key][pred.probability] += 1
-
-        migraine_history = [
-            {
-                'date': data['date'],
-                'high': data['HIGH'],
-                'medium': data['MEDIUM'],
-                'low': data['LOW'],
-            }
-            for date_key, data in sorted(daily_counts.items())
-        ]
-
-    # Sinusitis prediction history
     sinusitis_history = []
     if sinusitis_enabled:
-        historical_sinusitis = SinusitisPrediction.objects.filter(
-            user=request.user,
-            prediction_time__gte=thirty_days_ago
-        ).order_by('prediction_time')
+        sinusitis_history = _build_prediction_history(
+            SinusitisPrediction.objects.filter(
+                user=request.user, prediction_time__gte=thirty_days_ago
+            ).order_by('prediction_time')
+        )
 
-        from collections import defaultdict
-        daily_counts = defaultdict(lambda: {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'date': None})
-
-        for pred in historical_sinusitis:
-            date_key = pred.prediction_time.date().isoformat()
-            daily_counts[date_key]['date'] = pred.prediction_time.date().strftime('%b %d')
-            daily_counts[date_key][pred.probability] += 1
-
-        sinusitis_history = [
-            {
-                'date': data['date'],
-                'high': data['HIGH'],
-                'medium': data['MEDIUM'],
-                'low': data['LOW'],
-            }
-            for date_key, data in sorted(daily_counts.items())
-        ]
-
-    # Convert history data to JSON for Chart.js
-    import json
     migraine_history_json = json.dumps(migraine_history)
     sinusitis_history_json = json.dumps(sinusitis_history)
 
@@ -289,7 +369,7 @@ def location_add(request):
                 )
 
                 # Fetch initial forecast for the new location (using upsert to prevent duplicates)
-                weather_service.update_forecast_for_location_upsert(location)
+                WeatherService().update_forecast_for_location_upsert(location)
 
                 messages.success(request, f"Location {city}, {country} added successfully!")
                 return redirect("forecast:location_list")
@@ -348,7 +428,7 @@ def location_edit(request, location_id):
         country = request.POST.get("country")
         latitude = request.POST.get("latitude")
         longitude = request.POST.get("longitude")
-        timezone = request.POST.get("timezone")
+        tz_name = request.POST.get("timezone")
 
         if city and country and latitude and longitude:
             try:
@@ -356,8 +436,8 @@ def location_edit(request, location_id):
                 location.country = country
                 location.latitude = float(latitude)
                 location.longitude = float(longitude)
-                if timezone:
-                    location.timezone = timezone
+                if tz_name:
+                    location.timezone = tz_name
                 location.save()
 
                 messages.success(request, f"Location {city}, {country} updated successfully!")
@@ -426,100 +506,11 @@ def prediction_detail(request, prediction_id):
     try:
         detailed_factors = notif._get_detailed_weather_factors(prediction)
     except Exception:
+        logger.exception("Failed to get detailed weather factors for prediction %s", prediction_id)
         detailed_factors = {"factors": [], "total_score": 0, "contributing_factors_count": 0}
+
     wf = prediction.weather_factors or {}
-
-    # Calculate human-readable weather factor values from forecasts
-    from forecast.models import WeatherForecast
-    import numpy as np
-
-    weather_factor_values = {}
-    try:
-        forecasts = WeatherForecast.objects.filter(
-            location=prediction.location,
-            target_time__gte=prediction.target_time_start,
-            target_time__lte=prediction.target_time_end,
-        ).order_by("target_time")
-
-        previous_forecasts = WeatherForecast.objects.filter(
-            location=prediction.location, target_time__lt=prediction.target_time_start
-        ).order_by("-target_time")[:6]
-
-        if forecasts:
-            temps = [f.temperature for f in forecasts]
-            pressures = [f.pressure for f in forecasts]
-            humidities = [f.humidity for f in forecasts]
-            precipitations = [f.precipitation for f in forecasts]
-            cloud_covers = [f.cloud_cover for f in forecasts]
-
-            # Temperature range and change
-            temp_min, temp_max = min(temps), max(temps)
-            temp_range = temp_max - temp_min
-            if previous_forecasts:
-                prev_avg_temp = np.mean([f.temperature for f in previous_forecasts])
-                avg_temp = np.mean(temps)
-                temp_change = avg_temp - prev_avg_temp
-                weather_factor_values["temperature_change"] = {
-                    "change": f"{temp_change:+.1f}°C",
-                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
-                }
-            else:
-                weather_factor_values["temperature_change"] = {
-                    "change": "N/A",
-                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
-                }
-
-            # Pressure change and range
-            pressure_min, pressure_max = min(pressures), max(pressures)
-            pressure_range = pressure_max - pressure_min
-            if previous_forecasts:
-                prev_avg_pressure = np.mean([f.pressure for f in previous_forecasts])
-                avg_pressure = np.mean(pressures)
-                pressure_change = avg_pressure - prev_avg_pressure
-                weather_factor_values["pressure_change"] = {
-                    "change": f"{pressure_change:+.1f} hPa",
-                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
-                }
-            else:
-                weather_factor_values["pressure_change"] = {
-                    "change": "N/A",
-                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
-                }
-
-            # Humidity range and change
-            humidity_min, humidity_max = min(humidities), max(humidities)
-            humidity_range = humidity_max - humidity_min
-            if previous_forecasts:
-                prev_avg_humidity = np.mean([f.humidity for f in previous_forecasts])
-                avg_humidity = np.mean(humidities)
-                humidity_change = avg_humidity - prev_avg_humidity
-                weather_factor_values["humidity_extreme"] = {
-                    "change": f"{humidity_change:+.0f}%",
-                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
-                }
-            else:
-                weather_factor_values["humidity_extreme"] = {
-                    "change": "N/A",
-                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
-                }
-
-            # Precipitation
-            total_precip = sum(precipitations)
-            max_precip = max(precipitations)
-            weather_factor_values["precipitation"] = {
-                "total": f"{total_precip:.1f} mm",
-                "max": f"{max_precip:.1f} mm/hour"
-            }
-
-            # Cloud cover range
-            cloud_min, cloud_max = min(cloud_covers), max(cloud_covers)
-            avg_cloud = np.mean(cloud_covers)
-            weather_factor_values["cloud_cover"] = {
-                "average": f"{avg_cloud:.0f}%",
-                "range": f"{cloud_min:.0f}% to {cloud_max:.0f}%"
-            }
-    except Exception:
-        pass
+    weather_factor_values = _compute_weather_factor_values(prediction)
 
     context = {
         "prediction": prediction,
@@ -566,102 +557,13 @@ def sinusitis_prediction_detail(request, prediction_id):
     # Build detailed factors similar to email, and expose LLM analysis/tips
     notif = NotificationService()
     try:
-        detailed_factors = notif._get_detailed_sinusitus_factors(prediction)
+        detailed_factors = notif._get_detailed_sinusitis_factors(prediction)
     except Exception:
+        logger.exception("Failed to get detailed sinusitis factors for prediction %s", prediction_id)
         detailed_factors = {"factors": [], "total_score": 0, "contributing_factors_count": 0}
+
     wf = prediction.weather_factors or {}
-
-    # Calculate human-readable weather factor values from forecasts
-    from forecast.models import WeatherForecast
-    import numpy as np
-
-    weather_factor_values = {}
-    try:
-        forecasts = WeatherForecast.objects.filter(
-            location=prediction.location,
-            target_time__gte=prediction.target_time_start,
-            target_time__lte=prediction.target_time_end,
-        ).order_by("target_time")
-
-        previous_forecasts = WeatherForecast.objects.filter(
-            location=prediction.location, target_time__lt=prediction.target_time_start
-        ).order_by("-target_time")[:6]
-
-        if forecasts:
-            temps = [f.temperature for f in forecasts]
-            pressures = [f.pressure for f in forecasts]
-            humidities = [f.humidity for f in forecasts]
-            precipitations = [f.precipitation for f in forecasts]
-            cloud_covers = [f.cloud_cover for f in forecasts]
-
-            # Temperature range and change
-            temp_min, temp_max = min(temps), max(temps)
-            temp_range = temp_max - temp_min
-            if previous_forecasts:
-                prev_avg_temp = np.mean([f.temperature for f in previous_forecasts])
-                avg_temp = np.mean(temps)
-                temp_change = avg_temp - prev_avg_temp
-                weather_factor_values["temperature_change"] = {
-                    "change": f"{temp_change:+.1f}°C",
-                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
-                }
-            else:
-                weather_factor_values["temperature_change"] = {
-                    "change": "N/A",
-                    "range": f"{temp_min:.1f}°C to {temp_max:.1f}°C (range: {temp_range:.1f}°C)"
-                }
-
-            # Pressure change and range
-            pressure_min, pressure_max = min(pressures), max(pressures)
-            pressure_range = pressure_max - pressure_min
-            if previous_forecasts:
-                prev_avg_pressure = np.mean([f.pressure for f in previous_forecasts])
-                avg_pressure = np.mean(pressures)
-                pressure_change = avg_pressure - prev_avg_pressure
-                weather_factor_values["pressure_change"] = {
-                    "change": f"{pressure_change:+.1f} hPa",
-                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
-                }
-            else:
-                weather_factor_values["pressure_change"] = {
-                    "change": "N/A",
-                    "range": f"{pressure_min:.1f} to {pressure_max:.1f} hPa (range: {pressure_range:.1f} hPa)"
-                }
-
-            # Humidity range and change
-            humidity_min, humidity_max = min(humidities), max(humidities)
-            humidity_range = humidity_max - humidity_min
-            if previous_forecasts:
-                prev_avg_humidity = np.mean([f.humidity for f in previous_forecasts])
-                avg_humidity = np.mean(humidities)
-                humidity_change = avg_humidity - prev_avg_humidity
-                weather_factor_values["humidity_extreme"] = {
-                    "change": f"{humidity_change:+.0f}%",
-                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
-                }
-            else:
-                weather_factor_values["humidity_extreme"] = {
-                    "change": "N/A",
-                    "range": f"{humidity_min:.0f}% to {humidity_max:.0f}% (range: {humidity_range:.0f}%)"
-                }
-
-            # Precipitation
-            total_precip = sum(precipitations)
-            max_precip = max(precipitations)
-            weather_factor_values["precipitation"] = {
-                "total": f"{total_precip:.1f} mm",
-                "max": f"{max_precip:.1f} mm/hour"
-            }
-
-            # Cloud cover range
-            cloud_min, cloud_max = min(cloud_covers), max(cloud_covers)
-            avg_cloud = np.mean(cloud_covers)
-            weather_factor_values["cloud_cover"] = {
-                "average": f"{avg_cloud:.0f}%",
-                "range": f"{cloud_min:.0f}% to {cloud_max:.0f}%"
-            }
-    except Exception:
-        pass
+    weather_factor_values = _compute_weather_factor_values(prediction)
 
     context = {
         "prediction": prediction,

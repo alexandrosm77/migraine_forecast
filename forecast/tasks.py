@@ -251,16 +251,16 @@ def send_digest_email(self, user_id):
         # Generate predictions synchronously (not via Celery)
         # This ensures predictions are ready before we send the email
         if profile.migraine_predictions_enabled:
-            # Call the task function directly (not as a Celery task)
+            # Call the implementation function directly (not the Celery task)
             # This runs synchronously in the current worker
-            result = generate_digest_predictions(user.id, location.id, "migraine")
+            result = _generate_digest_predictions_impl(user.id, location.id, "migraine")
             if result.get("prediction_id"):
                 pred = MigrainePrediction.objects.get(id=result["prediction_id"])
                 if pred.probability in ["MEDIUM", "HIGH"]:
                     migraine_predictions.append(pred)
 
         if profile.sinusitis_predictions_enabled:
-            result = generate_digest_predictions(user.id, location.id, "sinusitis")
+            result = _generate_digest_predictions_impl(user.id, location.id, "sinusitis")
             if result.get("prediction_id"):
                 pred = SinusitisPrediction.objects.get(id=result["prediction_id"])
                 if pred.probability in ["MEDIUM", "HIGH"]:
@@ -390,33 +390,25 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     }
 
 
-@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 1, "countdown": 10})
-def generate_digest_predictions(self, user_id, location_id, prediction_type):
+def _generate_digest_predictions_impl(user_id, location_id, prediction_type):
     """
-    Generate predictions for DIGEST mode user (next 24 hours).
-    CRITICAL: This task MUST run with concurrency=1 due to LLM API constraints.
+    Core logic for generating digest predictions (next 24 hours).
 
-    In digest mode the prediction always covers the next 24 hours starting from
-    now, ignoring the user's custom prediction_window_start/end_hours settings.
-
-    Includes automatic retry logic:
-    - HTTP-level: 3 retries with exponential backoff (2s, 4s, 8s) for transient errors
-    - Task-level: 1 retry with 10-second delay for malformed LLM responses or other failures
+    Extracted as a standalone function so it can be called directly from
+    send_digest_email (synchronously) or via the Celery task wrapper.
 
     Args:
         user_id: ID of the user
         location_id: ID of the location
         prediction_type: 'migraine' or 'sinusitis'
+
+    Returns:
+        dict with status, prediction_id, probability_level, and window_hours
     """
     from django.contrib.auth.models import User
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
-
-    # Log retry attempts
-    retry_count = self.request.retries
-    if retry_count > 0:
-        logger.warning(f"LLM digest prediction retry attempt {retry_count}/1 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
 
     logger.info(f"Generating {prediction_type} digest prediction for user {user_id}, location {location_id}")
 
@@ -456,3 +448,26 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
         "probability_level": probability_level,
         "window_hours": f"{window_start_hours}-{window_end_hours}",
     }
+
+
+@shared_task(queue="llm", bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 1, "countdown": 10})
+def generate_digest_predictions(self, user_id, location_id, prediction_type):
+    """
+    Celery task wrapper for generating digest predictions.
+    CRITICAL: This task MUST run with concurrency=1 due to LLM API constraints.
+
+    Includes automatic retry logic:
+    - HTTP-level: 3 retries with exponential backoff (2s, 4s, 8s) for transient errors
+    - Task-level: 1 retry with 10-second delay for malformed LLM responses or other failures
+
+    Args:
+        user_id: ID of the user
+        location_id: ID of the location
+        prediction_type: 'migraine' or 'sinusitis'
+    """
+    # Log retry attempts
+    retry_count = self.request.retries
+    if retry_count > 0:
+        logger.warning(f"LLM digest prediction retry attempt {retry_count}/1 for {prediction_type} user {user_id}, location {location_id}")  # noqa: E501
+
+    return _generate_digest_predictions_impl(user_id, location_id, prediction_type)

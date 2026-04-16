@@ -194,16 +194,17 @@ class SinusitisPredictionService:
                     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                     is_weekend = day_of_week >= 5
 
-                    # Season (Northern Hemisphere)
+                    # Season (hemisphere-aware based on location latitude)
                     month = now.month
+                    is_southern = location.latitude < 0
                     if month in [12, 1, 2]:
-                        season = "winter"
+                        season = "summer" if is_southern else "winter"
                     elif month in [3, 4, 5]:
-                        season = "spring"
+                        season = "fall" if is_southern else "spring"
                     elif month in [6, 7, 8]:
-                        season = "summer"
+                        season = "winter" if is_southern else "summer"
                     else:
-                        season = "fall"
+                        season = "spring" if is_southern else "fall"
 
                     context_payload["temporal_context"] = {
                         # Current time when prediction is being made
