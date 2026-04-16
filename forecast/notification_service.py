@@ -1103,117 +1103,107 @@ class NotificationService:
         Returns:
             int: Number of notifications sent (one per user)
         """
-        from django.utils import timezone
-        from collections import defaultdict
+        from django.db.models import Max
 
-        # Group predictions by user
-        user_predictions = defaultdict(lambda: {"migraine": [], "sinusitis": []})
+        now = timezone.now()
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = start_of_day + timedelta(days=1)
 
-        # Get all locations with associated users
-        locations = Location.objects.select_related("user").all()
+        # --- Batch-load all relevant data ---
 
-        # Track which users we've already processed to avoid duplicate checks
-        processed_users = set()
+        # 1. Get all locations with users and health profiles in 1 query
+        locations = Location.objects.select_related("user", "user__health_profile").all()
 
+        # 2. Build user -> locations mapping and deduplicate users
+        user_map = {}         # user_id -> User instance (with profile already loaded)
+        user_locations = {}   # user_id -> list of Location instances
         for location in locations:
-            # Skip if no user associated
             if not location.user:
                 continue
+            uid = location.user_id
+            if uid not in user_map:
+                user_map[uid] = location.user
+                user_locations[uid] = []
+            user_locations[uid].append(location)
 
-            user = location.user
+        if not user_map:
+            return 0
 
-            # Skip if we've already processed this user (since we now send one email per user)
-            if user.id in processed_users:
+        user_ids = list(user_map.keys())
+
+        # 3. Batch-check daily limits: which users had notifications sent today? (2 queries total)
+        users_with_migraine_today = set(
+            MigrainePrediction.objects.filter(
+                user_id__in=user_ids,
+                notification_sent=True,
+                prediction_time__gte=start_of_day,
+                prediction_time__lt=end_of_day,
+            ).values_list("user_id", flat=True).distinct()
+        )
+        users_with_sinusitis_today = set(
+            SinusitisPrediction.objects.filter(
+                user_id__in=user_ids,
+                notification_sent=True,
+                prediction_time__gte=start_of_day,
+                prediction_time__lt=end_of_day,
+            ).values_list("user_id", flat=True).distinct()
+        )
+
+        # 4. Batch-check frequency: most recent notification time per user (2 queries total)
+        migraine_recent_times = dict(
+            MigrainePrediction.objects.filter(
+                user_id__in=user_ids,
+                notification_sent=True,
+                prediction_time__gte=now - timedelta(hours=24),  # generous window
+            ).values("user_id").annotate(latest=Max("prediction_time")).values_list("user_id", "latest")
+        )
+        sinusitis_recent_times = dict(
+            SinusitisPrediction.objects.filter(
+                user_id__in=user_ids,
+                notification_sent=True,
+                prediction_time__gte=now - timedelta(hours=24),
+            ).values("user_id").annotate(latest=Max("prediction_time")).values_list("user_id", "latest")
+        )
+
+        # --- Per-user filtering (no additional queries) ---
+        user_predictions = {}  # user_id -> {"migraine": [...], "sinusitis": [...]}
+
+        for uid, user in user_map.items():
+            # Get health profile (already loaded via select_related)
+            profile = getattr(user, "health_profile", None)
+
+            # Skip DIGEST mode users
+            if profile and profile.notification_mode == "DIGEST":
+                logger.debug(f"Skipping DIGEST mode user {user.username} (predictions run via digest task)")
                 continue
 
-            # Mark this user as processed
-            processed_users.add(user.id)
-
-            # Skip DIGEST mode users - their predictions are generated once a day
-            # in the send_digest_email task, not in the regular prediction pipeline
-            try:
-                if user.health_profile.notification_mode == "DIGEST":
-                    logger.debug(f"Skipping DIGEST mode user {user.username} (predictions run via digest task)")
-                    continue
-            except Exception:
-                pass  # No health profile, treat as non-DIGEST user
-
-            # Check user-level daily notification limit and frequency preference
-            try:
-                user_profile = user.health_profile
-                limit = int(user_profile.daily_notification_limit)
-                notification_frequency_hours = int(user_profile.notification_frequency_hours)
-            except Exception:
-                limit = 1  # Default to 1 if no profile exists
-                notification_frequency_hours = 3  # Default to 3 hours
-
+            # Check daily limit
+            limit = int(profile.daily_notification_limit) if profile else 1
             if limit <= 0:
-                # Notifications disabled for this user
                 logger.debug(f"Notifications disabled for user {user.username} (limit={limit})")
                 continue
 
-            # Count notifications sent today for this user (across all locations)
-            now = timezone.now()
-            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_of_day = start_of_day + timedelta(days=1)
-
-            # Count unique notification emails sent today (we now send combined emails)
-            # We'll count by checking if any prediction was sent today
-            migraine_sent_today = MigrainePrediction.objects.filter(
-                user=user,
-                notification_sent=True,
-                prediction_time__gte=start_of_day,
-                prediction_time__lt=end_of_day,
-            ).exists()
-
-            sinusitis_sent_today = SinusitisPrediction.objects.filter(
-                user=user,
-                notification_sent=True,
-                prediction_time__gte=start_of_day,
-                prediction_time__lt=end_of_day,
-            ).exists()
-
-            # If either type was sent today, count it as 1 email sent
-            emails_sent_today = 1 if (migraine_sent_today or sinusitis_sent_today) else 0
-
+            emails_sent_today = 1 if (uid in users_with_migraine_today or uid in users_with_sinusitis_today) else 0
             if emails_sent_today >= limit:
-                # Already reached today's limit for this user
                 logger.debug(f"User {user.username} has reached daily limit ({limit})")
                 continue
 
-            # Check notification frequency - find the most recent notification sent
+            # Check frequency
+            notification_frequency_hours = int(profile.notification_frequency_hours) if profile else 3
             frequency_cutoff = now - timedelta(hours=notification_frequency_hours)
 
-            recent_migraine = (
-                MigrainePrediction.objects.filter(
-                    user=user,
-                    notification_sent=True,
-                    prediction_time__gte=frequency_cutoff,
-                )
-                .order_by("-prediction_time")
-                .first()
-            )
+            latest_migraine_time = migraine_recent_times.get(uid)
+            latest_sinusitis_time = sinusitis_recent_times.get(uid)
 
-            recent_sinusitis = (
-                SinusitisPrediction.objects.filter(
-                    user=user,
-                    notification_sent=True,
-                    prediction_time__gte=frequency_cutoff,
-                )
-                .order_by("-prediction_time")
-                .first()
-            )
+            most_recent_time = None
+            if latest_migraine_time and latest_sinusitis_time:
+                most_recent_time = max(latest_migraine_time, latest_sinusitis_time)
+            elif latest_migraine_time:
+                most_recent_time = latest_migraine_time
+            elif latest_sinusitis_time:
+                most_recent_time = latest_sinusitis_time
 
-            # If either type was sent within the frequency window, skip
-            if recent_migraine or recent_sinusitis:
-                most_recent_time = None
-                if recent_migraine and recent_sinusitis:
-                    most_recent_time = max(recent_migraine.prediction_time, recent_sinusitis.prediction_time)
-                elif recent_migraine:
-                    most_recent_time = recent_migraine.prediction_time
-                else:
-                    most_recent_time = recent_sinusitis.prediction_time
-
+            if most_recent_time and most_recent_time >= frequency_cutoff:
                 hours_since = (now - most_recent_time).total_seconds() / 3600
                 logger.debug(
                     f"User {user.username} was notified {hours_since:.1f} hours ago, "
@@ -1221,88 +1211,76 @@ class NotificationService:
                 )
                 continue
 
-            # Collect predictions for ALL locations for this user
+            # Check email notifications enabled
+            if profile and not profile.email_notifications_enabled:
+                logger.info(f"Skipping notifications for user {user.username}: Email notifications disabled")
+                continue
+
+            # Collect predictions for ALL locations for this user (no queries — uses cached locations)
             user_migraine_preds = []
             user_sinusitis_preds = []
+            migraine_enabled = profile.migraine_predictions_enabled if profile else True
+            sinusitis_enabled = profile.sinusitis_predictions_enabled if profile else True
 
-            for user_location in user.locations.all():
-                # Get predictions for this location
-                migraine_data = migraine_predictions.get(user_location.id)
-                sinusitis_data = sinusitis_predictions.get(user_location.id)
-
-                # Check migraine prediction
-                if migraine_data:
-                    try:
-                        if not user.health_profile.migraine_predictions_enabled:
-                            migraine_data = None
-                    except Exception:
-                        pass  # No profile, keep predictions enabled by default
-
+            for loc in user_locations[uid]:
+                # Migraine predictions
+                if migraine_enabled:
+                    migraine_data = migraine_predictions.get(loc.id)
                     if migraine_data:
                         prob_level = migraine_data.get("probability")
                         pred = migraine_data.get("prediction")
                         if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
                             user_migraine_preds.append(pred)
 
-                # Check sinusitis prediction
-                if sinusitis_data:
-                    try:
-                        if not user.health_profile.sinusitis_predictions_enabled:
-                            sinusitis_data = None
-                    except Exception:
-                        pass  # No profile, keep predictions enabled by default
-
+                # Sinusitis predictions
+                if sinusitis_enabled:
+                    sinusitis_data = sinusitis_predictions.get(loc.id)
                     if sinusitis_data:
                         prob_level = sinusitis_data.get("probability")
                         pred = sinusitis_data.get("prediction")
                         if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
                             user_sinusitis_preds.append(pred)
 
-            # Add to user_predictions if we have any predictions
             if user_migraine_preds or user_sinusitis_preds:
-                user_predictions[user.id]["migraine"] = user_migraine_preds
-                user_predictions[user.id]["sinusitis"] = user_sinusitis_preds
+                user_predictions[uid] = {
+                    "migraine": user_migraine_preds,
+                    "sinusitis": user_sinusitis_preds,
+                }
 
-        # Now send one email per user with all their predictions
+        # --- Send one email per user ---
         notifications_sent = 0
 
-        for user_id, predictions in user_predictions.items():
+        for uid, predictions in user_predictions.items():
             migraine_preds = predictions["migraine"]
             sinusitis_preds = predictions["sinusitis"]
 
-            # Skip if no predictions to send
             if not migraine_preds and not sinusitis_preds:
                 continue
 
-            # Get user object
-            from django.contrib.auth.models import User
+            user = user_map[uid]  # already cached, no query needed
 
-            try:
-                user = User.objects.get(id=user_id)
-            except User.DoesNotExist:
-                continue
-
-            # Check if user has email notifications enabled
-            try:
-                if hasattr(user, "health_profile") and not user.health_profile.email_notifications_enabled:
-                    logger.info(f"Skipping notifications for user {user.username}: Email notifications disabled")
-                    continue
-            except Exception as e:
-                logger.warning(f"Could not check email notification preference for user {user.username}: {e}")
-
-            # Send combined notification for all locations
             if self.send_combined_alert(migraine_predictions=migraine_preds, sinusitis_predictions=sinusitis_preds):
-                # Mark all predictions as sent
+                # Batch-update notification_sent
+                all_preds_to_update = []
                 for pred in migraine_preds:
                     pred.notification_sent = True
-                    pred.save()
+                    all_preds_to_update.append(pred)
                 for pred in sinusitis_preds:
                     pred.notification_sent = True
-                    pred.save()
+                    all_preds_to_update.append(pred)
+
+                if migraine_preds:
+                    MigrainePrediction.objects.filter(
+                        id__in=[p.id for p in migraine_preds]
+                    ).update(notification_sent=True)
+                if sinusitis_preds:
+                    SinusitisPrediction.objects.filter(
+                        id__in=[p.id for p in sinusitis_preds]
+                    ).update(notification_sent=True)
 
                 notifications_sent += 1
 
-                location_count = len(set([p.location for p in migraine_preds + sinusitis_preds]))
+                location_count = len(set(p.location_id for p in migraine_preds + sinusitis_preds))
                 logger.info(
                     f"Sent combined alert to {user.email} covering {location_count} location(s) "
                     f"({len(migraine_preds)} migraine, {len(sinusitis_preds)} sinusitis)"
