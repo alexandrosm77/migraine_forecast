@@ -1,15 +1,111 @@
-version: '3'
+# Local development environment mirroring the production Kubernetes deployment.
+# Usage:
+#   docker compose up --build        # start all services
+#   docker compose up --build web    # start only web + redis
+#   docker compose logs -f worker-default  # tail a specific service
 
 services:
+  # ── Redis (message broker + result backend) ──────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── Web (Gunicorn) ──────────────────────────────────────────────────
   web:
     build: .
+    # Override the default CMD so we skip cron and just run gunicorn
+    command: >
+      bash -c "
+        python manage.py migrate --noinput &&
+        python manage.py seed_data &&
+        python manage.py compilemessages 2>/dev/null || true &&
+        python manage.py collectstatic --noinput &&
+        exec gunicorn migraine_project.wsgi:application -c gunicorn.conf.py
+      "
     ports:
-      - "8000:8000"
+      - "8889:8889"
     volumes:
-      - ./data:/app/data
+      - .:/app
+      - static-files:/app/staticfiles
+    env_file: .env.dev
     environment:
-      - DEBUG=True
-      # Add other environment variables as needed
-      # - EMAIL_HOST=smtp.example.com
-      # - EMAIL_HOST_USER=your-email@example.com
-      # - EMAIL_HOST_PASSWORD=your-password
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Celery Worker – default queue ───────────────────────────────────
+  worker-default:
+    build: .
+    command: >
+      python -u -m celery -A migraine_project worker
+        --loglevel=info
+        --queues=default
+        --concurrency=2
+        --max-tasks-per-child=100
+    volumes:
+      - .:/app
+      - static-files:/app/staticfiles
+    env_file: .env.dev
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+  # ── Celery Worker – LLM queue (concurrency=1) ──────────────────────
+  worker-llm:
+    build: .
+    command: >
+      python -u -m celery -A migraine_project worker
+        --loglevel=info
+        --queues=llm
+        --concurrency=1
+        --max-tasks-per-child=50
+    volumes:
+      - .:/app
+      - static-files:/app/staticfiles
+    env_file: .env.dev
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+  # ── Celery Beat (periodic task scheduler) ───────────────────────────
+  celery-beat:
+    build: .
+    command: >
+      python -u -m celery -A migraine_project beat
+        --loglevel=info
+    volumes:
+      - .:/app
+      - static-files:/app/staticfiles
+    env_file: .env.dev
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+volumes:
+  redis-data:
+  static-files:
