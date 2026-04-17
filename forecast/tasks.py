@@ -31,7 +31,7 @@ def collect_weather_data(self):
     - Task-level: 2 retries with 5-minute delays if all HTTP retries fail
     """
     from forecast.weather_service import WeatherService
-    from forecast.models import Location, WeatherForecast
+    from forecast.models import Location, WeatherForecast, AirQualityForecast
 
     # Log retry attempts
     retry_count = self.request.retries
@@ -69,6 +69,31 @@ def collect_weather_data(self):
             logger.error(f"Error processing batch {batch_num + 1}: {str(e)}", exc_info=True)
             errors.append(str(e))
 
+    # Air-quality collection runs after the weather batch in the same task to
+    # avoid doubling the Celery Beat schedule. Wrapped in a broad try/except so
+    # an air-quality fetch failure never breaks weather collection (and vice
+    # versa — weather already completed by this point).
+    aq_total_created = 0
+    aq_total_updated = 0
+    aq_errors = []
+    try:
+        for batch_num in range(num_batches):
+            start_idx = batch_num * BATCH_SIZE
+            end_idx = min(start_idx + BATCH_SIZE, len(location_list))
+            batch_locations = location_list[start_idx:end_idx]
+
+            try:
+                aq_batch_result = service.update_air_quality_for_locations_batch(batch_locations)
+                aq_total_created += aq_batch_result["total_created"]
+                aq_total_updated += aq_batch_result["total_updated"]
+                aq_errors.extend(aq_batch_result["errors"])
+            except Exception as e:
+                logger.error(f"Error processing air-quality batch {batch_num + 1}: {str(e)}", exc_info=True)
+                aq_errors.append(str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error during air-quality collection: {str(e)}", exc_info=True)
+        aq_errors.append(str(e))
+
     # Cleanup old forecasts (older than 180 days)
     cutoff_time = timezone.now() - timedelta(days=180)
     old_forecasts = WeatherForecast.objects.filter(forecast_time__lt=cutoff_time)
@@ -77,9 +102,16 @@ def collect_weather_data(self):
         old_forecasts.delete()
         logger.info(f"Deleted {deleted_count} old forecasts")
 
+    old_aq_forecasts = AirQualityForecast.objects.filter(forecast_time__lt=cutoff_time)
+    aq_deleted_count = old_aq_forecasts.count()
+    if aq_deleted_count > 0:
+        old_aq_forecasts.delete()
+        logger.info(f"Deleted {aq_deleted_count} old air-quality forecasts")
+
     logger.info(
         f"Weather data collection completed: locations={len(locations)}, "
-        f"created={total_created}, updated={total_updated}, errors={len(errors)}"
+        f"created={total_created}, updated={total_updated}, errors={len(errors)}, "
+        f"aq_created={aq_total_created}, aq_updated={aq_total_updated}, aq_errors={len(aq_errors)}"
     )
 
     return {
@@ -89,6 +121,10 @@ def collect_weather_data(self):
         "forecasts_updated": total_updated,
         "errors": len(errors),
         "old_forecasts_deleted": deleted_count,
+        "air_quality_created": aq_total_created,
+        "air_quality_updated": aq_total_updated,
+        "air_quality_errors": len(aq_errors),
+        "old_air_quality_deleted": aq_deleted_count,
     }
 
 
