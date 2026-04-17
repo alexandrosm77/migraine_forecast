@@ -23,6 +23,8 @@ class LLMClient:
     Includes automatic retry logic for transient API failures.
     """
 
+    DEFAULT_MAX_TOKENS = 1024
+
     def __init__(
         self,
         base_url: str,
@@ -71,8 +73,10 @@ class LLMClient:
         payload = {
             "model": self.model,
             "messages": messages,
+            "max_tokens": self.DEFAULT_MAX_TOKENS,
         }
         # Merge extra_payload first, then kwargs (kwargs override extra_payload)
+        # This allows extra_payload or kwargs to override the default max_tokens
         payload.update(self.extra_payload)
         payload.update(kwargs)
 
