@@ -318,6 +318,85 @@ class SinusitisPredictionServiceTest(TestCase):
         self.assertAlmostEqual(time_diff_start, 2, delta=0.1)
         self.assertAlmostEqual(time_diff_end, 10, delta=0.1)
 
+    def _create_aq_rows(self, pm10=None, dust=None):
+        now = timezone.now()
+        window_fcs = WeatherForecast.objects.filter(
+            location=self.location, target_time__gt=now,
+        ).order_by("target_time")
+        for fc in window_fcs:
+            AirQualityForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=fc.target_time,
+                pm10=pm10,
+                dust=dust,
+            )
+
+    def test_weights_sum_to_one(self):
+        self.assertAlmostEqual(sum(SinusitisPredictionService.WEIGHTS.values()), 1.0, places=6)
+        self.assertIn("air_quality", SinusitisPredictionService.WEIGHTS)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_air_quality_score_zero_without_aq_data(self, mock_get_config):
+        """With no AirQualityForecast rows the air_quality score stays at 0.0."""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        service = SinusitisPredictionService()
+        _, prediction = service.predict_sinusitis_probability(self.location, self.user)
+        self.assertIsNotNone(prediction)
+        self.assertEqual(prediction.weather_factors.get("air_quality"), 0.0)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_high_pm10_and_dust_raise_air_quality_score(self, mock_get_config):
+        """High PM10 + dust push air_quality to ~1.0 and raise the total score vs no-AQ baseline."""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        service = SinusitisPredictionService()
+        _, baseline = service.predict_sinusitis_probability(self.location, self.user)
+        baseline_total = baseline.weather_factors["total_score"]
+        self.assertEqual(baseline.weather_factors.get("air_quality"), 0.0)
+
+        # Add AQ rows well above thresholds (PM10=100 > 50, dust=200 > 100 → both cap at 1.0)
+        self._create_aq_rows(pm10=100.0, dust=200.0)
+        _, enhanced = service.predict_sinusitis_probability(self.location, self.user)
+        self.assertAlmostEqual(enhanced.weather_factors.get("air_quality"), 1.0, places=2)
+        self.assertGreater(enhanced.weather_factors["total_score"], baseline_total)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_llm_call_receives_air_quality_forecasts(self, mock_get_config):
+        """_call_llm_predict attaches air_quality_forecasts kwarg from DB."""
+        mock_config = MagicMock()
+        mock_config.is_active = True
+        mock_config.base_url = "http://test.com"
+        mock_config.api_key = "k"
+        mock_config.model = "m"
+        mock_config.timeout = 5.0
+        mock_config.high_token_budget = False
+        mock_config.confidence_threshold = 0.7
+        mock_config.extra_payload = {}
+        mock_get_config.return_value = mock_config
+
+        self._create_aq_rows(pm10=40.0, dust=50.0)
+
+        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+            mock_llm_instance = MagicMock()
+            mock_llm_instance.predict_sinusitis_probability.return_value = (
+                "MEDIUM",
+                {"raw": {"probability_level": "MEDIUM", "confidence": 0.9, "rationale": "ok"}},
+            )
+            mock_llm_class.return_value = mock_llm_instance
+
+            service = SinusitisPredictionService()
+            service.predict_sinusitis_probability(self.location, self.user)
+
+            call_kwargs = mock_llm_instance.predict_sinusitis_probability.call_args.kwargs
+            self.assertIn("air_quality_forecasts", call_kwargs)
+            self.assertGreaterEqual(len(call_kwargs["air_quality_forecasts"]), 1)
+
 
 class HayFeverPredictionServiceTest(TestCase):
     """Test cases for HayFeverPredictionService (EU + non-EU fallback)."""
