@@ -161,6 +161,10 @@ def schedule_immediate_predictions():
                 generate_prediction.delay(user.id, location.id, "sinusitis")
                 prediction_count += 1
 
+            if profile.hay_fever_predictions_enabled:
+                generate_prediction.delay(user.id, location.id, "hayfever")
+                prediction_count += 1
+
     logger.info(f"Scheduled {prediction_count} prediction tasks for {len(users)} IMMEDIATE users")
 
     return {
@@ -229,10 +233,10 @@ def send_prediction_notification(self, prediction_id, prediction_type):
     Send notification for a prediction if it meets criteria.
 
     Args:
-        prediction_id: ID of the prediction (MigrainePrediction or SinusitisPrediction)
-        prediction_type: 'migraine' or 'sinusitis'
+        prediction_id: ID of the prediction (MigrainePrediction, SinusitisPrediction, or HayFeverPrediction)
+        prediction_type: 'migraine', 'sinusitis', or 'hayfever'
     """
-    from forecast.models import MigrainePrediction, SinusitisPrediction
+    from forecast.models import MigrainePrediction, SinusitisPrediction, HayFeverPrediction
     from forecast.notification_service import NotificationService
 
     logger.info(f"Sending notification for {prediction_type} prediction {prediction_id}")
@@ -240,15 +244,19 @@ def send_prediction_notification(self, prediction_id, prediction_type):
     # Get the prediction
     if prediction_type == "migraine":
         prediction = MigrainePrediction.objects.get(id=prediction_id)
-    else:
+    elif prediction_type == "sinusitis":
         prediction = SinusitisPrediction.objects.get(id=prediction_id)
+    else:
+        prediction = HayFeverPrediction.objects.get(id=prediction_id)
 
     # Send notification
     service = NotificationService()
     if prediction_type == "migraine":
         result = service.send_migraine_alert(prediction)
-    else:
+    elif prediction_type == "sinusitis":
         result = service.send_sinusitis_alert(prediction)
+    else:
+        result = service.send_hayfever_alert(prediction)
 
     return {
         "status": "completed",
@@ -270,7 +278,7 @@ def send_digest_email(self, user_id):
         user_id: ID of the user
     """
     from django.contrib.auth.models import User
-    from forecast.models import MigrainePrediction, SinusitisPrediction
+    from forecast.models import MigrainePrediction, SinusitisPrediction, HayFeverPrediction
     from forecast.notification_service import NotificationService
 
     logger.info(f"Generating digest email for user {user_id}")
@@ -282,6 +290,7 @@ def send_digest_email(self, user_id):
     # We need to wait for predictions to complete before sending email
     migraine_predictions = []
     sinusitis_predictions = []
+    hayfever_predictions = []
 
     for location in user.locations.all():
         # Generate predictions synchronously (not via Celery)
@@ -302,16 +311,26 @@ def send_digest_email(self, user_id):
                 if pred.probability in ["MEDIUM", "HIGH"]:
                     sinusitis_predictions.append(pred)
 
+        if profile.hay_fever_predictions_enabled:
+            result = _generate_digest_predictions_impl(user.id, location.id, "hayfever")
+            if result.get("prediction_id"):
+                pred = HayFeverPrediction.objects.get(id=result["prediction_id"])
+                if pred.probability in ["MEDIUM", "HIGH"]:
+                    hayfever_predictions.append(pred)
+
     # Apply severity threshold for digest notifications
     if profile.notification_severity_threshold == "HIGH":
         migraine_predictions = [pred for pred in migraine_predictions if pred.probability == "HIGH"]
         sinusitis_predictions = [pred for pred in sinusitis_predictions if pred.probability == "HIGH"]
+        hayfever_predictions = [pred for pred in hayfever_predictions if pred.probability == "HIGH"]
 
     # Send combined email if we have any predictions
-    if migraine_predictions or sinusitis_predictions:
+    if migraine_predictions or sinusitis_predictions or hayfever_predictions:
         service = NotificationService()
         result = service.send_combined_alert(
-            migraine_predictions=migraine_predictions, sinusitis_predictions=sinusitis_predictions,
+            migraine_predictions=migraine_predictions,
+            sinusitis_predictions=sinusitis_predictions,
+            hayfever_predictions=hayfever_predictions,
             is_digest=True,
         )
 
@@ -320,6 +339,7 @@ def send_digest_email(self, user_id):
             "email_sent": result,
             "migraine_count": len(migraine_predictions),
             "sinusitis_count": len(sinusitis_predictions),
+            "hayfever_count": len(hayfever_predictions),
         }
     else:
         logger.info(f"No predictions to send for user {user_id}")
@@ -333,29 +353,45 @@ def send_digest_email(self, user_id):
 @shared_task(queue="default")
 def cleanup_old_data():
     """
-    Clean up old predictions and LLM responses.
+    Clean up old predictions, LLM responses, and air-quality forecasts.
     Runs daily at 3 AM via Celery Beat.
     """
-    from forecast.models import MigrainePrediction, SinusitisPrediction, LLMResponse
+    from forecast.models import (
+        MigrainePrediction,
+        SinusitisPrediction,
+        HayFeverPrediction,
+        LLMResponse,
+        AirQualityForecast,
+    )
 
     logger.info("Starting cleanup of old data")
 
     # Delete predictions older than 7 days
     cutoff_time = timezone.now() - timedelta(days=7)
+    # Air-quality forecasts are kept longer for historical/analytical use
+    aq_cutoff_time = timezone.now() - timedelta(days=180)
 
-    # MigrainePrediction and SinusitisPrediction use 'prediction_time' field
+    # MigrainePrediction, SinusitisPrediction, HayFeverPrediction use 'prediction_time' field
     migraine_deleted = MigrainePrediction.objects.filter(prediction_time__lt=cutoff_time).delete()[0]
     sinusitis_deleted = SinusitisPrediction.objects.filter(prediction_time__lt=cutoff_time).delete()[0]
+    hayfever_deleted = HayFeverPrediction.objects.filter(prediction_time__lt=cutoff_time).delete()[0]
     # LLMResponse uses 'created_at' field
     llm_deleted = LLMResponse.objects.filter(created_at__lt=cutoff_time).delete()[0]
+    # AirQualityForecast uses 'forecast_time' field; purge rows older than 180 days
+    aq_deleted = AirQualityForecast.objects.filter(forecast_time__lt=aq_cutoff_time).delete()[0]
 
-    logger.info(f"Cleanup completed: migraine={migraine_deleted}, sinusitis={sinusitis_deleted}, llm={llm_deleted}")
+    logger.info(
+        f"Cleanup completed: migraine={migraine_deleted}, sinusitis={sinusitis_deleted}, "
+        f"hayfever={hayfever_deleted}, llm={llm_deleted}, air_quality={aq_deleted}"
+    )
 
     return {
         "status": "completed",
         "migraine_predictions_deleted": migraine_deleted,
         "sinusitis_predictions_deleted": sinusitis_deleted,
+        "hayfever_predictions_deleted": hayfever_deleted,
         "llm_responses_deleted": llm_deleted,
+        "air_quality_forecasts_deleted": aq_deleted,
     }
 
 
@@ -377,12 +413,13 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     Args:
         user_id: ID of the user
         location_id: ID of the location
-        prediction_type: 'migraine' or 'sinusitis'
+        prediction_type: 'migraine', 'sinusitis', or 'hayfever'
     """
     from django.contrib.auth.models import User
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
+    from forecast.prediction_service_hayfever import HayFeverPredictionService
 
     # Log retry attempts
     retry_count = self.request.retries
@@ -405,9 +442,18 @@ def generate_prediction(self, user_id, location_id, prediction_type):
             window_start_hours=0,
             window_end_hours=2
         )
-    else:
+    elif prediction_type == "sinusitis":
         service = SinusitisPredictionService()
         probability_level, prediction = service.predict_sinusitis_probability(
+            location=location,
+            user=user,
+            store_prediction=True,
+            window_start_hours=0,
+            window_end_hours=2
+        )
+    else:
+        service = HayFeverPredictionService()
+        probability_level, prediction = service.predict_hayfever_probability(
             location=location,
             user=user,
             store_prediction=True,
@@ -436,7 +482,7 @@ def _generate_digest_predictions_impl(user_id, location_id, prediction_type):
     Args:
         user_id: ID of the user
         location_id: ID of the location
-        prediction_type: 'migraine' or 'sinusitis'
+        prediction_type: 'migraine', 'sinusitis', or 'hayfever'
 
     Returns:
         dict with status, prediction_id, probability_level, and window_hours
@@ -445,6 +491,7 @@ def _generate_digest_predictions_impl(user_id, location_id, prediction_type):
     from forecast.models import Location
     from forecast.prediction_service import MigrainePredictionService
     from forecast.prediction_service_sinusitis import SinusitisPredictionService
+    from forecast.prediction_service_hayfever import HayFeverPredictionService
 
     logger.info(f"Generating {prediction_type} digest prediction for user {user_id}, location {location_id}")
 
@@ -468,9 +515,18 @@ def _generate_digest_predictions_impl(user_id, location_id, prediction_type):
             window_start_hours=window_start_hours,
             window_end_hours=window_end_hours
         )
-    else:
+    elif prediction_type == "sinusitis":
         service = SinusitisPredictionService()
         probability_level, prediction = service.predict_sinusitis_probability(
+            location=location,
+            user=user,
+            store_prediction=True,
+            window_start_hours=window_start_hours,
+            window_end_hours=window_end_hours
+        )
+    else:
+        service = HayFeverPredictionService()
+        probability_level, prediction = service.predict_hayfever_probability(
             location=location,
             user=user,
             store_prediction=True,
@@ -499,7 +555,7 @@ def generate_digest_predictions(self, user_id, location_id, prediction_type):
     Args:
         user_id: ID of the user
         location_id: ID of the location
-        prediction_type: 'migraine' or 'sinusitis'
+        prediction_type: 'migraine', 'sinusitis', or 'hayfever'
     """
     # Log retry attempts
     retry_count = self.request.retries

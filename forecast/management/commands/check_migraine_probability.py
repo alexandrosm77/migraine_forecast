@@ -3,10 +3,17 @@ import logging
 from django.utils import timezone
 from datetime import timedelta
 
-from forecast.models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction
+from forecast.models import (
+    Location,
+    WeatherForecast,
+    MigrainePrediction,
+    SinusitisPrediction,
+    HayFeverPrediction,
+)
 from forecast.weather_service import WeatherService
 from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
+from forecast.prediction_service_hayfever import HayFeverPredictionService
 from forecast.notification_service import NotificationService
 from forecast.management.commands.base import SilentStdoutCommand
 
@@ -14,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(SilentStdoutCommand):
-    help = "Check migraine and sinusitis probability and send notifications"
+    help = "Check migraine, sinusitis, and hay fever probability and send notifications"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -31,17 +38,17 @@ class Command(SilentStdoutCommand):
         parser.add_argument(
             "--test-type",
             type=str,
-            choices=["migraine", "sinusitis", "both"],
-            default="both",
-            help="Type of test notification to send (migraine/sinusitis/both)",
+            choices=["migraine", "sinusitis", "hayfever", "all"],
+            default="all",
+            help="Type of test notification to send (migraine/sinusitis/hayfever/all)",
         )
 
     def handle(self, *args, **options):
         """
-        Django management command to check migraine and sinusitis probability and send notifications.
-        This can be run as a scheduled task (e.g., cron job) to:
+        Django management command to check migraine, sinusitis, and hay fever probability
+        and send notifications. This can be run as a scheduled task (e.g., cron job) to:
         1. Update weather forecasts for all locations
-        2. Generate migraine and sinusitis predictions
+        2. Generate migraine, sinusitis, and hay fever predictions
         3. Send email notifications for high-risk predictions
         """
         # Handle test notification mode
@@ -50,14 +57,15 @@ class Command(SilentStdoutCommand):
             return
 
         self.stdout.write(
-            self.style.SUCCESS(f"[{timezone.now()}] Starting migraine and sinusitis probability check...")
+            self.style.SUCCESS(f"[{timezone.now()}] Starting migraine/sinusitis/hay fever probability check...")
         )
-        logger.info("Starting migraine and sinusitis probability check")
+        logger.info("Starting migraine/sinusitis/hay fever probability check")
 
         # Initialize services
         weather_service = WeatherService()
         migraine_prediction_service = MigrainePredictionService()
         sinusitis_prediction_service = SinusitisPredictionService()
+        hayfever_prediction_service = HayFeverPredictionService()
         notification_service = NotificationService()
 
         # Get all locations
@@ -66,6 +74,7 @@ class Command(SilentStdoutCommand):
 
         migraine_predictions = {}
         sinusitis_predictions = {}
+        hayfever_predictions = {}
 
         if not options["notify_only"]:
             # Update forecasts for all locations
@@ -79,11 +88,13 @@ class Command(SilentStdoutCommand):
                 user_profile = None
                 migraine_enabled = True  # Default to enabled
                 sinusitis_enabled = True  # Default to enabled
+                hayfever_enabled = True  # Default to enabled
 
                 try:
                     user_profile = user.health_profile
                     migraine_enabled = user_profile.migraine_predictions_enabled
                     sinusitis_enabled = user_profile.sinusitis_predictions_enabled
+                    hayfever_enabled = user_profile.hay_fever_predictions_enabled
 
                     # Skip DIGEST mode users - their predictions are generated once a day
                     # in the send_digest_email task, not in the regular prediction pipeline
@@ -127,16 +138,30 @@ class Command(SilentStdoutCommand):
                 else:
                     self.stdout.write(self.style.WARNING(f"Sinusitis predictions disabled for user {user.username}"))
 
-        # Send combined notifications (single email for users with both predictions)
+                # Generate hay fever prediction if enabled
+                if hayfever_enabled:
+                    self.stdout.write(f"Generating hay fever prediction for {location}...")
+                    hf_probability, hf_prediction = hayfever_prediction_service.predict_hayfever_probability(
+                        location=location, user=user
+                    )
+                    hayfever_predictions[location.id] = {"probability": hf_probability, "prediction": hf_prediction}
+                    if hf_prediction:
+                        self.stdout.write(f"Hay Fever Prediction: {hf_probability} probability for {location}")
+                    else:
+                        self.stdout.write(self.style.WARNING(f"No hay fever prediction could be made for {location}"))
+                else:
+                    self.stdout.write(self.style.WARNING(f"Hay fever predictions disabled for user {user.username}"))
+
+        # Send combined notifications (single email for users with any predictions)
         self.stdout.write("Checking and sending combined notifications...")
         notifications_sent = notification_service.check_and_send_combined_notifications(
-            migraine_predictions, sinusitis_predictions
+            migraine_predictions, sinusitis_predictions, hayfever_predictions
         )
         self.stdout.write(
             self.style.SUCCESS(f"[{timezone.now()}] Check completed. Total notifications sent: {notifications_sent}")
         )
         logger.info(
-            "Migraine/sinusitis probability check completed: locations=%d, notifications_sent=%d",
+            "Migraine/sinusitis/hay fever probability check completed: locations=%d, notifications_sent=%d",
             len(locations),
             notifications_sent,
         )
@@ -150,7 +175,7 @@ class Command(SilentStdoutCommand):
             options: Command options containing test_notification and test_type
         """
         test_level = options["test_notification"].upper()
-        test_type = options.get("test_type", "both")
+        test_type = options.get("test_type", "all")
 
         self.stdout.write(
             self.style.WARNING(f"[{timezone.now()}] TEST MODE: Creating fake {test_level} risk notification(s)")
@@ -168,6 +193,7 @@ class Command(SilentStdoutCommand):
         # Create test predictions grouped by location
         migraine_predictions = {}
         sinusitis_predictions = {}
+        hayfever_predictions = {}
 
         for location in locations:
             user = location.user
@@ -207,7 +233,7 @@ class Command(SilentStdoutCommand):
             }
 
             # Create migraine test prediction if requested
-            if test_type in ["migraine", "both"] and test_level != "NONE":
+            if test_type in ["migraine", "all"] and test_level != "NONE":
                 migraine_prediction = MigrainePrediction.objects.create(
                     user=user,
                     location=location,
@@ -225,7 +251,7 @@ class Command(SilentStdoutCommand):
                 self.stdout.write(f"  Created test MIGRAINE {test_level} prediction")
 
             # Create sinusitis test prediction if requested
-            if test_type in ["sinusitis", "both"] and test_level != "NONE":
+            if test_type in ["sinusitis", "all"] and test_level != "NONE":
                 sinusitis_prediction = SinusitisPrediction.objects.create(
                     user=user,
                     location=location,
@@ -242,12 +268,30 @@ class Command(SilentStdoutCommand):
                 }
                 self.stdout.write(f"  Created test SINUSITIS {test_level} prediction")
 
+            # Create hay fever test prediction if requested
+            if test_type in ["hayfever", "all"] and test_level != "NONE":
+                hayfever_prediction = HayFeverPrediction.objects.create(
+                    user=user,
+                    location=location,
+                    forecast=forecast,
+                    target_time_start=now + timedelta(hours=3),
+                    target_time_end=now + timedelta(hours=6),
+                    probability=test_level,
+                    weather_factors=weather_factors,
+                    notification_sent=False,
+                )
+                hayfever_predictions[location.id] = {
+                    "probability": test_level,
+                    "prediction": hayfever_prediction,
+                }
+                self.stdout.write(f"  Created test HAY FEVER {test_level} prediction")
+
         # Send combined notifications using the production notification system
         # This respects user-level daily notification limits
         if test_level != "NONE":
             self.stdout.write("\nSending combined test notifications...")
             notifications_sent = notification_service.check_and_send_combined_notifications(
-                migraine_predictions, sinusitis_predictions
+                migraine_predictions, sinusitis_predictions, hayfever_predictions
             )
 
             if notifications_sent > 0:

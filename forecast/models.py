@@ -409,6 +409,7 @@ class NotificationLog(models.Model):
     NOTIFICATION_TYPE_CHOICES = [
         ("migraine", "Migraine Alert"),
         ("sinusitis", "Sinusitis Alert"),
+        ("hayfever", "Hay Fever Alert"),
         ("combined", "Combined Alert"),
         ("digest", "Daily Digest"),
         ("test", "Test Email"),
@@ -436,6 +437,9 @@ class NotificationLog(models.Model):
     # Related predictions (can be multiple for combined/digest notifications)
     migraine_predictions = models.ManyToManyField(MigrainePrediction, blank=True, related_name="notification_logs")
     sinusitis_predictions = models.ManyToManyField(SinusitisPrediction, blank=True, related_name="notification_logs")
+    hayfever_predictions = models.ManyToManyField(
+        "HayFeverPrediction", blank=True, related_name="notification_logs"
+    )
 
     # Notification content
     subject = models.CharField(max_length=500, blank=True)

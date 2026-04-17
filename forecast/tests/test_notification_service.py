@@ -8,6 +8,8 @@ from forecast.models import (
     Location,
     WeatherForecast,
     MigrainePrediction,
+    HayFeverPrediction,
+    NotificationLog,
     UserHealthProfile,
 )
 from forecast.notification_service import NotificationService
@@ -389,3 +391,76 @@ class NotificationServiceTest(TestCase):
         # Should NOT send because user is in DIGEST mode
         self.assertFalse(result)
         mock_send_mail.assert_not_called()
+
+    def _make_hayfever_prediction(self, probability="HIGH"):
+        """Helper to create a HayFeverPrediction with the required related objects."""
+        now = timezone.now()
+        forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            temperature=22.0,
+            humidity=55.0,
+            pressure=1015.0,
+            wind_speed=10.0,
+            precipitation=0.0,
+            cloud_cover=20.0,
+        )
+        return HayFeverPrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability=probability,
+            weather_factors={"pollen_available": True, "tree_pollen": 4.0},
+        )
+
+    @patch("forecast.notification_service.send_mail")
+    def test_send_hayfever_alert_email(self, mock_send_mail):
+        """send_hayfever_alert sends an email when user has hay fever enabled."""
+        UserHealthProfile.objects.create(
+            user=self.user,
+            email_notifications_enabled=True,
+            hay_fever_predictions_enabled=True,
+        )
+        prediction = self._make_hayfever_prediction(probability="HIGH")
+
+        result = self.service.send_hayfever_alert(prediction)
+
+        self.assertTrue(result)
+        mock_send_mail.assert_called_once()
+
+    @patch("forecast.notification_service.send_mail")
+    def test_send_hayfever_alert_blocked_for_digest_user(self, mock_send_mail):
+        """Individual hay fever alerts are blocked for DIGEST mode users."""
+        UserHealthProfile.objects.create(
+            user=self.user,
+            notification_mode="DIGEST",
+            email_notifications_enabled=True,
+            hay_fever_predictions_enabled=True,
+        )
+        prediction = self._make_hayfever_prediction(probability="HIGH")
+
+        result = self.service.send_hayfever_alert(prediction)
+
+        self.assertFalse(result)
+        mock_send_mail.assert_not_called()
+
+    @patch("forecast.notification_service.send_mail")
+    def test_send_combined_alert_includes_hayfever(self, mock_send_mail):
+        """send_combined_alert accepts hayfever_predictions and logs them."""
+        UserHealthProfile.objects.create(
+            user=self.user,
+            email_notifications_enabled=True,
+            hay_fever_predictions_enabled=True,
+        )
+        prediction = self._make_hayfever_prediction(probability="HIGH")
+
+        result = self.service.send_combined_alert(hayfever_predictions=[prediction])
+
+        self.assertTrue(result)
+        mock_send_mail.assert_called_once()
+        log = NotificationLog.objects.get(user=self.user, notification_type="combined")
+        self.assertEqual(log.hayfever_predictions.count(), 1)
+        self.assertEqual(log.hayfever_predictions.first(), prediction)

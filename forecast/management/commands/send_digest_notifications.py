@@ -9,6 +9,7 @@ import logging
 from forecast.models import NotificationLog
 from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
+from forecast.prediction_service_hayfever import HayFeverPredictionService
 from forecast.management.commands.base import SilentStdoutCommand
 
 logger = logging.getLogger(__name__)
@@ -103,9 +104,11 @@ class Command(SilentStdoutCommand):
                 # ignoring user's custom prediction_window settings).
                 migraine_service = MigrainePredictionService()
                 sinusitis_service = SinusitisPredictionService()
+                hayfever_service = HayFeverPredictionService()
 
                 migraine_preds = []
                 sinusitis_preds = []
+                hayfever_preds = []
 
                 for location in user.locations.all():
                     if profile.migraine_predictions_enabled:
@@ -154,18 +157,42 @@ class Command(SilentStdoutCommand):
                                 user.username, location, e, exc_info=True,
                             )
 
+                    if profile.hay_fever_predictions_enabled:
+                        try:
+                            prob, pred = hayfever_service.predict_hayfever_probability(
+                                location=location,
+                                user=user,
+                                store_prediction=True,
+                                window_start_hours=0,
+                                window_end_hours=24,
+                            )
+                            if pred and prob in ["MEDIUM", "HIGH"]:
+                                hayfever_preds.append(pred)
+                        except Exception as e:
+                            self.stdout.write(
+                                self.style.ERROR(
+                                    f"Error generating hay fever prediction for "
+                                    f"{user.username}/{location}: {e}"
+                                )
+                            )
+                            logger.error(
+                                "Digest hay fever prediction error for %s/%s: %s",
+                                user.username, location, e, exc_info=True,
+                            )
+
                 # Apply severity threshold
                 if profile.notification_severity_threshold == "HIGH":
                     migraine_preds = [p for p in migraine_preds if p.probability == "HIGH"]
                     sinusitis_preds = [p for p in sinusitis_preds if p.probability == "HIGH"]
+                    hayfever_preds = [p for p in hayfever_preds if p.probability == "HIGH"]
 
                 # Skip if no predictions
-                if not migraine_preds and not sinusitis_preds:
+                if not migraine_preds and not sinusitis_preds and not hayfever_preds:
                     self.stdout.write(f"No predictions to send for {user.username}")
                     continue
 
                 # Send digest email
-                if self.send_digest_email(user, migraine_preds, sinusitis_preds):
+                if self.send_digest_email(user, migraine_preds, sinusitis_preds, hayfever_preds):
                     # Mark predictions as sent
                     for pred in migraine_preds:
                         pred.notification_sent = True
@@ -173,12 +200,16 @@ class Command(SilentStdoutCommand):
                     for pred in sinusitis_preds:
                         pred.notification_sent = True
                         pred.save()
+                    for pred in hayfever_preds:
+                        pred.notification_sent = True
+                        pred.save()
 
                     digests_sent += 1
                     self.stdout.write(
                         self.style.SUCCESS(
                             f"Sent digest to {user.username} "
-                            f"({len(migraine_preds)} migraine, {len(sinusitis_preds)} sinusitis)"
+                            f"({len(migraine_preds)} migraine, {len(sinusitis_preds)} sinusitis, "
+                            f"{len(hayfever_preds)} hay fever)"
                         )
                     )
                 else:
@@ -191,15 +222,19 @@ class Command(SilentStdoutCommand):
         self.stdout.write(self.style.SUCCESS(f"Digest notification process complete. Sent {digests_sent} digest(s)"))
         logger.info("Digest notification process complete: sent=%d, total_users=%d", digests_sent, len(users))
 
-    def send_digest_email(self, user, migraine_preds, sinusitis_preds):
+    def send_digest_email(self, user, migraine_preds, sinusitis_preds, hayfever_preds=None):
         """Send a daily digest email to a user."""
         from forecast.notification_service import NotificationService
 
+        hayfever_preds = hayfever_preds or []
         notification_service = NotificationService()
 
         # Create notification log
         notification_log = notification_service._create_notification_log(
-            user, "digest", migraine_preds=migraine_preds, sinusitis_preds=sinusitis_preds
+            user, "digest",
+            migraine_preds=migraine_preds,
+            sinusitis_preds=sinusitis_preds,
+            hayfever_preds=hayfever_preds,
         )
 
         if not user.email:
@@ -209,7 +244,7 @@ class Command(SilentStdoutCommand):
         # Group predictions by location
         from collections import defaultdict
 
-        location_data = defaultdict(lambda: {"migraine": [], "sinusitis": []})
+        location_data = defaultdict(lambda: {"migraine": [], "sinusitis": [], "hayfever": []})
 
         for pred in migraine_preds:
             location_data[pred.location.id]["location"] = pred.location
@@ -219,13 +254,18 @@ class Command(SilentStdoutCommand):
             location_data[pred.location.id]["location"] = pred.location
             location_data[pred.location.id]["sinusitis"].append(pred)
 
+        for pred in hayfever_preds:
+            location_data[pred.location.id]["location"] = pred.location
+            location_data[pred.location.id]["hayfever"].append(pred)
+
         # Prepare context for email template
         context = {
             "user": user,
             "location_data": list(location_data.values()),
             "migraine_count": len(migraine_preds),
             "sinusitis_count": len(sinusitis_preds),
-            "total_count": len(migraine_preds) + len(sinusitis_preds),
+            "hayfever_count": len(hayfever_preds),
+            "total_count": len(migraine_preds) + len(sinusitis_preds) + len(hayfever_preds),
             "digest_date": timezone.now().date(),
         }
 
