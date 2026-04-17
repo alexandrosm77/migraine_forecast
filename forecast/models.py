@@ -34,6 +34,9 @@ class UserHealthProfile(models.Model):
     sinusitis_predictions_enabled = models.BooleanField(
         default=True, help_text="Enable or disable sinusitis predictions for this user"
     )
+    hay_fever_predictions_enabled = models.BooleanField(
+        default=True, help_text="Enable or disable hay fever predictions for this user"
+    )
 
     # Notification preferences
     daily_notification_limit = models.IntegerField(
@@ -49,6 +52,9 @@ class UserHealthProfile(models.Model):
     )
     daily_sinusitis_notification_limit = models.IntegerField(
         default=1, help_text="Maximum sinusitis alert emails per day (0 = use general limit)"
+    )
+    daily_hay_fever_notification_limit = models.IntegerField(
+        default=1, help_text="Maximum hay fever alert emails per day (0 = use general limit)"
     )
 
     # Severity threshold for notifications
@@ -93,6 +99,9 @@ class UserHealthProfile(models.Model):
     )
     last_sinusitis_notification_sent_at = models.DateTimeField(
         null=True, blank=True, help_text="Timestamp of the last sinusitis notification sent"
+    )
+    last_hay_fever_notification_sent_at = models.DateTimeField(
+        null=True, blank=True, help_text="Timestamp of the last hay fever notification sent"
     )
 
     prediction_window_start_hours = models.IntegerField(
@@ -277,6 +286,47 @@ class ActualWeather(models.Model):
 
     def __str__(self):
         return f"Actual weather for {self.location} at {self.recorded_time}"
+
+
+class AirQualityForecast(models.Model):
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="air_quality_forecasts")
+    forecast_time = models.DateTimeField(help_text="When the forecast was made")
+    target_time = models.DateTimeField(help_text="When the forecast is for")
+
+    # Pollen (grains/m³, Europe-only, may be null outside Europe)
+    alder_pollen = models.FloatField(null=True, blank=True)
+    birch_pollen = models.FloatField(null=True, blank=True)
+    grass_pollen = models.FloatField(null=True, blank=True)
+    mugwort_pollen = models.FloatField(null=True, blank=True)
+    olive_pollen = models.FloatField(null=True, blank=True)
+    ragweed_pollen = models.FloatField(null=True, blank=True)
+
+    # Air quality
+    pm10 = models.FloatField(null=True, blank=True)
+    pm2_5 = models.FloatField(null=True, blank=True)
+    ozone = models.FloatField(null=True, blank=True)
+    nitrogen_dioxide = models.FloatField(null=True, blank=True)
+    dust = models.FloatField(null=True, blank=True)
+    uv_index = models.FloatField(null=True, blank=True)
+    european_aqi = models.FloatField(null=True, blank=True)
+    us_aqi = models.FloatField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["location", "target_time"],
+                name="unique_aq_location_target_time",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["location", "target_time"]),
+            models.Index(fields=["target_time"]),
+        ]
+
+    def __str__(self):
+        return f"Air quality forecast for {self.location} at {self.target_time}"
 
 
 class MigrainePrediction(models.Model):
