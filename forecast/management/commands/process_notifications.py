@@ -1,7 +1,7 @@
 from django.utils import timezone
 from datetime import timedelta
 
-from forecast.models import Location, MigrainePrediction, SinusitisPrediction
+from forecast.models import Location, MigrainePrediction, SinusitisPrediction, HayFeverPrediction
 from forecast.notification_service import NotificationService
 from forecast.management.commands.base import SilentStdoutCommand
 
@@ -73,6 +73,7 @@ class Command(SilentStdoutCommand):
             # Build predictions dictionary grouped by location
             migraine_predictions = {}
             sinusitis_predictions = {}
+            hayfever_predictions = {}
 
             # Find unsent predictions for each location
             for location in locations:
@@ -91,6 +92,14 @@ class Command(SilentStdoutCommand):
 
                     sinusitis_pred = (
                         SinusitisPrediction.objects.filter(
+                            location=location, prediction_time__gte=recent_time, probability__in=["HIGH", "MEDIUM"]
+                        )
+                        .order_by("-prediction_time")
+                        .first()
+                    )
+
+                    hayfever_pred = (
+                        HayFeverPrediction.objects.filter(
                             location=location, prediction_time__gte=recent_time, probability__in=["HIGH", "MEDIUM"]
                         )
                         .order_by("-prediction_time")
@@ -120,6 +129,17 @@ class Command(SilentStdoutCommand):
                         .first()
                     )
 
+                    hayfever_pred = (
+                        HayFeverPrediction.objects.filter(
+                            location=location,
+                            prediction_time__gte=recent_time,
+                            probability__in=["HIGH", "MEDIUM"],
+                            notification_sent=False,
+                        )
+                        .order_by("-prediction_time")
+                        .first()
+                    )
+
                 # Add to dictionaries if found
                 if migraine_pred:
                     migraine_predictions[location.id] = {
@@ -133,16 +153,28 @@ class Command(SilentStdoutCommand):
                         "prediction": sinusitis_pred,
                     }
 
+                if hayfever_pred:
+                    hayfever_predictions[location.id] = {
+                        "probability": hayfever_pred.probability,
+                        "prediction": hayfever_pred,
+                    }
+
             # Count pending notifications
-            total_pending = len(set(list(migraine_predictions.keys()) + list(sinusitis_predictions.keys())))
+            total_pending = len(set(
+                list(migraine_predictions.keys())
+                + list(sinusitis_predictions.keys())
+                + list(hayfever_predictions.keys())
+            ))
 
             self.stdout.write(f"Found {len(migraine_predictions)} pending migraine notification(s)")
             self.stdout.write(f"Found {len(sinusitis_predictions)} pending sinusitis notification(s)")
+            self.stdout.write(f"Found {len(hayfever_predictions)} pending hay fever notification(s)")
             self.stdout.write(f"Total unique locations with pending notifications: {total_pending}")
             logger.info(
-                "Found pending notifications: migraine=%d, sinusitis=%d, total_locations=%d",
+                "Found pending notifications: migraine=%d, sinusitis=%d, hayfever=%d, total_locations=%d",
                 len(migraine_predictions),
                 len(sinusitis_predictions),
+                len(hayfever_predictions),
                 total_pending,
             )
 
@@ -153,6 +185,7 @@ class Command(SilentStdoutCommand):
                 data={
                     "migraine_count": len(migraine_predictions),
                     "sinusitis_count": len(sinusitis_predictions),
+                    "hayfever_count": len(hayfever_predictions),
                     "total_pending": total_pending,
                 },
             )
@@ -168,13 +201,18 @@ class Command(SilentStdoutCommand):
             self.stdout.write("PENDING NOTIFICATIONS:")
             self.stdout.write("=" * 60)
 
-            all_location_ids = set(list(migraine_predictions.keys()) + list(sinusitis_predictions.keys()))
+            all_location_ids = set(
+                list(migraine_predictions.keys())
+                + list(sinusitis_predictions.keys())
+                + list(hayfever_predictions.keys())
+            )
             for location_id in all_location_ids:
                 location = Location.objects.get(id=location_id)
                 user = location.user
 
                 migraine_info = migraine_predictions.get(location_id)
                 sinusitis_info = sinusitis_predictions.get(location_id)
+                hayfever_info = hayfever_predictions.get(location_id)
 
                 self.stdout.write(f"\n{user.username} ({user.email}) - {location}:")
 
@@ -184,6 +222,9 @@ class Command(SilentStdoutCommand):
                 if sinusitis_info:
                     self.stdout.write(f"  • Sinusitis: {sinusitis_info['probability']} risk")
 
+                if hayfever_info:
+                    self.stdout.write(f"  • Hay fever: {hayfever_info['probability']} risk")
+
             # Send notifications
             if not options["dry_run"]:
                 self.stdout.write("\n" + "=" * 60)
@@ -192,7 +233,7 @@ class Command(SilentStdoutCommand):
 
                 try:
                     notifications_sent = notification_service.check_and_send_combined_notifications(
-                        migraine_predictions, sinusitis_predictions
+                        migraine_predictions, sinusitis_predictions, hayfever_predictions
                     )
 
                     self.stdout.write(self.style.SUCCESS(f"\n✓ Successfully sent {notifications_sent} notification(s)"))
@@ -213,6 +254,7 @@ class Command(SilentStdoutCommand):
                         {
                             "migraine_count": len(migraine_predictions),
                             "sinusitis_count": len(sinusitis_predictions),
+                            "hayfever_count": len(hayfever_predictions),
                             "total_pending": total_pending,
                         },
                     )
@@ -233,6 +275,7 @@ class Command(SilentStdoutCommand):
             self.stdout.write("=" * 60)
             self.stdout.write(f"Pending migraine notifications: {len(migraine_predictions)}")
             self.stdout.write(f"Pending sinusitis notifications: {len(sinusitis_predictions)}")
+            self.stdout.write(f"Pending hay fever notifications: {len(hayfever_predictions)}")
             self.stdout.write(f"Notifications sent: {notifications_sent}")
             self.stdout.write(f"Duration: {duration:.2f} seconds")
             self.stdout.write(f"Completed at: {end_time}")
@@ -241,6 +284,7 @@ class Command(SilentStdoutCommand):
             summary_data = {
                 "pending_migraine": len(migraine_predictions),
                 "pending_sinusitis": len(sinusitis_predictions),
+                "pending_hayfever": len(hayfever_predictions),
                 "notifications_sent": notifications_sent,
                 "duration_seconds": duration,
                 "completed_at": str(end_time),
@@ -253,9 +297,10 @@ class Command(SilentStdoutCommand):
 
             # Log summary for Promtail/Loki
             logger.info(
-                "Notification processing completed: pending_migraine=%d, pending_sinusitis=%d, sent=%d, duration=%.2fs, dry_run=%s",  # noqa: E501
+                "Notification processing completed: pending_migraine=%d, pending_sinusitis=%d, pending_hayfever=%d, sent=%d, duration=%.2fs, dry_run=%s",  # noqa: E501
                 len(migraine_predictions),
                 len(sinusitis_predictions),
+                len(hayfever_predictions),
                 notifications_sent,
                 duration,
                 options["dry_run"],

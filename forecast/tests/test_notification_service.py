@@ -1,3 +1,6 @@
+from io import StringIO
+
+from django.core.management import call_command
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -464,3 +467,54 @@ class NotificationServiceTest(TestCase):
         log = NotificationLog.objects.get(user=self.user, notification_type="combined")
         self.assertEqual(log.hayfever_predictions.count(), 1)
         self.assertEqual(log.hayfever_predictions.first(), prediction)
+
+
+class ProcessNotificationsCommandHayFeverTest(TestCase):
+    """Ensure process_notifications collects and passes hay fever predictions through."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="pnhfuser", email="pnhf@example.com", password="testpassword"
+        )
+        self.location = Location.objects.create(
+            user=self.user, city="Athens", country="GR", latitude=37.9838, longitude=23.7275
+        )
+        now = timezone.now()
+        self.forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            temperature=22.0,
+            humidity=55.0,
+            pressure=1015.0,
+            wind_speed=10.0,
+            precipitation=0.0,
+            cloud_cover=20.0,
+        )
+        self.hf_prediction = HayFeverPrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=self.forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={"pollen_available": True, "tree_pollen": 4.0},
+            notification_sent=False,
+        )
+
+    @patch("forecast.management.commands.process_notifications.NotificationService")
+    def test_process_notifications_passes_hayfever_predictions(self, mock_service_cls):
+        """process_notifications should pick up unsent HIGH/MEDIUM hay fever predictions
+        and pass them as the third argument to check_and_send_combined_notifications."""
+        mock_service = mock_service_cls.return_value
+        mock_service.check_and_send_combined_notifications.return_value = 1
+
+        call_command("process_notifications", stdout=StringIO(), stderr=StringIO())
+
+        self.assertTrue(mock_service.check_and_send_combined_notifications.called)
+        args, _ = mock_service.check_and_send_combined_notifications.call_args
+        self.assertEqual(len(args), 3, "Expected migraine, sinusitis, and hayfever dicts")
+        migraine_predictions, sinusitis_predictions, hayfever_predictions = args
+        self.assertIn(self.location.id, hayfever_predictions)
+        self.assertEqual(hayfever_predictions[self.location.id]["probability"], "HIGH")
+        self.assertEqual(hayfever_predictions[self.location.id]["prediction"], self.hf_prediction)
