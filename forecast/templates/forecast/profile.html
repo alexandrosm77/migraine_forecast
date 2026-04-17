@@ -44,10 +44,6 @@
                                 <div class="col-7">{{ profile_user.username }}</div>
                             </div>
                             <div class="row mb-3">
-                                <div class="col-5"><strong>{% trans "Email" %}:</strong></div>
-                                <div class="col-7">{{ profile_user.email|default:"Not provided" }}</div>
-                            </div>
-                            <div class="row mb-3">
                                 <div class="col-5"><strong>{% trans "Date Joined" %}:</strong></div>
                                 <div class="col-7">{{ profile_user.date_joined|date:"F j, Y" }}</div>
                             </div>
@@ -74,7 +70,19 @@
                             <h5 class="mb-3">{% trans "Health & Sensitivity" %}</h5>
                             <form method="post" novalidate>
                                 {% csrf_token %}
+                                {{ email_form.non_field_errors }}
                                 <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="id_email" class="form-label">{% trans "Email" %}</label>
+                                        {% if is_viewing_other %}
+                                            {% trans "Not provided" as not_provided %}
+                                            <div class="form-control-plaintext">{{ profile_user.email|default:not_provided }}</div>
+                                        {% else %}
+                                            {{ email_form.email }}
+                                            {{ email_form.email.errors }}
+                                            <div class="form-text">{% trans "Used for migraine and sinusitis notification emails. Leave blank to disable." %}</div>
+                                        {% endif %}
+                                    </div>
                                     <div class="col-md-4">
                                         <label for="id_language" class="form-label">{% trans "Language" %}</label>
                                         {{ form.language }}

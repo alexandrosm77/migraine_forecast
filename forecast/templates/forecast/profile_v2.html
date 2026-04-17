@@ -82,6 +82,33 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <form method="post" novalidate>
             {% csrf_token %}
+            {% if email_form.non_field_errors %}
+                <div class="px-6 pt-6">
+                    <div class="rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 p-3 text-sm text-red-700 dark:text-red-200">
+                        {{ email_form.non_field_errors }}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Account Section -->
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">👤 {% trans "Account" %}</h3>
+                <div>
+                    <label for="id_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Email" %}
+                    </label>
+                    {% if is_viewing_other %}
+                        {% trans "Not provided" as not_provided %}
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ profile_user.email|default:not_provided }}</p>
+                    {% else %}
+                        {{ email_form.email }}
+                        {% if email_form.email.errors %}
+                            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ email_form.email.errors }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Used for migraine and sinusitis notification emails. Leave blank to disable." %}</p>
+                    {% endif %}
+                </div>
+            </div>
 
             <!-- Preferences Section -->
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
