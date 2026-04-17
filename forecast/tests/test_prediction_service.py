@@ -5,12 +5,15 @@ from datetime import timedelta
 from unittest.mock import patch, MagicMock
 
 from forecast.models import (
+    AirQualityForecast,
+    LLMResponse,
     Location,
     WeatherForecast,
     UserHealthProfile,
 )
 from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
+from forecast.prediction_service_hayfever import HayFeverPredictionService
 
 
 class MigrainePredictionServiceTest(TestCase):
@@ -314,6 +317,153 @@ class SinusitisPredictionServiceTest(TestCase):
         time_diff_end = (prediction.target_time_end - timezone.now()).total_seconds() / 3600
         self.assertAlmostEqual(time_diff_start, 2, delta=0.1)
         self.assertAlmostEqual(time_diff_end, 10, delta=0.1)
+
+
+class HayFeverPredictionServiceTest(TestCase):
+    """Test cases for HayFeverPredictionService (EU + non-EU fallback)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="hfuser", email="hf@example.com", password="pw")
+        self.location = Location.objects.create(
+            user=self.user, city="Athens", country="Greece", latitude=37.9838, longitude=23.7275
+        )
+        now = timezone.now()
+
+        # Previous 24h forecasts
+        for i in range(6):
+            WeatherForecast.objects.create(
+                location=self.location,
+                forecast_time=now - timedelta(hours=12),
+                target_time=now - timedelta(hours=6 - i),
+                temperature=22.0, humidity=55.0, pressure=1015.0,
+                wind_speed=6.0, precipitation=0.0, cloud_cover=20.0,
+            )
+
+        # Window forecasts (3-6h ahead) — warm, dry, breezy
+        self.window_forecasts = []
+        for i in range(4):
+            fc = WeatherForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=now + timedelta(hours=3 + i),
+                temperature=26.0, humidity=40.0, pressure=1013.0,
+                wind_speed=9.0, precipitation=0.0, cloud_cover=25.0,
+            )
+            self.window_forecasts.append(fc)
+
+    def _create_aq_rows(self, with_pollen=True):
+        now = timezone.now()
+        for i, fc in enumerate(self.window_forecasts):
+            AirQualityForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=fc.target_time,
+                grass_pollen=120.0 if with_pollen else None,
+                birch_pollen=40.0 if with_pollen else None,
+                alder_pollen=10.0 if with_pollen else None,
+                mugwort_pollen=5.0 if with_pollen else None,
+                olive_pollen=80.0 if with_pollen else None,
+                ragweed_pollen=0.0 if with_pollen else None,
+                pm2_5=15.0, pm10=35.0, ozone=110.0,
+                nitrogen_dioxide=20.0, european_aqi=60.0,
+            )
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_predict_high_with_peak_pollen(self, mock_get_config):
+        """Peak grass/olive pollen + wind + warm-dry should push manual score to HIGH."""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        self._create_aq_rows(with_pollen=True)
+        service = HayFeverPredictionService()
+        probability, prediction = service.predict_hayfever_probability(self.location, self.user)
+
+        self.assertEqual(probability, "HIGH")
+        self.assertIsNotNone(prediction)
+        self.assertEqual(prediction.probability, "HIGH")
+        self.assertTrue(prediction.weather_factors.get("pollen_available"))
+        self.assertEqual(prediction.weather_factors.get("weights_used"), "default")
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_predict_non_eu_fallback_without_pollen(self, mock_get_config):
+        """No pollen data -> still produces a prediction with pollen_available=False."""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        self._create_aq_rows(with_pollen=False)
+        service = HayFeverPredictionService()
+        probability, prediction = service.predict_hayfever_probability(self.location, self.user)
+
+        self.assertIn(probability, ["LOW", "MEDIUM", "HIGH"])
+        self.assertIsNotNone(prediction)
+        self.assertFalse(prediction.weather_factors.get("pollen_available"))
+        self.assertEqual(prediction.weather_factors.get("weights_used"), "no_pollen")
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_predict_with_llm_records_llmresponse(self, mock_get_config):
+        """LLM-backed prediction creates a linked LLMResponse row."""
+        mock_config = MagicMock()
+        mock_config.is_active = True
+        mock_config.base_url = "http://test.com"
+        mock_config.api_key = "k"
+        mock_config.model = "m"
+        mock_config.timeout = 5.0
+        mock_config.high_token_budget = False
+        mock_config.confidence_threshold = 0.7
+        mock_config.extra_payload = {}
+        mock_get_config.return_value = mock_config
+
+        self._create_aq_rows(with_pollen=True)
+
+        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+            mock_llm_instance = MagicMock()
+            mock_llm_instance.predict_hayfever_probability.return_value = (
+                "MEDIUM",
+                {
+                    "raw": {
+                        "probability_level": "MEDIUM",
+                        "confidence": 0.9,
+                        "rationale": "moderate pollen",
+                        "analysis_text": "Keep windows closed",
+                        "prevention_tips": ["Close windows"],
+                    },
+                    "request_payload": {"model": "m"},
+                    "api_raw": {"choices": []},
+                    "inference_time": 0.1,
+                },
+            )
+            mock_llm_class.return_value = mock_llm_instance
+
+            service = HayFeverPredictionService()
+            probability, prediction = service.predict_hayfever_probability(self.location, self.user)
+
+            self.assertEqual(probability, "MEDIUM")
+            mock_llm_instance.predict_hayfever_probability.assert_called_once()
+            # air_quality_forecasts kwarg should be populated from DB
+            call_kwargs = mock_llm_instance.predict_hayfever_probability.call_args.kwargs
+            self.assertIn("air_quality_forecasts", call_kwargs)
+            self.assertGreaterEqual(len(call_kwargs["air_quality_forecasts"]), 1)
+
+            # LLMResponse created and linked
+            llm_rows = LLMResponse.objects.filter(hayfever_prediction=prediction)
+            self.assertEqual(llm_rows.count(), 1)
+            self.assertEqual(llm_rows.first().prediction_type, "hayfever")
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_predict_no_forecasts_returns_none(self, mock_get_config):
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        other = Location.objects.create(
+            user=self.user, city="Nowhere", country="X", latitude=0.0, longitude=0.0
+        )
+        service = HayFeverPredictionService()
+        probability, prediction = service.predict_hayfever_probability(other, self.user)
+        self.assertIsNone(probability)
+        self.assertIsNone(prediction)
 
 
 class DigestPredictionWindowTest(TestCase):

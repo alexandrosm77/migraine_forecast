@@ -371,6 +371,35 @@ class SinusitisPrediction(models.Model):
         return f"Sinusitis prediction for {self.user.username} at {self.location} ({self.probability})"
 
 
+class HayFeverPrediction(models.Model):
+    PROBABILITY_CHOICES = [
+        ("LOW", "Low"),
+        ("MEDIUM", "Medium"),
+        ("HIGH", "High"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="hayfever_predictions")
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="hayfever_predictions")
+    forecast = models.ForeignKey(WeatherForecast, on_delete=models.CASCADE, related_name="hayfever_predictions")
+    air_quality_forecast = models.ForeignKey(
+        AirQualityForecast,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hayfever_predictions",
+        help_text="Air-quality snapshot used for this prediction (preserved if the AQ row is later cleaned up)",
+    )
+    prediction_time = models.DateTimeField(auto_now_add=True)  # When prediction was made
+    target_time_start = models.DateTimeField()  # Start of prediction window (3-6 hours)
+    target_time_end = models.DateTimeField()  # End of prediction window
+    probability = models.CharField(max_length=10, choices=PROBABILITY_CHOICES)
+    weather_factors = JSONField(default=dict, null=True, blank=True)
+    notification_sent = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Hay fever prediction for {self.user.username} at {self.location} ({self.probability})"
+
+
 class NotificationLog(models.Model):
     """
     Comprehensive log of all notifications sent to users.
@@ -495,6 +524,7 @@ class LLMResponse(models.Model):
     PREDICTION_TYPE_CHOICES = [
         ("migraine", "Migraine"),
         ("sinusitis", "Sinusitis"),
+        ("hayfever", "Hay Fever"),
     ]
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="llm_responses")
@@ -514,6 +544,9 @@ class LLMResponse(models.Model):
     )
     sinusitis_prediction = models.ForeignKey(
         "SinusitisPrediction", on_delete=models.SET_NULL, null=True, blank=True, related_name="llm_responses"
+    )
+    hayfever_prediction = models.ForeignKey(
+        "HayFeverPrediction", on_delete=models.SET_NULL, null=True, blank=True, related_name="llm_responses"
     )
 
     # LLM request and response data
@@ -550,11 +583,13 @@ class LLMResponse(models.Model):
 
     @property
     def prediction(self):
-        """Return the associated prediction (migraine or sinusitis)."""
+        """Return the associated prediction (migraine, sinusitis, or hay fever)."""
         if self.prediction_type == "migraine":
             return self.migraine_prediction
         elif self.prediction_type == "sinusitis":
             return self.sinusitis_prediction
+        elif self.prediction_type == "hayfever":
+            return self.hayfever_prediction
         return None
 
 

@@ -520,3 +520,132 @@ class LLMClient:
         except Exception:
             logger.exception("Failed to process LLM sinusitis response")
             return None, {"raw": result, "request_payload": request_payload}
+
+    def predict_hayfever_probability(
+        self,
+        scores: Dict[str, float],
+        location_label: str,
+        user_profile: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,
+        forecasts: Optional[List[Any]] = None,
+        previous_forecasts: Optional[List[Any]] = None,
+        location: Optional[Any] = None,
+        high_token_budget: bool = False,
+        outlook_forecasts: Optional[List[Any]] = None,
+        air_quality_forecasts: Optional[List[Any]] = None,
+    ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+        """
+        Ask the LLM to output a JSON with keys for hay fever (allergic rhinitis) risk:
+          - probability_level: one of LOW, MEDIUM, HIGH
+          - confidence: float 0-1
+          - rationale: short string
+        Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
+
+        Args:
+            scores: Normalized weather/AQ scores (kept for fallback, not sent to LLM)
+            location_label: Human-readable location string
+            user_profile: User health profile with sensitivities and language
+            context: Legacy context dict (deprecated)
+            forecasts: List of WeatherForecast objects for prediction window
+            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
+            location: Location model instance
+            high_token_budget: Whether to use detailed context (default: False)
+            outlook_forecasts: List of WeatherForecast objects for the next 24 hours
+            air_quality_forecasts: List of AirQualityForecast objects for the prediction window
+        """
+        user_language = None
+        if user_profile and "language" in user_profile:
+            user_language = user_profile["language"]
+
+        language_instruction = ""
+        if user_language == "el":
+            language_instruction = (
+                "\nReply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
+            )
+        elif user_language and user_language != "en":
+            language_instruction = f"\nReply in the user's language ({user_language}) for all text fields."
+
+        sys_prompt = (
+            "You are a hay fever (allergic rhinitis) risk assessor. Analyze the pollen, "
+            "air-quality, and weather data provided and assess hay fever risk for the forecast window.\n\n"
+            "Consider the dominant drivers:\n"
+            "- Pollen counts per species (grains/m³). Species differ by season: "
+            "alder/birch in early spring, grass in late spring/summer, olive in Mediterranean "
+            "spring, mugwort/ragweed in late summer/autumn.\n"
+            "- Wind speed disperses pollen (higher wind = wider spread).\n"
+            "- Dry, warm conditions favor pollen release; rain temporarily suppresses it.\n"
+            "- Thunderstorms can rupture pollen grains and amplify exposure.\n"
+            "- Air pollution: PM2.5, PM10, ozone, NO₂ aggravate allergic symptoms.\n"
+            "- Humidity extremes can worsen symptoms.\n\n"
+            "If pollen data is marked unavailable, base the assessment on PM2.5/PM10/ozone/wind/humidity "
+            "and explicitly note the reduced confidence.\n"
+            "Use the user's sensitivity profile as context.\n"
+            f"{language_instruction}\n"
+            "Output ONLY valid JSON matching the schema below.\n"
+            "<schema>\n"
+            "{\n"
+            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
+            '  "confidence": <float between 0 and 1>,\n'
+            '  "rationale": "<brief 3 sentence explanation of your reasoning>",\n'
+            '  "analysis_text": "<concise 3 sentence user-facing explanation>",\n'
+            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
+            "}\n"
+            "</schema>"
+        )
+
+        if forecasts and location:
+            context_builder = LLMContextBuilder(high_token_budget=high_token_budget)
+            user_prompt_str = context_builder.build_hayfever_context(
+                forecasts=forecasts,
+                previous_forecasts=previous_forecasts or [],
+                location=location,
+                air_quality_forecasts=air_quality_forecasts or [],
+                user_profile=user_profile,
+                outlook_forecasts=outlook_forecasts or [],
+            )
+        else:
+            user_prompt_str = self._build_legacy_prompt(
+                scores=scores,
+                location_label=location_label,
+                user_profile=user_profile,
+                context=context,
+            )
+
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt_str},
+        ]
+        request_payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.2,
+        }
+        request_payload.update(self.extra_payload)
+
+        try:
+            result = self.chat_complete(
+                messages=messages,
+                temperature=0.2,
+            )
+        except Exception as e:
+            logger.warning("LLM chat request failed for hay fever: %s", e)
+            return None, {"error": str(e), "request_payload": request_payload}
+
+        try:
+            inference_time = result.pop("_inference_time", None)
+            choices = result.get("choices", [])
+            content = (choices[0]["message"]["content"] if choices else "").strip()
+            parsed = self._extract_json(content) if content else None
+            if not parsed:
+                logger.warning("LLM hay fever response not JSON parsable: %s", content[:200])
+                return None, {"raw": result, "request_payload": request_payload, "inference_time": inference_time}
+            level = parsed.get("probability_level")
+            if isinstance(level, str):
+                level_up = level.strip().upper()
+                if level_up in {"LOW", "MEDIUM", "HIGH"}:
+                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
+            logger.warning("LLM hay fever response missing/invalid probability_level: %s", parsed)
+            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
+        except Exception:
+            logger.exception("Failed to process LLM hay fever response")
+            return None, {"raw": result, "request_payload": request_payload}
