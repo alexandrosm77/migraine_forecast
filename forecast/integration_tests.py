@@ -413,9 +413,11 @@ class EndToEndWorkflowTest(TestCase):
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 3,
+            "daily_hay_fever_notification_limit": 1,
             "quiet_hours_enabled": False,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
+            "hay_fever_predictions_enabled": True,
             "sensitivity_preset": "HIGH",  # Using preset instead of granular sensitivity
         }
 
