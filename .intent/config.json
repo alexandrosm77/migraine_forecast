@@ -1,0 +1,10 @@
+{
+  "scripts": [
+    {
+      "name": "format",
+      "command": "black .",
+      "mode": "command",
+      "category": "format"
+    }
+  ]
+}

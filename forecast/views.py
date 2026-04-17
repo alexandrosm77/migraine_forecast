@@ -19,7 +19,7 @@ from django.core.exceptions import PermissionDenied
 from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction, HayFeverPrediction
 from .weather_service import WeatherService
 from .notification_service import NotificationService
-from .forms import UserHealthProfileForm
+from .forms import UserHealthProfileForm, UserEmailForm
 
 logger = logging.getLogger(__name__)
 
@@ -761,22 +761,26 @@ def profile(request, user_id=None):
     if request.method == "POST" and not is_viewing_other:
         # Only allow editing own profile
         form = UserHealthProfileForm(request.POST, instance=profile)
-        if form.is_valid():
+        email_form = UserEmailForm(request.POST, instance=profile_user)
+        if form.is_valid() and email_form.is_valid():
+            email_form.save()
             obj = form.save(commit=False)
             obj.user = profile_user
             obj.save()
-            messages.success(request, "Health profile updated successfully.")
+            messages.success(request, "Profile updated successfully.")
             return redirect("forecast:profile")
         else:
             messages.error(request, "Please correct the errors below.")
     else:
         form = UserHealthProfileForm(instance=profile)
+        email_form = UserEmailForm(instance=profile_user)
 
     # Provide locations info for template stats
     locations = Location.objects.filter(user=profile_user)
 
     context = {
         "form": form,
+        "email_form": email_form,
         "locations": locations,
         "profile_user": profile_user,
         "is_viewing_other": is_viewing_other,

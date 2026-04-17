@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.models import User
 from .models import UserHealthProfile
 
 
@@ -136,3 +137,29 @@ class UserHealthProfileForm(forms.ModelForm):
                 raise forms.ValidationError("Digest time is required when using Daily Digest mode")
 
         return cleaned
+
+
+class UserEmailForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["email"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        default_input_class = "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"  # noqa: E501
+        self.fields["email"].required = False
+        self.fields["email"].widget.attrs.update(
+            {
+                "class": default_input_class,
+                "type": "email",
+                "autocomplete": "email",
+            }
+        )
+
+    def clean_email(self):
+        value = (self.cleaned_data.get("email") or "").strip().lower()
+        if not value:
+            return ""
+        if User.objects.exclude(pk=self.instance.pk).filter(email__iexact=value).exists():
+            raise forms.ValidationError("This email is already in use by another account.")
+        return value

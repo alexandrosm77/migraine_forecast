@@ -304,3 +304,125 @@ class HayFeverViewsSmokeTest(TestCase):
         self.client.login(username="other", password="testpassword")
         response = self.client.get(f"/hayfever-predictions/{self.prediction.id}/")
         self.assertEqual(response.status_code, 404)
+
+
+class ProfileEmailEditTests(TestCase):
+    """Tests for the email-editing capability on the profile view."""
+
+    PROFILE_URL = "/accounts/profile/"
+
+    def _valid_profile_post(self, **overrides):
+        """Minimal valid POST body for the profile form; override fields as needed."""
+        data = {
+            "language": "en",
+            "ui_version": "v2",
+            "theme": "light",
+            "age": 35,
+            "email_notifications_enabled": True,
+            "notification_mode": "IMMEDIATE",
+            "notification_severity_threshold": "MEDIUM",
+            "daily_notification_limit": 1,
+            "quiet_hours_enabled": False,
+            "migraine_predictions_enabled": True,
+            "sinusitis_predictions_enabled": True,
+            "hay_fever_predictions_enabled": True,
+            "daily_hay_fever_notification_limit": 1,
+            "sensitivity_preset": "NORMAL",
+        }
+        data.update(overrides)
+        return data
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="owner", email="user@example.com", password="testpassword"
+        )
+        self.other_user = User.objects.create_user(
+            username="other", email="other@example.com", password="testpassword"
+        )
+        self.profile = UserHealthProfile.objects.create(user=self.user)
+        self.client.login(username="owner", password="testpassword")
+
+    def test_get_profile_renders_email_form(self):
+        """GET profile returns 200 with email_form in context and current email visible."""
+        response = self.client.get(self.PROFILE_URL)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("email_form", response.context)
+        body = response.content.decode()
+        self.assertTrue(
+            "user@example.com" in body or 'name="email"' in body,
+            "Expected current email or email input to be rendered in profile page",
+        )
+
+    def test_post_updates_email(self):
+        """POST with a new email + valid health fields redirects and updates User.email."""
+        response = self.client.post(
+            self.PROFILE_URL,
+            self._valid_profile_post(email="new@example.com"),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(User.objects.get(pk=self.user.pk).email, "new@example.com")
+
+    def test_post_empty_email_clears_email(self):
+        """POST with empty email redirects and clears User.email."""
+        response = self.client.post(
+            self.PROFILE_URL,
+            self._valid_profile_post(email=""),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(User.objects.get(pk=self.user.pk).email, "")
+
+    def test_post_duplicate_email_rejected(self):
+        """POST with an email already used by another account shows a form error and does not change email."""
+        response = self.client.post(
+            self.PROFILE_URL,
+            self._valid_profile_post(email="other@example.com"),
+        )
+        self.assertEqual(response.status_code, 200)
+        email_form = response.context["email_form"]
+        self.assertTrue(email_form.errors, "Expected email_form to have errors for duplicate email")
+        self.assertIn("email", email_form.errors)
+        self.assertEqual(User.objects.get(pk=self.user.pk).email, "user@example.com")
+
+    def test_post_email_is_normalized(self):
+        """POST with whitespace/mixed case email is stored trimmed and lowercased."""
+        response = self.client.post(
+            self.PROFILE_URL,
+            self._valid_profile_post(email="  NEW@Example.COM  "),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(User.objects.get(pk=self.user.pk).email, "new@example.com")
+
+    def test_admin_viewing_other_user_cannot_edit_email(self):
+        """Admin GET for another user's profile shows no editable email input and POST does not change it."""
+        admin = User.objects.create_superuser(
+            username="admin", email="admin@example.com", password="adminpassword"
+        )
+        self.client.logout()
+        self.client.login(username="admin", password="adminpassword")
+
+        other_url = f"/accounts/profile/{self.other_user.id}/"
+
+        get_response = self.client.get(other_url)
+        self.assertEqual(get_response.status_code, 200)
+        self.assertTrue(get_response.context.get("is_viewing_other"))
+        self.assertNotIn(
+            'name="email"',
+            get_response.content.decode(),
+            "Admin viewing another user's profile should not render an editable email input",
+        )
+
+        post_response = self.client.post(
+            other_url,
+            self._valid_profile_post(email="hacked@example.com"),
+        )
+        self.assertIn(post_response.status_code, (200, 302))
+        self.assertEqual(
+            User.objects.get(pk=self.other_user.pk).email,
+            "other@example.com",
+            "Admin POST to another user's profile must not change that user's email",
+        )
+        self.assertEqual(
+            User.objects.get(pk=admin.pk).email,
+            "admin@example.com",
+            "Admin's own email must not be changed when POSTing to another user's profile",
+        )
