@@ -40,12 +40,14 @@ class MigrainePredictionServiceTest(TestCase):
                 cloud_cover=30.0,
             )
 
-        # Forecasts for the prediction window (3-6 hours ahead)
+        # Forecasts for the prediction window (3-6 hours ahead). Pack them
+        # inside the window with a margin so the first row does not leak into
+        # previous_forecasts under small timezone.now() drift.
         for i in range(4):
             WeatherForecast.objects.create(
                 location=self.location,
                 forecast_time=now,
-                target_time=now + timedelta(hours=3 + i),
+                target_time=now + timedelta(hours=3.5 + i * 0.5),
                 temperature=30.0,  # Significant temperature change
                 humidity=75.0,  # High humidity
                 pressure=1000.0,  # Low pressure
@@ -175,6 +177,86 @@ class MigrainePredictionServiceTest(TestCase):
         time_diff_end = (prediction.target_time_end - timezone.now()).total_seconds() / 3600
         self.assertAlmostEqual(time_diff_start, 1, delta=0.1)
         self.assertAlmostEqual(time_diff_end, 4, delta=0.1)
+
+    def _create_window_aq_rows(self, pm2_5):
+        """Create AirQualityForecast rows aligned with the setUp window forecasts."""
+        now = timezone.now()
+        window_fcs = WeatherForecast.objects.filter(
+            location=self.location, target_time__gt=now,
+        ).order_by("target_time")
+        for fc in window_fcs:
+            AirQualityForecast.objects.create(
+                location=self.location,
+                forecast_time=now,
+                target_time=fc.target_time,
+                pm2_5=pm2_5,
+            )
+        return list(window_fcs)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_high_pm2_5_raises_air_quality_score(self, mock_get_config):
+        """High PM2.5 should produce a non-zero air_quality score stored on the prediction."""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        self._create_window_aq_rows(pm2_5=60.0)  # well above 25.0 µg/m³ threshold
+
+        service = MigrainePredictionService()
+        _, prediction = service.predict_migraine_probability(self.location, self.user)
+
+        self.assertIsNotNone(prediction)
+        factors = prediction.weather_factors or {}
+        self.assertIn("air_quality", factors)
+        self.assertGreater(factors["air_quality"], 0.0)
+        # 60 / 25 clamped to 1.0
+        self.assertEqual(factors["air_quality"], 1.0)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_air_quality_score_zero_without_aq_data(self, mock_get_config):
+        """Without AQ rows the air_quality score stays 0.0 (graceful degradation)."""
+        mock_config = MagicMock()
+        mock_config.is_active = False
+        mock_get_config.return_value = mock_config
+
+        service = MigrainePredictionService()
+        _, prediction = service.predict_migraine_probability(self.location, self.user)
+
+        self.assertIsNotNone(prediction)
+        factors = prediction.weather_factors or {}
+        self.assertEqual(factors.get("air_quality"), 0.0)
+
+    @patch("forecast.models.LLMConfiguration.get_config")
+    def test_llm_call_receives_air_quality_forecasts(self, mock_get_config):
+        """_call_llm_predict should forward AQ rows as air_quality_forecasts kwarg."""
+        mock_config = MagicMock()
+        mock_config.is_active = True
+        mock_config.base_url = "http://test.com"
+        mock_config.api_key = "k"
+        mock_config.model = "m"
+        mock_config.timeout = 5.0
+        mock_config.high_token_budget = False
+        mock_config.confidence_threshold = 0.7
+        mock_config.extra_payload = {}
+        mock_get_config.return_value = mock_config
+
+        window_fcs = self._create_window_aq_rows(pm2_5=40.0)
+
+        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+            mock_llm_instance = MagicMock()
+            mock_llm_instance.predict_probability.return_value = (
+                "HIGH",
+                {"raw": {"probability_level": "HIGH", "confidence": 0.9}},
+            )
+            mock_llm_class.return_value = mock_llm_instance
+
+            service = MigrainePredictionService()
+            service.predict_migraine_probability(self.location, self.user)
+
+            call_kwargs = mock_llm_instance.predict_probability.call_args.kwargs
+            self.assertIn("air_quality_forecasts", call_kwargs)
+            self.assertEqual(len(call_kwargs["air_quality_forecasts"]), len(window_fcs))
+            self.assertGreaterEqual(len(call_kwargs["air_quality_forecasts"]), 1)
 
 
 class SinusitisPredictionServiceTest(TestCase):

@@ -5,7 +5,7 @@ from datetime import timedelta
 import numpy as np
 from django.utils import timezone
 
-from .models import WeatherForecast, UserHealthProfile, LLMResponse
+from .models import WeatherForecast, UserHealthProfile, LLMResponse, AirQualityForecast
 from .llm_client import LLMClient
 from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, set_tag
 
@@ -606,3 +606,19 @@ class BasePredictionService(ABC):
     def get_recent_predictions(self, user, limit=10):
         """Get recent predictions for a user."""
         return self.PREDICTION_MODEL.objects.filter(user=user).order_by("-prediction_time")[:limit]
+
+    @staticmethod
+    def _fetch_air_quality(location, forecasts):
+        """Fetch AirQualityForecast rows aligned with the given weather forecasts."""
+        if not location or not forecasts:
+            return AirQualityForecast.objects.none()
+        fc_list = list(forecasts)
+        if not fc_list:
+            return AirQualityForecast.objects.none()
+        first = fc_list[0]
+        last = fc_list[-1]
+        return AirQualityForecast.objects.filter(
+            location=location,
+            target_time__gte=first.target_time,
+            target_time__lte=last.target_time,
+        ).order_by("target_time")

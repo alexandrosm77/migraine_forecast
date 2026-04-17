@@ -193,6 +193,7 @@ class LLMClient:
         location: Optional[Any] = None,
         high_token_budget: bool = False,
         outlook_forecasts: Optional[List[Any]] = None,
+        air_quality_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
         Ask the LLM to output a JSON with keys:
