@@ -19,8 +19,10 @@ class UserHealthProfileFormTest(TestCase):
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 2,
             "quiet_hours_enabled": False,
+            "daily_hay_fever_notification_limit": 1,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": False,
+            "hay_fever_predictions_enabled": False,
             "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)
@@ -37,8 +39,10 @@ class UserHealthProfileFormTest(TestCase):
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
             "quiet_hours_enabled": False,
+            "daily_hay_fever_notification_limit": 1,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
+            "hay_fever_predictions_enabled": True,
             "sensitivity_preset": "HIGH",
         }
         form = UserHealthProfileForm(data=form_data)
@@ -58,8 +62,10 @@ class UserHealthProfileFormTest(TestCase):
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
             "quiet_hours_enabled": False,
+            "daily_hay_fever_notification_limit": 1,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
+            "hay_fever_predictions_enabled": True,
             "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)
@@ -78,8 +84,10 @@ class UserHealthProfileFormTest(TestCase):
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
             "quiet_hours_enabled": False,
+            "daily_hay_fever_notification_limit": 1,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
+            "hay_fever_predictions_enabled": True,
             "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)
@@ -98,8 +106,10 @@ class UserHealthProfileFormTest(TestCase):
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
             "quiet_hours_enabled": False,
+            "daily_hay_fever_notification_limit": 1,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
+            "hay_fever_predictions_enabled": True,
             "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data)

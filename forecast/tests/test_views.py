@@ -113,8 +113,10 @@ class LanguageSwitchingTest(TestCase):
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 1,
             "quiet_hours_enabled": False,
+            "daily_hay_fever_notification_limit": 1,
             "migraine_predictions_enabled": True,
             "sinusitis_predictions_enabled": True,
+            "hay_fever_predictions_enabled": True,
             "sensitivity_preset": "NORMAL",
         }
         form = UserHealthProfileForm(data=form_data, instance=self.profile)
@@ -157,8 +159,10 @@ class LanguageSwitchingTest(TestCase):
                 "notification_severity_threshold": "MEDIUM",
                 "daily_notification_limit": 1,
                 "quiet_hours_enabled": False,
+                "daily_hay_fever_notification_limit": 1,
                 "migraine_predictions_enabled": True,
                 "sinusitis_predictions_enabled": True,
+                "hay_fever_predictions_enabled": True,
                 "sensitivity_preset": "NORMAL",
             },
             follow=True,
@@ -219,3 +223,84 @@ class LanguageSwitchingTest(TestCase):
         self.assertEqual(system_message["role"], "system")
         self.assertIn("Greek", system_message["content"])
         self.assertIn("Ελληνικά", system_message["content"])
+
+
+class HayFeverViewsSmokeTest(TestCase):
+    """Smoke tests for hay fever list and detail views."""
+
+    def setUp(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        from forecast.models import (
+            Location,
+            WeatherForecast,
+            AirQualityForecast,
+            HayFeverPrediction,
+        )
+
+        self.user = User.objects.create_user(username="hfuser", email="hf@example.com", password="testpassword")
+        self.profile = UserHealthProfile.objects.create(user=self.user)
+        self.location = Location.objects.create(
+            user=self.user, city="Athens", country="Greece", latitude=37.98, longitude=23.72
+        )
+        now = timezone.now()
+        self.forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=6),
+            temperature=20.0,
+            pressure=1013.0,
+            humidity=55.0,
+            wind_speed=10.0,
+            precipitation=0.0,
+            cloud_cover=0.0,
+        )
+        self.aq = AirQualityForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=6),
+            pm2_5=5.0,
+            pm10=10.0,
+            ozone=50.0,
+            nitrogen_dioxide=20.0,
+            grass_pollen=3.0,
+            european_aqi=25.0,
+        )
+        self.prediction = HayFeverPrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=self.forecast,
+            air_quality_forecast=self.aq,
+            prediction_time=now,
+            target_time_start=now + timedelta(hours=6),
+            target_time_end=now + timedelta(hours=12),
+            probability="MEDIUM",
+            weather_factors={
+                "total_score": 2.5,
+                "pollen": 1.5,
+                "wind": 0.5,
+                "pollen_available": True,
+                "llm_analysis_text": "Elevated grass pollen expected.",
+                "llm_prevention_tips": ["Keep windows closed"],
+            },
+        )
+
+    def test_hayfever_list_view_renders(self):
+        self.client.login(username="hfuser", password="testpassword")
+        response = self.client.get("/hayfever-predictions/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Athens")
+
+    def test_hayfever_detail_view_renders(self):
+        self.client.login(username="hfuser", password="testpassword")
+        response = self.client.get(f"/hayfever-predictions/{self.prediction.id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Athens")
+        self.assertContains(response, "Grass")
+
+    def test_hayfever_detail_view_404_for_other_user(self):
+        other = User.objects.create_user(username="other", email="o@example.com", password="testpassword")
+        UserHealthProfile.objects.create(user=other)
+        self.client.login(username="other", password="testpassword")
+        response = self.client.get(f"/hayfever-predictions/{self.prediction.id}/")
+        self.assertEqual(response.status_code, 404)

@@ -176,7 +176,7 @@
                 <!-- Daily Limits -->
                 <div class="mt-6">
                     <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Daily Limits</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div>
                             <label for="id_daily_notification_limit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Overall Daily Limit
@@ -197,6 +197,13 @@
                             </label>
                             {{ form.daily_sinusitis_notification_limit }}
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Max sinusitis emails (0 = use overall)</p>
+                        </div>
+                        <div>
+                            <label for="id_daily_hay_fever_notification_limit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Hay Fever Limit
+                            </label>
+                            {{ form.daily_hay_fever_notification_limit }}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Max hay fever emails (0 = use overall)</p>
                         </div>
                     </div>
                 </div>
@@ -253,6 +260,13 @@
                                 <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-100">Enable Sinusitis Predictions</span>
                             </label>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-500 ml-7">Generate and receive sinusitis predictions</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <label class="flex items-center cursor-pointer">
+                                {{ form.hay_fever_predictions_enabled }}
+                                <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-100">Enable Hay Fever Predictions</span>
+                            </label>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-500 ml-7">Generate and receive hay fever predictions. Pollen data is Europe only; outside Europe confidence is reduced.</p>
                         </div>
                     </div>
                 </div>

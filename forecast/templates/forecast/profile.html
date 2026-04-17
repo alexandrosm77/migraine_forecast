@@ -131,20 +131,25 @@
                                         <hr class="my-2">
                                         <h6 class="mb-3 mt-3">Daily Limits</h6>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <label for="id_daily_notification_limit" class="form-label">Overall Daily Limit</label>
                                         {{ form.daily_notification_limit }}
                                         <div class="form-text">Max emails per day (0 = disabled)</div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <label for="id_daily_migraine_notification_limit" class="form-label">Migraine Limit</label>
                                         {{ form.daily_migraine_notification_limit }}
                                         <div class="form-text">Max migraine emails (0 = use overall)</div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <label for="id_daily_sinusitis_notification_limit" class="form-label">Sinusitis Limit</label>
                                         {{ form.daily_sinusitis_notification_limit }}
                                         <div class="form-text">Max sinusitis emails (0 = use overall)</div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="id_daily_hay_fever_notification_limit" class="form-label">Hay Fever Limit</label>
+                                        {{ form.daily_hay_fever_notification_limit }}
+                                        <div class="form-text">Max hay fever emails (0 = use overall)</div>
                                     </div>
                                     <div class="col-12">
                                         <hr class="my-2">
@@ -180,12 +185,19 @@
                                             </label>
                                             <div class="form-text">Generate and receive migraine predictions</div>
                                         </div>
-                                        <div class="form-check form-switch">
+                                        <div class="form-check form-switch mb-2">
                                             {{ form.sinusitis_predictions_enabled }}
                                             <label class="form-check-label" for="id_sinusitis_predictions_enabled">
                                                 Enable Sinusitis Predictions
                                             </label>
                                             <div class="form-text">Generate and receive sinusitis predictions</div>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            {{ form.hay_fever_predictions_enabled }}
+                                            <label class="form-check-label" for="id_hay_fever_predictions_enabled">
+                                                Enable Hay Fever Predictions
+                                            </label>
+                                            <div class="form-text">Generate and receive hay fever predictions. Pollen data is Europe only; outside Europe confidence is reduced.</div>
                                         </div>
                                     </div>
                                     <div class="col-12">

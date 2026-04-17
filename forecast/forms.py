@@ -19,8 +19,10 @@ class UserHealthProfileForm(forms.ModelForm):
             "quiet_hours_enabled",
             "quiet_hours_start",
             "quiet_hours_end",
+            "daily_hay_fever_notification_limit",
             "migraine_predictions_enabled",
             "sinusitis_predictions_enabled",
+            "hay_fever_predictions_enabled",
             "sensitivity_preset",
         ]
         widgets = {
@@ -52,6 +54,11 @@ class UserHealthProfileForm(forms.ModelForm):
                 }
             ),
             "sinusitis_predictions_enabled": forms.CheckboxInput(
+                attrs={
+                    "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",  # noqa: E501
+                }
+            ),
+            "hay_fever_predictions_enabled": forms.CheckboxInput(
                 attrs={
                     "class": "form-check-input h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700",  # noqa: E501
                 }

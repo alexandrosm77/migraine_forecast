@@ -1,0 +1,176 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Hay Fever Prediction Details" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{% trans "Hay Fever Prediction Details" %}</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{{ prediction.location.city }}, {{ prediction.location.country }}</p>
+        </div>
+        <a href="{% url 'forecast:hayfever_prediction_list' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
+            <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            {% trans "Back to Predictions" %}
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🌿 {% trans "Prediction Information" %}</h3>
+                </div>
+                <div class="p-6">
+                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Location" %}</dt>
+                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ prediction.location.city }}, {{ prediction.location.country }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Prediction Made" %}</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ prediction.prediction_time|date:"F j, Y, g:i a" }}</dd>
+                        </div>
+                        <div class="md:col-span-2">
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Target Time Window" %}</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ prediction.target_time_start|date:"F j, Y, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Hay Fever Probability" %}</dt>
+                            <dd class="mt-1">
+                                {% if prediction.probability == 'HIGH' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">{% trans "High Risk" %}</span>
+                                {% elif prediction.probability == 'MEDIUM' %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">{% trans "Medium Risk" %}</span>
+                                {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">{% trans "Low Risk" %}</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Notification Sent" %}</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ prediction.notification_sent|yesno:"Yes,No" }}</dd>
+                        </div>
+                    </dl>
+                    {% if not pollen_available %}
+                    <div class="mt-4 bg-amber-50 dark:bg-amber-900 border border-amber-200 dark:border-amber-700 rounded-lg p-4">
+                        <p class="text-xs text-amber-800 dark:text-amber-200">
+                            <strong>{% trans "Note:" %}</strong> {% trans "Pollen data is unavailable for this location (Europe only). Prediction is based on air-quality and weather factors with reduced confidence." %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if pollen_species %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🌾 {% trans "Pollen Breakdown" %}</h3>
+                </div>
+                <div class="p-6">
+                    <p class="text-xs text-gray-500 dark:text-gray-500 mb-4">{% trans "Peak concentration per species (grains/m³) in the forecast window." %}</p>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {% for species in pollen_species %}
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">{{ species.name }}</div>
+                            <div class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ species.value|floatformat:1 }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-500">grains/m³</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if air_quality %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">💨 {% trans "Air Quality Summary" %}</h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {% if air_quality.european_aqi is not None %}<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">{% trans "European AQI" %}</div><div class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ air_quality.european_aqi|floatformat:0 }}</div></div>{% endif %}
+                        {% if air_quality.us_aqi is not None %}<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">{% trans "US AQI" %}</div><div class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ air_quality.us_aqi|floatformat:0 }}</div></div>{% endif %}
+                        {% if air_quality.pm2_5 is not None %}<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">PM2.5</div><div class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ air_quality.pm2_5|floatformat:1 }}</div><div class="text-xs text-gray-500 dark:text-gray-500">µg/m³</div></div>{% endif %}
+                        {% if air_quality.pm10 is not None %}<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">PM10</div><div class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ air_quality.pm10|floatformat:1 }}</div><div class="text-xs text-gray-500 dark:text-gray-500">µg/m³</div></div>{% endif %}
+                        {% if air_quality.ozone is not None %}<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">{% trans "Ozone" %}</div><div class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ air_quality.ozone|floatformat:1 }}</div><div class="text-xs text-gray-500 dark:text-gray-500">µg/m³</div></div>{% endif %}
+                        {% if air_quality.nitrogen_dioxide is not None %}<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"><div class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase">NO₂</div><div class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{{ air_quality.nitrogen_dioxide|floatformat:1 }}</div><div class="text-xs text-gray-500 dark:text-gray-500">µg/m³</div></div>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if llm_analysis_text %}
+            <div class="bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900 dark:to-emerald-800 rounded-xl shadow-sm border border-emerald-200 dark:border-emerald-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-emerald-200 dark:border-emerald-700 bg-emerald-100 dark:bg-emerald-800">
+                    <h3 class="text-lg font-semibold text-emerald-900 dark:text-emerald-100">📊 {% trans "Model Analysis" %}</h3>
+                </div>
+                <div class="p-6"><p class="text-sm text-emerald-900 dark:text-emerald-100">{{ llm_analysis_text }}</p></div>
+            </div>
+            {% endif %}
+
+            {% if llm_rationale %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">🔍 {% trans "Why This Alert?" %}</h3>
+                </div>
+                <div class="p-6"><p class="text-sm text-gray-700 dark:text-gray-300">{{ llm_rationale }}</p></div>
+            </div>
+            {% endif %}
+
+            {% if llm_prevention_tips and prediction.probability != 'LOW' %}
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">💡 {% trans "Prevention Tips" %}</h3>
+                </div>
+                <div class="p-6">
+                    <ul class="space-y-2 mb-4">
+                        {% for tip in llm_prevention_tips %}
+                        <li class="flex items-start">
+                            <svg class="h-5 w-5 text-teal-600 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span class="text-sm text-gray-700 dark:text-gray-300">{{ tip }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="bg-amber-50 dark:bg-amber-900 border border-amber-200 dark:border-amber-700 rounded-lg p-4">
+                        <p class="text-xs text-amber-800 dark:text-amber-200">
+                            <strong>{% trans "Note:" %}</strong> {% trans "These are AI-generated suggestions based on current conditions and should not be considered medical advice. Please consult with your healthcare provider for personalized recommendations." %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="lg:col-span-1">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6 sticky top-8">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{% trans "Quick Stats" %}</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Risk Level" %}</span>
+                        {% if prediction.probability == 'HIGH' %}<span class="text-sm font-semibold text-red-600">{% trans "High" %}</span>
+                        {% elif prediction.probability == 'MEDIUM' %}<span class="text-sm font-semibold text-amber-600">{% trans "Medium" %}</span>
+                        {% else %}<span class="text-sm font-semibold text-green-600">{% trans "Low" %}</span>{% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Pollen Data" %}</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{% if pollen_available %}{% trans "Available" %}{% else %}{% trans "Unavailable" %}{% endif %}</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Notified" %}</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ prediction.notification_sent|yesno:"Yes,No" }}</span>
+                    </div>
+                </div>
+                <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <a href="{% url 'forecast:location_detail' prediction.location.id %}" class="block w-full text-center px-4 py-2 text-sm font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg transition mb-3">{% trans "View Location" %}</a>
+                    <a href="{% url 'forecast:dashboard' %}" class="block w-full text-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">{% trans "Back to Dashboard" %}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,122 @@
+{% extends 'forecast/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Hay Fever Predictions" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">{% trans "Hay Fever Predictions" %}</h1>
+
+    {% if predictions %}
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <p class="mb-0 text-muted">
+                    {% blocktrans with start=predictions.start_index end=predictions.end_index count=predictions.paginator.count %}Showing {{ start }} - {{ end }} of {{ count }} predictions{% endblocktrans %}
+                </p>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Location" %}</th>
+                            <th>{% trans "Prediction Time" %}</th>
+                            <th>{% trans "Target Window" %}</th>
+                            <th>{% trans "Probability" %}</th>
+                            <th>{% trans "Actions" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in predictions %}
+                        <tr>
+                            <td>{{ prediction.location.city }}, {{ prediction.location.country }}</td>
+                            <td>{{ prediction.prediction_time|date:"M d, H:i" }}</td>
+                            <td>{{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}</td>
+                            <td>
+                                {% if prediction.probability == 'HIGH' %}
+                                <span class="badge bg-danger">{% trans "High" %}</span>
+                                {% elif prediction.probability == 'MEDIUM' %}
+                                <span class="badge bg-warning text-dark">{% trans "Medium" %}</span>
+                                {% else %}
+                                <span class="badge bg-success">{% trans "Low" %}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'forecast:hayfever_prediction_detail' prediction.id %}" class="btn btn-sm btn-outline-primary">{% trans "Details" %}</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if predictions.has_other_pages %}
+    <nav aria-label="Predictions pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if predictions.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1" aria-label="First"><span aria-hidden="true">&laquo;&laquo;</span></a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ predictions.previous_page_number }}" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;&laquo;</span></li>
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+            {% endif %}
+
+            {% for num in predictions.paginator.page_range %}
+                {% if predictions.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > predictions.number|add:'-3' and num < predictions.number|add:'3' %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if predictions.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ predictions.next_page_number }}" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ predictions.paginator.num_pages }}" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+            <li class="page-item disabled"><span class="page-link">&raquo;&raquo;</span></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="alert alert-info">
+        <p>{% trans "No hay fever prediction data available yet. Predictions will appear here once they are generated for your locations." %}</p>
+        {% if not locations %}
+        <p>{% trans "You need to add locations first to receive hay fever predictions." %}</p>
+        <a href="{% url 'forecast:location_add' %}" class="btn btn-primary">{% trans "Add Location" %}</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">{% trans "About Hay Fever Predictions" %}</h5>
+        </div>
+        <div class="card-body">
+            <p>{% trans "Our prediction algorithm analyses several drivers of allergic rhinitis:" %}</p>
+            <ul>
+                <li><strong>{% trans "Pollen counts" %}:</strong> {% trans "Per species (alder, birch, grass, mugwort, olive, ragweed). Pollen data is Europe only." %}</li>
+                <li><strong>{% trans "Wind speed" %}:</strong> {% trans "Disperses pollen through the air." %}</li>
+                <li><strong>{% trans "Dry, warm conditions" %}:</strong> {% trans "Favour pollen release." %}</li>
+                <li><strong>{% trans "Air quality (PM2.5, PM10, ozone, NO₂)" %}:</strong> {% trans "Aggravates respiratory symptoms." %}</li>
+                <li><strong>{% trans "Humidity extremes" %}:</strong> {% trans "Very dry or very humid air can worsen symptoms." %}</li>
+            </ul>
+            <div class="alert alert-info mt-3">
+                <small><strong>{% trans "Note:" %}</strong> {% trans "Pollen coverage is Europe only. Outside Europe we fall back to air-quality and weather factors, which reduces prediction confidence." %}</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
