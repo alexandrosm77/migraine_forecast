@@ -362,6 +362,9 @@ class LLMResponseAdmin(admin.ModelAdmin):
         elif obj.prediction_type == "sinusitis" and obj.sinusitis_prediction:
             url = reverse("admin:forecast_sinusitisprediction_change", args=[obj.sinusitis_prediction.id])
             return format_html('<a href="{}">Sinusitis #{}</a>', url, obj.sinusitis_prediction.id)
+        elif obj.prediction_type == "hayfever" and obj.hayfever_prediction:
+            url = reverse("admin:forecast_hayfeverprediction_change", args=[obj.hayfever_prediction.id])
+            return format_html('<a href="{}">Hay Fever #{}</a>', url, obj.hayfever_prediction.id)
         return "-"
 
     get_prediction_link.short_description = "Prediction"
