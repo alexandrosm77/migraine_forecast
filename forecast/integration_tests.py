@@ -403,6 +403,7 @@ class EndToEndWorkflowTest(TestCase):
         # STEP 3: Configure User Health Profile with Custom Preferences
         # ============================================================
         profile_data = {
+            "email": "e2e_test@example.com",
             "language": "en",
             "ui_version": "v2",
             "theme": "light",

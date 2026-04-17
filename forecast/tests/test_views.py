@@ -221,7 +221,6 @@ class LanguageSwitchingTest(TestCase):
         self.assertIn("Ελληνικά", system_message["content"])
 
 
-
 class ProfileEmailEditTests(TestCase):
     """Tests for the email-editing capability on the profile view."""
 
