@@ -48,7 +48,7 @@ class LocationAdmin(admin.ModelAdmin):
 
 @admin.register(WeatherForecast)
 class WeatherForecastAdmin(admin.ModelAdmin):
-    list_display = ("location", "forecast_time", "target_time", "temperature", "humidity", "pressure")
+    list_display = ("location", "forecast_time", "target_time", "temperature", "humidity", "pressure", "wind_speed", "precipitation", "cloud_cover", "created_at")
     search_fields = ("location__city", "location__country")
     list_filter = ("forecast_time", "target_time", "location")
     date_hierarchy = "forecast_time"
