@@ -16,7 +16,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import PermissionDenied
 
-from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction
+from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction, HayFeverPrediction
 from .weather_service import WeatherService
 from .notification_service import NotificationService
 from .forms import UserHealthProfileForm, UserEmailForm
@@ -231,12 +231,14 @@ def dashboard(request):
     # Get user preferences
     migraine_enabled = True
     sinusitis_enabled = True
+    hay_fever_enabled = True
     try:
         user_profile = request.user.health_profile
         migraine_enabled = user_profile.migraine_predictions_enabled
         sinusitis_enabled = user_profile.sinusitis_predictions_enabled
+        hay_fever_enabled = user_profile.hay_fever_predictions_enabled
     except Exception:
-        # If no health profile exists, default to both enabled
+        # If no health profile exists, default to all enabled
         pass
 
     # Get recent migraine predictions (only if enabled)
@@ -271,9 +273,26 @@ def dashboard(request):
             target_time_start__lte=now + timedelta(hours=24),
         ).order_by("target_time_start")
 
+    # Get recent hay fever predictions (only if enabled)
+    recent_hayfever_predictions = []
+    upcoming_hayfever_high_risk = []
+    if hay_fever_enabled:
+        recent_hayfever_predictions = HayFeverPrediction.objects.filter(user=request.user).order_by(
+            "-prediction_time"
+        )[:5]
+
+        now = timezone.now()
+        upcoming_hayfever_high_risk = HayFeverPrediction.objects.filter(
+            user=request.user,
+            probability="HIGH",
+            target_time_start__gte=now,
+            target_time_start__lte=now + timedelta(hours=24),
+        ).order_by("target_time_start")
+
     # Prepare high-risk predictions with analysis preview and weather trends
     high_risk_with_analysis = _build_analysis_previews(upcoming_high_risk)
     sinusitis_high_risk_with_analysis = _build_analysis_previews(upcoming_sinusitis_high_risk)
+    hayfever_high_risk_with_analysis = _build_analysis_previews(upcoming_hayfever_high_risk)
 
     # Get historical prediction data for charts (last 30 days)
     thirty_days_ago = timezone.now() - timedelta(days=30)
@@ -294,12 +313,22 @@ def dashboard(request):
             ).order_by('prediction_time')
         )
 
+    hayfever_history = []
+    if hay_fever_enabled:
+        hayfever_history = _build_prediction_history(
+            HayFeverPrediction.objects.filter(
+                user=request.user, prediction_time__gte=thirty_days_ago
+            ).order_by('prediction_time')
+        )
+
     migraine_history_json = json.dumps(migraine_history)
     sinusitis_history_json = json.dumps(sinusitis_history)
+    hayfever_history_json = json.dumps(hayfever_history)
 
     # Get latest predictions for each location (batch queries instead of N+1)
     latest_migraine_map = {}
     latest_sinusitis_map = {}
+    latest_hayfever_map = {}
 
     if migraine_enabled and locations:
         latest_migraine_ids = MigrainePrediction.objects.filter(
@@ -331,12 +360,28 @@ def dashboard(request):
             for pred in SinusitisPrediction.objects.filter(id__in=sinusitis_ids).select_related('location'):
                 latest_sinusitis_map[pred.location_id] = pred
 
+    if hay_fever_enabled and locations:
+        latest_hayfever_ids = HayFeverPrediction.objects.filter(
+            user=request.user,
+            location=OuterRef('pk'),
+        ).order_by('-prediction_time').values('id')[:1]
+
+        location_ids_with_hayfever = locations.annotate(
+            latest_hayfever_id=Subquery(latest_hayfever_ids)
+        ).values_list('latest_hayfever_id', flat=True)
+
+        hayfever_ids = [hid for hid in location_ids_with_hayfever if hid is not None]
+        if hayfever_ids:
+            for pred in HayFeverPrediction.objects.filter(id__in=hayfever_ids).select_related('location'):
+                latest_hayfever_map[pred.location_id] = pred
+
     locations_with_predictions = []
     for location in locations:
         locations_with_predictions.append({
             'location': location,
             'latest_migraine': latest_migraine_map.get(location.id),
             'latest_sinusitis': latest_sinusitis_map.get(location.id),
+            'latest_hayfever': latest_hayfever_map.get(location.id),
         })
 
     context = {
@@ -344,12 +389,16 @@ def dashboard(request):
         "locations_with_predictions": locations_with_predictions,
         "recent_predictions": recent_predictions,
         "recent_sinusitis_predictions": recent_sinusitis_predictions,
+        "recent_hayfever_predictions": recent_hayfever_predictions,
         "upcoming_high_risk": high_risk_with_analysis,
         "upcoming_sinusitis_high_risk": sinusitis_high_risk_with_analysis,
+        "upcoming_hayfever_high_risk": hayfever_high_risk_with_analysis,
         "migraine_enabled": migraine_enabled,
         "sinusitis_enabled": sinusitis_enabled,
+        "hay_fever_enabled": hay_fever_enabled,
         "migraine_history": migraine_history_json,
         "sinusitis_history": sinusitis_history_json,
+        "hayfever_history": hayfever_history_json,
     }
 
     return render(request, get_template_name(request, "dashboard.html"), context)
@@ -593,6 +642,77 @@ def sinusitis_prediction_detail(request, prediction_id):
     }
 
     return render(request, get_template_name(request, "sinusitis_prediction_detail.html"), context)
+
+
+@login_required
+def hayfever_prediction_list(request):
+    """View for listing hay fever predictions."""
+    predictions_queryset = HayFeverPrediction.objects.filter(user=request.user).order_by("-prediction_time")
+
+    # Pagination - show 20 predictions per page
+    paginator = Paginator(predictions_queryset, 20)
+    page = request.GET.get("page", 1)
+
+    try:
+        predictions = paginator.page(page)
+    except PageNotAnInteger:
+        predictions = paginator.page(1)
+    except EmptyPage:
+        predictions = paginator.page(paginator.num_pages)
+
+    context = {
+        "predictions": predictions,
+    }
+
+    return render(request, get_template_name(request, "hayfever_prediction_list.html"), context)
+
+
+@login_required
+def hayfever_prediction_detail(request, prediction_id):
+    """View for hay fever prediction details."""
+    prediction = get_object_or_404(
+        HayFeverPrediction.objects.select_related("location", "forecast", "air_quality_forecast"),
+        id=prediction_id,
+        user=request.user,
+    )
+
+    wf = prediction.weather_factors or {}
+    aq = prediction.air_quality_forecast
+
+    pollen_species = []
+    if aq is not None:
+        for field, label in (
+            ("alder_pollen", "Alder"),
+            ("birch_pollen", "Birch"),
+            ("grass_pollen", "Grass"),
+            ("mugwort_pollen", "Mugwort"),
+            ("olive_pollen", "Olive"),
+            ("ragweed_pollen", "Ragweed"),
+        ):
+            value = getattr(aq, field, None)
+            if value is not None:
+                pollen_species.append({"name": label, "value": value})
+
+    context = {
+        "prediction": prediction,
+        "air_quality": aq,
+        "pollen_species": pollen_species,
+        "pollen_available": wf.get("pollen_available", bool(pollen_species)),
+        "confidence_downgraded_no_pollen": wf.get("confidence_downgraded_no_pollen", False),
+        "scores": {
+            "pollen": wf.get("pollen"),
+            "wind": wf.get("wind"),
+            "humidity_extreme": wf.get("humidity_extreme"),
+            "air_quality": wf.get("air_quality"),
+            "dry_warm": wf.get("dry_warm"),
+        },
+        "total_score": wf.get("total_score"),
+        "llm_analysis_text": wf.get("llm_analysis_text"),
+        "llm_rationale": wf.get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),
+        "llm_prevention_tips": wf.get("llm_prevention_tips") or [],
+    }
+
+    return render(request, get_template_name(request, "hayfever_prediction_detail.html"), context)
 
 
 def register(request):

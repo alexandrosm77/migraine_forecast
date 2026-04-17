@@ -95,6 +95,13 @@
             margin: 10px 0;
             border-radius: 5px;
         }
+        .hayfever-prediction {
+            background-color: #f0fdf4;
+            border-left: 4px solid #16a34a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
         .prediction-header {
             font-weight: bold;
             margin-bottom: 8px;
@@ -104,6 +111,9 @@
         }
         .sinusitis-prediction .prediction-header {
             color: #f59e0b;
+        }
+        .hayfever-prediction .prediction-header {
+            color: #16a34a;
         }
         .probability {
             display: inline-block;
@@ -181,6 +191,10 @@
                     <div class="stat-label">Sinusitis</div>
                 </div>
                 <div class="stat">
+                    <div class="stat-number">{{ hayfever_count|default:0 }}</div>
+                    <div class="stat-label">Hay Fever</div>
+                </div>
+                <div class="stat">
                     <div class="stat-number">{{ location_data|length }}</div>
                     <div class="stat-label">Locations</div>
                 </div>
@@ -222,6 +236,28 @@
                 <div class="sinusitis-prediction">
                     <div class="prediction-header">
                         Sinusitis Alert
+                        <span class="probability probability-{{ pred.probability }}">{{ pred.probability }}</span>
+                    </div>
+                    <div class="time-window">
+                        ⏰ {{ pred.target_time_start|date:"M j, g:i a" }} - {{ pred.target_time_end|date:"M j, g:i a" }}
+                    </div>
+                    {% if pred.reasoning %}
+                    <div style="margin-top: 10px; font-size: 13px;">
+                        <strong>Reasoning:</strong> {{ pred.reasoning|truncatewords:30 }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if loc_data.hayfever %}
+            <div class="prediction-group">
+                <h4 style="margin: 0 0 10px 0; color: #16a34a;">🌼 Hay Fever Predictions</h4>
+                {% for pred in loc_data.hayfever %}
+                <div class="hayfever-prediction">
+                    <div class="prediction-header">
+                        Hay Fever Alert
                         <span class="probability probability-{{ pred.probability }}">{{ pred.probability }}</span>
                     </div>
                     <div class="time-window">

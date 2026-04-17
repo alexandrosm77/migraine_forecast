@@ -1,5 +1,6 @@
-from .models import Location, WeatherForecast
+from .models import Location, WeatherForecast, AirQualityForecast
 from .weather_api import OpenMeteoClient
+from .air_quality_api import OpenMeteoAirQualityClient
 import logging
 from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, start_transaction, set_tag
 
@@ -14,6 +15,7 @@ class WeatherService:
     def __init__(self):
         """Initialize the weather service with the Open-Meteo client."""
         self.api_client = OpenMeteoClient()
+        self.air_quality_client = OpenMeteoAirQualityClient()
 
     def update_forecast_for_location(self, location):
         """
@@ -366,3 +368,255 @@ class WeatherService:
         return WeatherForecast.objects.filter(
             location=location, target_time__gte=start_time, target_time__lte=end_time
         ).order_by("target_time")
+
+    def update_air_quality_for_location(self, location):
+        """
+        Update air-quality forecast for a specific location using upsert pattern.
+
+        Args:
+            location (Location): The location model instance
+
+        Returns:
+            tuple: (created_count, updated_count)
+        """
+        with start_transaction(op="air_quality.update", name=f"update_air_quality_{location.city}"):
+            logger.info(f"Starting update_air_quality_for_location for location: {location}")
+
+            add_breadcrumb(
+                category="air_quality",
+                message=f"Updating air-quality forecast for {location.city}, {location.country}",
+                level="info",
+                data={
+                    "location_id": location.id,
+                    "location_city": location.city,
+                    "location_country": location.country,
+                    "latitude": location.latitude,
+                    "longitude": location.longitude,
+                },
+            )
+
+            set_tag("location", f"{location.city}, {location.country}")
+            set_tag("operation", "air_quality_update")
+
+            try:
+                forecast_data = self.air_quality_client.get_forecast(
+                    latitude=location.latitude, longitude=location.longitude
+                )
+
+                if not forecast_data:
+                    logger.error(f"Failed to fetch air-quality data for location: {location}")
+                    set_context(
+                        "air_quality_fetch_failure",
+                        {
+                            "location": f"{location.city}, {location.country}",
+                            "location_id": location.id,
+                            "latitude": location.latitude,
+                            "longitude": location.longitude,
+                            "api_client": "OpenMeteoAirQuality",
+                        },
+                    )
+                    capture_message(
+                        f"Air-quality API returned no data for {location.city}, {location.country}",
+                        level="warning",
+                    )
+                    return 0, 0
+
+                parsed_data = self.air_quality_client.parse_forecast_data(forecast_data, location)
+
+                if not parsed_data:
+                    logger.warning(f"No valid air-quality data parsed for location: {location}")
+                    capture_message(
+                        f"No valid air-quality data parsed for {location.city}, {location.country}",
+                        level="warning",
+                    )
+                    return 0, 0
+
+                created_count = 0
+                updated_count = 0
+
+                for entry in parsed_data:
+                    location_obj = entry.pop("location")
+                    target_time = entry.pop("target_time")
+
+                    _, created = AirQualityForecast.objects.update_or_create(
+                        location=location_obj, target_time=target_time, defaults=entry
+                    )
+
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+
+                logger.info(
+                    f"Created {created_count} and updated {updated_count} air-quality entries for {location}"
+                )
+
+                add_breadcrumb(
+                    category="air_quality",
+                    message=f"Air-quality update completed for {location.city}, {location.country}",
+                    level="info",
+                    data={"created": created_count, "updated": updated_count},
+                )
+
+                return created_count, updated_count
+
+            except Exception as e:
+                set_context(
+                    "air_quality_update_error",
+                    {
+                        "location": f"{location.city}, {location.country}",
+                        "location_id": location.id,
+                        "operation": "update_air_quality_for_location",
+                    },
+                )
+                capture_exception(e)
+                logger.error(f"Error updating air-quality forecast for {location}: {str(e)}")
+                raise
+
+    def update_air_quality_for_locations_batch(self, locations):
+        """
+        Update air-quality forecasts for multiple locations using batch API.
+
+        Args:
+            locations (list): List of Location model instances (max 50)
+
+        Returns:
+            dict: {
+                'total_created': int,
+                'total_updated': int,
+                'location_results': {location_id: {'created': int, 'updated': int}, ...},
+                'errors': [{'location': Location, 'error': str}, ...],
+            }
+        """
+        if not locations:
+            logger.warning("update_air_quality_for_locations_batch called with empty locations list")
+            return {"total_created": 0, "total_updated": 0, "location_results": {}, "errors": []}
+
+        if len(locations) > 50:
+            raise ValueError("Batch size cannot exceed 50 locations")
+
+        location_details = [f"{loc.city}, {loc.country} (ID: {loc.id})" for loc in locations]
+
+        logger.info(f"Starting batch air-quality update for {len(locations)} locations: {location_details}")
+
+        add_breadcrumb(
+            category="air_quality",
+            message=f"Batch updating air-quality forecasts for {len(locations)} locations",
+            level="info",
+            data={"location_count": len(locations), "locations": location_details},
+        )
+
+        total_created = 0
+        total_updated = 0
+        location_results = {}
+        errors = []
+
+        try:
+            batch_results = self.air_quality_client.get_forecast_batch(locations)
+
+            if batch_results is None:
+                error_msg = f"Batch air-quality API call failed for {len(locations)} locations"
+                logger.error(error_msg)
+                capture_message(error_msg, level="error")
+
+                for location in locations:
+                    errors.append({"location": location, "error": "Batch API call failed"})
+                    location_results[location.id] = {"created": 0, "updated": 0}
+
+                return {
+                    "total_created": 0,
+                    "total_updated": 0,
+                    "location_results": location_results,
+                    "errors": errors,
+                }
+
+            parsed_batch = self.air_quality_client.parse_forecast_data_batch(batch_results)
+
+            for location in locations:
+                try:
+                    parsed_data = parsed_batch.get(location, [])
+
+                    if not parsed_data:
+                        logger.warning(f"No valid air-quality data parsed for location: {location}")
+                        errors.append({"location": location, "error": "No valid air-quality data parsed"})
+                        location_results[location.id] = {"created": 0, "updated": 0}
+                        continue
+
+                    created_count = 0
+                    updated_count = 0
+
+                    for entry in parsed_data:
+                        location_obj = entry.pop("location")
+                        target_time = entry.pop("target_time")
+
+                        _, created = AirQualityForecast.objects.update_or_create(
+                            location=location_obj, target_time=target_time, defaults=entry
+                        )
+
+                        if created:
+                            created_count += 1
+                        else:
+                            updated_count += 1
+
+                    total_created += created_count
+                    total_updated += updated_count
+                    location_results[location.id] = {"created": created_count, "updated": updated_count}
+
+                    logger.info(
+                        f"Batch AQ: Created {created_count} and updated {updated_count} entries for {location}"
+                    )
+
+                except Exception as e:
+                    error_msg = f"Error processing air-quality data for {location}: {str(e)}"
+                    logger.error(error_msg, exc_info=True)
+                    errors.append({"location": location, "error": str(e)})
+                    location_results[location.id] = {"created": 0, "updated": 0}
+
+                    set_context(
+                        "air_quality_batch_location_error",
+                        {
+                            "location": f"{location.city}, {location.country}",
+                            "location_id": location.id,
+                            "operation": "update_air_quality_for_locations_batch",
+                        },
+                    )
+                    capture_exception(e)
+
+            add_breadcrumb(
+                category="air_quality",
+                message=f"Batch air-quality update completed for {len(locations)} locations",
+                level="info",
+                data={
+                    "total_created": total_created,
+                    "total_updated": total_updated,
+                    "errors": len(errors),
+                },
+            )
+
+            return {
+                "total_created": total_created,
+                "total_updated": total_updated,
+                "location_results": location_results,
+                "errors": errors,
+            }
+
+        except Exception as e:
+            error_msg = f"Unexpected error in batch air-quality update: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+
+            set_context(
+                "air_quality_batch_error",
+                {"location_count": len(locations), "locations": location_details, "operation": "batch_update"},
+            )
+            capture_exception(e)
+
+            for location in locations:
+                errors.append({"location": location, "error": str(e)})
+                location_results[location.id] = {"created": 0, "updated": 0}
+
+            return {
+                "total_created": 0,
+                "total_updated": 0,
+                "location_results": location_results,
+                "errors": errors,
+            }

@@ -10,6 +10,8 @@ from forecast.models import (
     WeatherForecast,
     MigrainePrediction,
     SinusitisPrediction,
+    HayFeverPrediction,
+    AirQualityForecast,
     UserHealthProfile,
     LLMResponse,
     LLMConfiguration,
@@ -99,6 +101,43 @@ class SinusitisPredictionAdmin(admin.ModelAdmin):
         return qs.filter(user=request.user)
 
 
+@admin.register(HayFeverPrediction)
+class HayFeverPredictionAdmin(admin.ModelAdmin):
+    list_display = ("user", "location", "probability", "prediction_time", "notification_sent")
+    list_select_related = ("user", "location")
+    raw_id_fields = ("user", "location", "forecast", "air_quality_forecast")
+    search_fields = ("user__username", "location__city")
+    list_filter = ("probability", "notification_sent", "prediction_time")
+    date_hierarchy = "prediction_time"
+    formfield_overrides = {
+        JSONField: {"widget": JSONEditorWidget(options={"mode": "text", "modes": ["text", "tree", "view"]})},
+    }
+
+    def get_queryset(self, request):
+        """Filter predictions to show only the user's own predictions unless they're a superuser."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(user=request.user)
+
+
+@admin.register(AirQualityForecast)
+class AirQualityForecastAdmin(admin.ModelAdmin):
+    list_display = ("location", "forecast_time", "target_time", "european_aqi", "pm2_5", "grass_pollen")
+    list_select_related = ("location",)
+    raw_id_fields = ("location",)
+    search_fields = ("location__city", "location__country")
+    list_filter = ("forecast_time", "target_time", "location")
+    date_hierarchy = "forecast_time"
+
+    def get_queryset(self, request):
+        """Filter air-quality rows to show only those for the user's locations unless superuser."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(location__user=request.user)
+
+
 @admin.register(UserHealthProfile)
 class UserHealthProfileAdmin(admin.ModelAdmin):
     list_display = (
@@ -112,6 +151,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "daily_notification_limit",
         "migraine_predictions_enabled",
         "sinusitis_predictions_enabled",
+        "hay_fever_predictions_enabled",
         "updated_at",
     )
     search_fields = ("user__username",)
@@ -123,6 +163,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "quiet_hours_enabled",
         "migraine_predictions_enabled",
         "sinusitis_predictions_enabled",
+        "hay_fever_predictions_enabled",
     )
     fieldsets = (
         (
@@ -150,6 +191,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
                     "daily_notification_limit",
                     "daily_migraine_notification_limit",
                     "daily_sinusitis_notification_limit",
+                    "daily_hay_fever_notification_limit",
                 ),
             },
         ),
@@ -169,6 +211,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
                 "fields": (
                     "migraine_predictions_enabled",
                     "sinusitis_predictions_enabled",
+                    "hay_fever_predictions_enabled",
                     "prediction_window_start_hours",
                     "prediction_window_end_hours",
                 ),
@@ -181,6 +224,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
                     "last_notification_sent_at",
                     "last_migraine_notification_sent_at",
                     "last_sinusitis_notification_sent_at",
+                    "last_hay_fever_notification_sent_at",
                     "updated_at",
                 ),
             },
@@ -190,6 +234,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "last_notification_sent_at",
         "last_migraine_notification_sent_at",
         "last_sinusitis_notification_sent_at",
+        "last_hay_fever_notification_sent_at",
         "updated_at",
     )
 
@@ -873,6 +918,8 @@ admin_site.register(Location, LocationAdmin)
 admin_site.register(WeatherForecast, WeatherForecastAdmin)
 admin_site.register(MigrainePrediction, MigrainePredictionAdmin)
 admin_site.register(SinusitisPrediction, SinusitisPredictionAdmin)
+admin_site.register(HayFeverPrediction, HayFeverPredictionAdmin)
+admin_site.register(AirQualityForecast, AirQualityForecastAdmin)
 admin_site.register(UserHealthProfile, UserHealthProfileAdmin)
 admin_site.register(NotificationLog, NotificationLogAdmin)
 admin_site.register(LocationNotificationPreference, LocationNotificationPreferenceAdmin)

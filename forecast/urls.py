@@ -19,6 +19,12 @@ urlpatterns = [
         views.sinusitis_prediction_detail,
         name="sinusitis_prediction_detail",
     ),
+    path("hayfever-predictions/", views.hayfever_prediction_list, name="hayfever_prediction_list"),
+    path(
+        "hayfever-predictions/<int:prediction_id>/",
+        views.hayfever_prediction_detail,
+        name="hayfever_prediction_detail",
+    ),
     path("accounts/register/", views.register, name="register"),
     path("accounts/profile/", views.profile, name="profile"),
     path("accounts/profile/<int:user_id>/", views.profile, name="profile_view"),

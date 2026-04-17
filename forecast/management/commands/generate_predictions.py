@@ -3,9 +3,17 @@ from time import sleep
 from django.utils import timezone
 from datetime import timedelta
 
-from forecast.models import Location, MigrainePrediction, SinusitisPrediction, LLMResponse
+from forecast.models import (
+    Location,
+    MigrainePrediction,
+    SinusitisPrediction,
+    HayFeverPrediction,
+    LLMResponse,
+    AirQualityForecast,
+)
 from forecast.prediction_service import MigrainePredictionService
 from forecast.prediction_service_sinusitis import SinusitisPredictionService
+from forecast.prediction_service_hayfever import HayFeverPredictionService
 from forecast.management.commands.base import SilentStdoutCommand
 
 import logging
@@ -15,7 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class Command(SilentStdoutCommand):
-    help = "Generate migraine and sinusitis predictions from existing forecast data (Task 2 of decoupled pipeline)"
+    help = (
+        "Generate migraine, sinusitis, and hay fever predictions from existing forecast data "
+        "(Task 2 of decoupled pipeline)"
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -67,6 +78,7 @@ class Command(SilentStdoutCommand):
         # Initialize prediction services
         migraine_service = MigrainePredictionService()
         sinusitis_service = SinusitisPredictionService()
+        hayfever_service = HayFeverPredictionService()
 
         # Get locations to process
         if options.get("location_id"):
@@ -97,6 +109,7 @@ class Command(SilentStdoutCommand):
             # Generate predictions for each location
             total_migraine_predictions = 0
             total_sinusitis_predictions = 0
+            total_hayfever_predictions = 0
             high_risk_count = 0
             medium_risk_count = 0
             errors = []
@@ -109,11 +122,13 @@ class Command(SilentStdoutCommand):
                 # Check user preferences
                 migraine_enabled = True
                 sinusitis_enabled = True
+                hayfever_enabled = True
 
                 try:
                     user_profile = user.health_profile
                     migraine_enabled = user_profile.migraine_predictions_enabled
                     sinusitis_enabled = user_profile.sinusitis_predictions_enabled
+                    hayfever_enabled = user_profile.hay_fever_predictions_enabled
 
                     # Skip DIGEST mode users - their predictions are generated once a day
                     # in the send_digest_email task, not in the regular prediction pipeline
@@ -192,6 +207,38 @@ class Command(SilentStdoutCommand):
                 else:
                     self.stdout.write("  - Sinusitis predictions disabled for user")
 
+                # Generate hay fever prediction if enabled
+                if hayfever_enabled:
+                    try:
+                        probability, prediction = hayfever_service.predict_hayfever_probability(
+                            location=location, user=user
+                        )
+
+                        if prediction:
+                            total_hayfever_predictions += 1
+                            self.stdout.write(f"  ✓ Hay fever: {probability} risk")
+
+                            if probability == "HIGH":
+                                high_risk_count += 1
+                            elif probability == "MEDIUM":
+                                medium_risk_count += 1
+                        else:
+                            self.stdout.write(self.style.WARNING("  ⚠ Hay fever: No forecast data available"))
+                    except Exception as e:
+                        error_msg = f"Error generating hay fever prediction for {location}: {str(e)}"
+                        errors.append(error_msg)
+                        self.stdout.write(self.style.ERROR(f"  ✗ {error_msg}"))
+                        logger.error(error_msg, exc_info=True)
+
+                        # Capture exception with context
+                        set_context(
+                            "hayfever_prediction_error",
+                            {"location": str(location), "location_id": location.id, "user": user.username},
+                        )
+                        capture_exception(e)
+                else:
+                    self.stdout.write("  - Hay fever predictions disabled for user")
+
             except Exception as e:
                 error_msg = f"Error processing location {location}: {str(e)}"
                 errors.append(error_msg)
@@ -209,6 +256,8 @@ class Command(SilentStdoutCommand):
 
             cleanup_days = options["cleanup_days"]
             cutoff_time = timezone.now() - timedelta(days=cleanup_days)
+            # Air-quality forecasts are kept longer for historical/analytical use
+            aq_cutoff_time = timezone.now() - timedelta(days=180)
 
             old_migraine = MigrainePrediction.objects.filter(prediction_time__lt=cutoff_time)
             migraine_count = old_migraine.count()
@@ -218,21 +267,32 @@ class Command(SilentStdoutCommand):
             sinusitis_count = old_sinusitis.count()
             old_sinusitis.delete()
 
+            old_hayfever = HayFeverPrediction.objects.filter(prediction_time__lt=cutoff_time)
+            hayfever_count = old_hayfever.count()
+            old_hayfever.delete()
+
             # Clean up old LLM responses (same retention period as predictions)
             old_llm_responses = LLMResponse.objects.filter(created_at__lt=cutoff_time)
             llm_count = old_llm_responses.count()
             old_llm_responses.delete()
 
-            total_deleted = migraine_count + sinusitis_count + llm_count
+            # Clean up old air-quality forecasts (>180 days)
+            old_aq = AirQualityForecast.objects.filter(forecast_time__lt=aq_cutoff_time)
+            aq_count = old_aq.count()
+            old_aq.delete()
+
+            total_deleted = migraine_count + sinusitis_count + hayfever_count + llm_count + aq_count
             if total_deleted > 0:
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"  ✓ Deleted {migraine_count} migraine, {sinusitis_count} sinusitis "
-                        f"prediction(s), and {llm_count} LLM response(s) older than {cleanup_days} days"
+                        f"  ✓ Deleted {migraine_count} migraine, {sinusitis_count} sinusitis, "
+                        f"{hayfever_count} hay fever prediction(s), {llm_count} LLM response(s) "
+                        f"older than {cleanup_days} days, and {aq_count} air-quality forecast(s) "
+                        f"older than 180 days"
                     )
                 )
             else:
-                self.stdout.write("  No old predictions or LLM responses to delete")
+                self.stdout.write("  No old predictions, LLM responses, or air-quality forecasts to delete")
 
             # Summary
             end_time = timezone.now()
@@ -244,6 +304,7 @@ class Command(SilentStdoutCommand):
             self.stdout.write(f"Locations processed: {len(locations)}")
             self.stdout.write(f"Migraine predictions: {total_migraine_predictions}")
             self.stdout.write(f"Sinusitis predictions: {total_sinusitis_predictions}")
+            self.stdout.write(f"Hay fever predictions: {total_hayfever_predictions}")
             self.stdout.write(f"HIGH risk predictions: {high_risk_count}")
             self.stdout.write(f"MEDIUM risk predictions: {medium_risk_count}")
             self.stdout.write(f"Errors: {len(errors)}")
@@ -255,6 +316,7 @@ class Command(SilentStdoutCommand):
                 "locations_processed": len(locations),
                 "migraine_predictions": total_migraine_predictions,
                 "sinusitis_predictions": total_sinusitis_predictions,
+                "hayfever_predictions": total_hayfever_predictions,
                 "high_risk_count": high_risk_count,
                 "medium_risk_count": medium_risk_count,
                 "errors": len(errors),
@@ -266,10 +328,11 @@ class Command(SilentStdoutCommand):
 
             # Log summary for Promtail/Loki
             logger.info(
-                "Prediction generation completed: locations=%d, migraine=%d, sinusitis=%d, high_risk=%d, medium_risk=%d, errors=%d, duration=%.2fs",  # noqa: E501
+                "Prediction generation completed: locations=%d, migraine=%d, sinusitis=%d, hayfever=%d, high_risk=%d, medium_risk=%d, errors=%d, duration=%.2fs",  # noqa: E501
                 len(locations),
                 total_migraine_predictions,
                 total_sinusitis_predictions,
+                total_hayfever_predictions,
                 high_risk_count,
                 medium_risk_count,
                 len(errors),
@@ -296,7 +359,8 @@ class Command(SilentStdoutCommand):
             else:
                 # Capture successful completion
                 capture_message(
-                    f"Prediction generation completed: {total_migraine_predictions} migraine, {total_sinusitis_predictions} sinusitis",  # noqa: E501
+                    f"Prediction generation completed: {total_migraine_predictions} migraine, "
+                    f"{total_sinusitis_predictions} sinusitis, {total_hayfever_predictions} hay fever",
                     level="info",
                 )
 

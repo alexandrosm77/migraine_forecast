@@ -3,7 +3,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>{% trans "Health Alert - Migraine & Sinusitis" %}</title>
+    <title>{% trans "Health Alert - Migraine, Sinusitis & Hay Fever" %}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,6 +40,10 @@
             border-color: #f59e0b;
             background-color: #fffbf0;
         }
+        .hayfever-section {
+            border-color: #16a34a;
+            background-color: #f0fdf4;
+        }
         .section-header {
             margin: 0 0 15px 0;
             padding-bottom: 10px;
@@ -52,6 +56,10 @@
         .sinusitis-section .section-header {
             color: #f59e0b;
             border-bottom-color: #f59e0b;
+        }
+        .hayfever-section .section-header {
+            color: #16a34a;
+            border-bottom-color: #16a34a;
         }
         .weather-data {
             background-color: #f8f9fa;
@@ -193,6 +201,45 @@
         </div>
         {% endif %}
 
+        {% if loc.hayfever_prediction %}
+        <div class="section hayfever-section">
+            <h2 class="section-header">🌼 Hay Fever Alert - {{ loc.hayfever_probability_level }} Probability</h2>
+
+            {% if not loc.hayfever_pollen_available %}
+            <div style="background-color: #fef3c7; padding: 12px; border: 1px solid #fde68a; border-radius: 6px; margin: 15px 0;">
+                <p style="margin: 0; font-size: 14px; color: #92400e;">
+                    ℹ️ Pollen-specific data is not available for this location. This forecast is based on weather drivers
+                    (wind, humidity, precipitation) that typically influence pollen exposure.
+                </p>
+            </div>
+            {% endif %}
+
+            {% if loc.hayfever_llm_analysis_text %}
+            <div style="background-color: #f0fdf4; padding: 15px; border: 1px solid #bbf7d0; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #166534;">📊 Model Analysis</h3>
+                <p style="margin: 0;">{{ loc.hayfever_llm_analysis_text }}</p>
+            </div>
+            {% endif %}
+
+            {% if loc.hayfever_llm_rationale %}
+            <div style="background-color: #f7fee7; padding: 15px; border: 1px solid #d9f99d; border-radius: 6px; margin: 15px 0;">
+                <h3 style="margin-top: 0; color: #3f6212;">🔍 Why This Alert?</h3>
+                <p style="margin: 0;">{{ loc.hayfever_llm_rationale }}</p>
+            </div>
+            {% endif %}
+
+            <div style="background-color: #ecfccb; padding: 15px; margin: 15px 0; border-radius: 5px; border: 1px solid #d9f99d;">
+                {% if loc.hayfever_prediction.weather_factors.total_score %}
+                <p style="margin: 0; font-size: 14px;"><strong>Overall Hay Fever Risk Score:</strong> {{ loc.hayfever_prediction.weather_factors.total_score }}/1.0
+                {% if loc.hayfever_probability_level == 'HIGH' %}(High risk - score ≥ 0.65){% elif loc.hayfever_probability_level == 'MEDIUM' %}(Medium risk - score 0.35-0.64){% else %}(Low risk - score < 0.35){% endif %}</p>
+                {% else %}
+                <p style="margin: 0; font-size: 14px;"><strong>Hay Fever Risk Level:</strong> {{ loc.hayfever_probability_level }}
+                {% if loc.hayfever_llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">(Determined by AI analysis)</span>{% endif %}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if loc.forecast %}
         <div class="weather-data">
             <h4 style="margin-top: 0;">Weather Forecast{% if location_count > 1 %} for {{ loc.location.city }}{% endif %}:</h4>
@@ -236,7 +283,7 @@
             {% endif %}
 
             {% if has_sinusitis %}
-            <div>
+            <div style="margin-bottom: 20px;">
                 <h4 style="color: #f59e0b; margin: 0 0 10px 0;">For Sinusitis Prevention:</h4>
                 {% if first_sinusitis_tips and first_sinusitis_tips|length > 0 %}
                 <!-- LLM-generated tips -->
@@ -256,6 +303,32 @@
                     <li>Use a humidifier if air is dry</li>
                     <li>Avoid allergens and irritants (smoke, strong odors)</li>
                     <li>Apply warm compresses to sinus areas if needed</li>
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if has_hayfever %}
+            <div>
+                <h4 style="color: #16a34a; margin: 0 0 10px 0;">For Hay Fever Prevention:</h4>
+                {% if first_hayfever_tips and first_hayfever_tips|length > 0 %}
+                <!-- LLM-generated tips -->
+                <ul style="margin: 0 0 10px 0;">
+                    {% for tip in first_hayfever_tips %}
+                    <li>{{ tip }}</li>
+                    {% endfor %}
+                </ul>
+                <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+                    <em>AI-generated suggestions based on current weather conditions.</em>
+                </p>
+                {% else %}
+                <!-- Fallback to hardcoded tips -->
+                <ul style="margin: 0;">
+                    <li>Keep windows closed during peak pollen hours</li>
+                    <li>Shower and change clothes after spending time outdoors</li>
+                    <li>Use a HEPA air filter indoors</li>
+                    <li>Wear wraparound sunglasses and a mask outside on high-pollen days</li>
+                    <li>Check local pollen forecasts before planning outdoor activities</li>
                 </ul>
                 {% endif %}
             </div>

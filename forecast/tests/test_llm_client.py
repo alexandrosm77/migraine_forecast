@@ -299,6 +299,82 @@ class LLMClientTest(TestCase):
         self.assertEqual(call_kwargs["json"]["top_p"], 0.9)
 
     @patch("forecast.llm_client.requests.Session.post")
+    def test_predict_hayfever_probability_success(self, mock_post):
+        """Test successful hay fever probability prediction"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "probability_level": "HIGH",
+                                "confidence": 0.88,
+                                "rationale": "Peak grass pollen",
+                                "analysis_text": "Very high grass pollen today",
+                                "prevention_tips": ["Close windows", "Shower after outdoor time"],
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+        mock_post.return_value = mock_response
+
+        scores = {"pollen": 0.9, "wind": 0.4}
+        level, payload = self.client.predict_hayfever_probability(scores, "Athens, Greece")
+
+        self.assertEqual(level, "HIGH")
+        self.assertIsNotNone(payload)
+        self.assertIn("raw", payload)
+        self.assertEqual(payload["raw"]["probability_level"], "HIGH")
+
+    @patch("forecast.llm_client.requests.Session.post")
+    def test_predict_hayfever_probability_system_prompt_has_pollen_drivers(self, mock_post):
+        """System prompt mentions the hay fever drivers (pollen, wind, AQ)."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": '{"probability_level": "LOW", "confidence": 0.7}'}}]
+        }
+        mock_post.return_value = mock_response
+
+        self.client.predict_hayfever_probability({}, "Athens, Greece")
+
+        call_kwargs = mock_post.call_args[1]
+        system_content = call_kwargs["json"]["messages"][0]["content"]
+        self.assertIn("hay fever", system_content.lower())
+        self.assertIn("pollen", system_content.lower())
+        self.assertIn("wind", system_content.lower())
+        self.assertIn("pm2.5", system_content.lower())
+
+    @patch("forecast.llm_client.requests.Session.post")
+    def test_predict_hayfever_probability_accepts_air_quality_kwarg(self, mock_post):
+        """Client accepts air_quality_forecasts kwarg without error."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": '{"probability_level": "MEDIUM", "confidence": 0.6}'}}]
+        }
+        mock_post.return_value = mock_response
+
+        level, _ = self.client.predict_hayfever_probability(
+            scores={},
+            location_label="Paris, France",
+            air_quality_forecasts=[],
+        )
+        self.assertEqual(level, "MEDIUM")
+
+    @patch("forecast.llm_client.requests.Session.post")
+    def test_predict_hayfever_probability_network_error(self, mock_post):
+        """Network error returns (None, {'error': ...})."""
+        mock_post.side_effect = Exception("Network error")
+
+        level, payload = self.client.predict_hayfever_probability({}, "Test City")
+
+        self.assertIsNone(level)
+        self.assertIn("error", payload)
+        self.assertEqual(payload["error"], "Network error")
+
+    @patch("forecast.llm_client.requests.Session.post")
     def test_predict_probability_request_payload_includes_extra_payload(self, mock_post):
         """Test that request_payload stored in response includes extra_payload"""
         extra_payload = {"temperature": 0.5, "top_p": 0.9, "max_tokens": 2000}

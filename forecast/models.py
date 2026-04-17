@@ -34,6 +34,9 @@ class UserHealthProfile(models.Model):
     sinusitis_predictions_enabled = models.BooleanField(
         default=True, help_text="Enable or disable sinusitis predictions for this user"
     )
+    hay_fever_predictions_enabled = models.BooleanField(
+        default=True, help_text="Enable or disable hay fever predictions for this user"
+    )
 
     # Notification preferences
     daily_notification_limit = models.IntegerField(
@@ -49,6 +52,9 @@ class UserHealthProfile(models.Model):
     )
     daily_sinusitis_notification_limit = models.IntegerField(
         default=1, help_text="Maximum sinusitis alert emails per day (0 = use general limit)"
+    )
+    daily_hay_fever_notification_limit = models.IntegerField(
+        default=1, help_text="Maximum hay fever alert emails per day (0 = use general limit)"
     )
 
     # Severity threshold for notifications
@@ -93,6 +99,9 @@ class UserHealthProfile(models.Model):
     )
     last_sinusitis_notification_sent_at = models.DateTimeField(
         null=True, blank=True, help_text="Timestamp of the last sinusitis notification sent"
+    )
+    last_hay_fever_notification_sent_at = models.DateTimeField(
+        null=True, blank=True, help_text="Timestamp of the last hay fever notification sent"
     )
 
     prediction_window_start_hours = models.IntegerField(
@@ -279,6 +288,47 @@ class ActualWeather(models.Model):
         return f"Actual weather for {self.location} at {self.recorded_time}"
 
 
+class AirQualityForecast(models.Model):
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="air_quality_forecasts")
+    forecast_time = models.DateTimeField(help_text="When the forecast was made")
+    target_time = models.DateTimeField(help_text="When the forecast is for")
+
+    # Pollen (grains/m³, Europe-only, may be null outside Europe)
+    alder_pollen = models.FloatField(null=True, blank=True)
+    birch_pollen = models.FloatField(null=True, blank=True)
+    grass_pollen = models.FloatField(null=True, blank=True)
+    mugwort_pollen = models.FloatField(null=True, blank=True)
+    olive_pollen = models.FloatField(null=True, blank=True)
+    ragweed_pollen = models.FloatField(null=True, blank=True)
+
+    # Air quality
+    pm10 = models.FloatField(null=True, blank=True)
+    pm2_5 = models.FloatField(null=True, blank=True)
+    ozone = models.FloatField(null=True, blank=True)
+    nitrogen_dioxide = models.FloatField(null=True, blank=True)
+    dust = models.FloatField(null=True, blank=True)
+    uv_index = models.FloatField(null=True, blank=True)
+    european_aqi = models.FloatField(null=True, blank=True)
+    us_aqi = models.FloatField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["location", "target_time"],
+                name="unique_aq_location_target_time",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["location", "target_time"]),
+            models.Index(fields=["target_time"]),
+        ]
+
+    def __str__(self):
+        return f"Air quality forecast for {self.location} at {self.target_time}"
+
+
 class MigrainePrediction(models.Model):
     PROBABILITY_CHOICES = [
         ("LOW", "Low"),
@@ -321,6 +371,35 @@ class SinusitisPrediction(models.Model):
         return f"Sinusitis prediction for {self.user.username} at {self.location} ({self.probability})"
 
 
+class HayFeverPrediction(models.Model):
+    PROBABILITY_CHOICES = [
+        ("LOW", "Low"),
+        ("MEDIUM", "Medium"),
+        ("HIGH", "High"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="hayfever_predictions")
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="hayfever_predictions")
+    forecast = models.ForeignKey(WeatherForecast, on_delete=models.CASCADE, related_name="hayfever_predictions")
+    air_quality_forecast = models.ForeignKey(
+        AirQualityForecast,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hayfever_predictions",
+        help_text="Air-quality snapshot used for this prediction (preserved if the AQ row is later cleaned up)",
+    )
+    prediction_time = models.DateTimeField(auto_now_add=True)  # When prediction was made
+    target_time_start = models.DateTimeField()  # Start of prediction window (3-6 hours)
+    target_time_end = models.DateTimeField()  # End of prediction window
+    probability = models.CharField(max_length=10, choices=PROBABILITY_CHOICES)
+    weather_factors = JSONField(default=dict, null=True, blank=True)
+    notification_sent = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Hay fever prediction for {self.user.username} at {self.location} ({self.probability})"
+
+
 class NotificationLog(models.Model):
     """
     Comprehensive log of all notifications sent to users.
@@ -330,6 +409,7 @@ class NotificationLog(models.Model):
     NOTIFICATION_TYPE_CHOICES = [
         ("migraine", "Migraine Alert"),
         ("sinusitis", "Sinusitis Alert"),
+        ("hayfever", "Hay Fever Alert"),
         ("combined", "Combined Alert"),
         ("digest", "Daily Digest"),
         ("test", "Test Email"),
@@ -357,6 +437,9 @@ class NotificationLog(models.Model):
     # Related predictions (can be multiple for combined/digest notifications)
     migraine_predictions = models.ManyToManyField(MigrainePrediction, blank=True, related_name="notification_logs")
     sinusitis_predictions = models.ManyToManyField(SinusitisPrediction, blank=True, related_name="notification_logs")
+    hayfever_predictions = models.ManyToManyField(
+        "HayFeverPrediction", blank=True, related_name="notification_logs"
+    )
 
     # Notification content
     subject = models.CharField(max_length=500, blank=True)
@@ -445,6 +528,7 @@ class LLMResponse(models.Model):
     PREDICTION_TYPE_CHOICES = [
         ("migraine", "Migraine"),
         ("sinusitis", "Sinusitis"),
+        ("hayfever", "Hay Fever"),
     ]
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="llm_responses")
@@ -464,6 +548,9 @@ class LLMResponse(models.Model):
     )
     sinusitis_prediction = models.ForeignKey(
         "SinusitisPrediction", on_delete=models.SET_NULL, null=True, blank=True, related_name="llm_responses"
+    )
+    hayfever_prediction = models.ForeignKey(
+        "HayFeverPrediction", on_delete=models.SET_NULL, null=True, blank=True, related_name="llm_responses"
     )
 
     # LLM request and response data
@@ -500,11 +587,13 @@ class LLMResponse(models.Model):
 
     @property
     def prediction(self):
-        """Return the associated prediction (migraine or sinusitis)."""
+        """Return the associated prediction (migraine, sinusitis, or hay fever)."""
         if self.prediction_type == "migraine":
             return self.migraine_prediction
         elif self.prediction_type == "sinusitis":
             return self.sinusitis_prediction
+        elif self.prediction_type == "hayfever":
+            return self.hayfever_prediction
         return None
 
 

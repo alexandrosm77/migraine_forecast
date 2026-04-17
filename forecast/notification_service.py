@@ -9,9 +9,16 @@ from django.utils.html import strip_tags
 from django.utils import timezone
 from django.utils import translation
 
-from .models import MigrainePrediction, SinusitisPrediction, Location, NotificationLog
+from .models import (
+    MigrainePrediction,
+    SinusitisPrediction,
+    HayFeverPrediction,
+    Location,
+    NotificationLog,
+)
 from .prediction_service import MigrainePredictionService
 from .prediction_service_sinusitis import SinusitisPredictionService
+from .prediction_service_hayfever import HayFeverPredictionService
 from .weather_service import WeatherService
 from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, set_tag
 
@@ -27,6 +34,7 @@ class NotificationService:
         """Initialize the notification service."""
         self.prediction_service = MigrainePredictionService()
         self.sinusitis_prediction_service = SinusitisPredictionService()
+        self.hayfever_prediction_service = HayFeverPredictionService()
         self.weather_service = WeatherService()
 
     def _get_user_language(self, user):
@@ -124,6 +132,22 @@ class NotificationService:
                     f"Sinusitis daily limit reached ({sinusitis_count}/{profile.daily_sinusitis_notification_limit})",
                 )
 
+        if notification_type == "hayfever" and profile.daily_hay_fever_notification_limit > 0:
+            hayfever_count = NotificationLog.objects.filter(
+                user=user,
+                status="sent",
+                notification_type="hayfever",
+                sent_at__gte=start_of_day,
+                sent_at__lt=start_of_day + timedelta(days=1),
+            ).count()
+
+            if hayfever_count >= profile.daily_hay_fever_notification_limit:
+                return (
+                    False,
+                    f"Hay fever daily limit reached "
+                    f"({hayfever_count}/{profile.daily_hay_fever_notification_limit})",
+                )
+
         # Check notification frequency using optimized timestamp fields
         if profile.last_notification_sent_at:
             time_since_last = (now - profile.last_notification_sent_at).total_seconds() / 3600
@@ -135,7 +159,8 @@ class NotificationService:
 
         return True, "All checks passed"
 
-    def _create_notification_log(self, user, notification_type, migraine_preds=None, sinusitis_preds=None):
+    def _create_notification_log(self, user, notification_type, migraine_preds=None,
+                                 sinusitis_preds=None, hayfever_preds=None):
         """
         Create a notification log entry.
 
@@ -144,20 +169,22 @@ class NotificationService:
             notification_type: Type of notification
             migraine_preds: List of MigrainePrediction objects
             sinusitis_preds: List of SinusitisPrediction objects
+            hayfever_preds: List of HayFeverPrediction objects
 
         Returns:
             NotificationLog object
         """
         migraine_preds = migraine_preds or []
         sinusitis_preds = sinusitis_preds or []
+        hayfever_preds = hayfever_preds or []
 
         # Determine highest severity
-        all_severities = [p.probability for p in migraine_preds + sinusitis_preds]
+        all_severities = [p.probability for p in migraine_preds + sinusitis_preds + hayfever_preds]
         severity_order = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
         highest_severity = max(all_severities, key=lambda x: severity_order.get(x, 0)) if all_severities else "LOW"
 
         # Count unique locations
-        all_locations = set([p.location for p in migraine_preds + sinusitis_preds])
+        all_locations = set([p.location for p in migraine_preds + sinusitis_preds + hayfever_preds])
 
         log = NotificationLog.objects.create(
             user=user,
@@ -167,7 +194,7 @@ class NotificationService:
             recipient=user.email,
             severity_level=highest_severity,
             locations_count=len(all_locations),
-            predictions_count=len(migraine_preds) + len(sinusitis_preds),
+            predictions_count=len(migraine_preds) + len(sinusitis_preds) + len(hayfever_preds),
             scheduled_time=timezone.now(),
         )
 
@@ -176,6 +203,8 @@ class NotificationService:
             log.migraine_predictions.set(migraine_preds)
         if sinusitis_preds:
             log.sinusitis_predictions.set(sinusitis_preds)
+        if hayfever_preds:
+            log.hayfever_predictions.set(hayfever_preds)
 
         return log
 
@@ -185,7 +214,7 @@ class NotificationService:
 
         Args:
             user: User object
-            notification_type: "migraine", "sinusitis", or "combined"
+            notification_type: "migraine", "sinusitis", "hayfever", or "combined"
         """
         try:
             profile = user.health_profile
@@ -198,6 +227,9 @@ class NotificationService:
 
             if notification_type in ["sinusitis", "combined"]:
                 profile.last_sinusitis_notification_sent_at = now
+
+            if notification_type in ["hayfever", "combined"]:
+                profile.last_hay_fever_notification_sent_at = now
 
             profile.save()
         except Exception as e:
@@ -344,13 +376,15 @@ class NotificationService:
 
             return False
 
-    def send_combined_alert(self, migraine_predictions=None, sinusitis_predictions=None, is_digest=False):
+    def send_combined_alert(self, migraine_predictions=None, sinusitis_predictions=None,
+                            hayfever_predictions=None, is_digest=False):
         """
-        Send a combined alert email for migraine and/or sinusitis predictions across multiple locations.
+        Send a combined alert email for migraine/sinusitis/hay fever predictions across multiple locations.
 
         Args:
             migraine_predictions (list, optional): List of MigrainePrediction instances
             sinusitis_predictions (list, optional): List of SinusitisPrediction instances
+            hayfever_predictions (list, optional): List of HayFeverPrediction instances
             is_digest (bool): If True, this is a digest send and DIGEST mode check is bypassed
 
         Returns:
@@ -361,15 +395,19 @@ class NotificationService:
             migraine_predictions = [migraine_predictions]
         if sinusitis_predictions is not None and not isinstance(sinusitis_predictions, list):
             sinusitis_predictions = [sinusitis_predictions]
+        if hayfever_predictions is not None and not isinstance(hayfever_predictions, list):
+            hayfever_predictions = [hayfever_predictions]
 
         # At least one prediction must be provided
-        if not migraine_predictions and not sinusitis_predictions:
+        if not migraine_predictions and not sinusitis_predictions and not hayfever_predictions:
             logger.error("send_combined_alert called with no predictions")
             capture_message("send_combined_alert called with no predictions", level="error")
             return False
 
         # Get user from whichever prediction list is available
-        all_predictions = (migraine_predictions or []) + (sinusitis_predictions or [])
+        all_predictions = (
+            (migraine_predictions or []) + (sinusitis_predictions or []) + (hayfever_predictions or [])
+        )
         if not all_predictions:
             logger.error("send_combined_alert called with empty prediction lists")
             capture_message("send_combined_alert called with empty prediction lists", level="error")
@@ -379,7 +417,10 @@ class NotificationService:
 
         # Create notification log
         notification_log = self._create_notification_log(
-            user, "combined", migraine_preds=migraine_predictions, sinusitis_preds=sinusitis_predictions
+            user, "combined",
+            migraine_preds=migraine_predictions,
+            sinusitis_preds=sinusitis_predictions,
+            hayfever_preds=hayfever_predictions,
         )
 
         # Add breadcrumb for combined email
@@ -391,6 +432,7 @@ class NotificationService:
                 "user": user.username,
                 "migraine_count": len(migraine_predictions) if migraine_predictions else 0,
                 "sinusitis_count": len(sinusitis_predictions) if sinusitis_predictions else 0,
+                "hayfever_count": len(hayfever_predictions) if hayfever_predictions else 0,
             },
         )
 
@@ -421,7 +463,7 @@ class NotificationService:
         # Group predictions by location
         from collections import defaultdict
 
-        location_predictions = defaultdict(lambda: {"migraine": None, "sinusitis": None})
+        location_predictions = defaultdict(lambda: {"migraine": None, "sinusitis": None, "hayfever": None})
 
         if migraine_predictions:
             for pred in migraine_predictions:
@@ -433,20 +475,27 @@ class NotificationService:
                 location_predictions[pred.location.id]["sinusitis"] = pred
                 location_predictions[pred.location.id]["location"] = pred.location
 
+        if hayfever_predictions:
+            for pred in hayfever_predictions:
+                location_predictions[pred.location.id]["hayfever"] = pred
+                location_predictions[pred.location.id]["location"] = pred.location
+
         # Build location data for template
         for loc_id, preds in location_predictions.items():
             location = preds["location"]
             migraine_pred = preds["migraine"]
             sinusitis_pred = preds["sinusitis"]
+            hayfever_pred = preds["hayfever"]
 
             # Get forecast from whichever prediction is available
-            forecast = (migraine_pred or sinusitis_pred).forecast
+            any_pred = migraine_pred or sinusitis_pred or hayfever_pred
+            forecast = any_pred.forecast
 
             loc_data = {
                 "location": location,
                 "forecast": forecast,
-                "start_time": (migraine_pred or sinusitis_pred).target_time_start,
-                "end_time": (migraine_pred or sinusitis_pred).target_time_end,
+                "start_time": any_pred.target_time_start,
+                "end_time": any_pred.target_time_end,
             }
 
             # Add migraine data if available
@@ -481,22 +530,42 @@ class NotificationService:
                     }
                 )
 
+            # Add hay fever data if available
+            if hayfever_pred:
+                hayfever_weather_factors = hayfever_pred.weather_factors or {}
+
+                loc_data.update(
+                    {
+                        "hayfever_prediction": hayfever_pred,
+                        "hayfever_probability_level": hayfever_pred.probability,
+                        "hayfever_weather_factors": hayfever_weather_factors,
+                        "hayfever_pollen_available": hayfever_weather_factors.get("pollen_available", True),
+                        "hayfever_llm_analysis_text": hayfever_weather_factors.get("llm_analysis_text"),
+                        "hayfever_llm_rationale": hayfever_weather_factors.get("llm", {}).get("detail", {}).get("raw", {}).get("rationale"),  # noqa
+                        "hayfever_llm_prevention_tips": hayfever_weather_factors.get("llm_prevention_tips") or [],
+                    }
+                )
+
             location_data.append(loc_data)
 
         # Prepare context for email
-        # Determine if we have any migraine or sinusitis predictions
+        # Determine if we have any migraine, sinusitis, or hay fever predictions
         has_migraine = any(loc.get("migraine_prediction") for loc in location_data)
         has_sinusitis = any(loc.get("sinusitis_prediction") for loc in location_data)
+        has_hayfever = any(loc.get("hayfever_prediction") for loc in location_data)
 
         # Get first location with tips for each type
         first_migraine_tips = None
         first_sinusitis_tips = None
+        first_hayfever_tips = None
 
         for loc in location_data:
             if not first_migraine_tips and loc.get("migraine_llm_prevention_tips"):
                 first_migraine_tips = loc.get("migraine_llm_prevention_tips")
             if not first_sinusitis_tips and loc.get("sinusitis_llm_prevention_tips"):
                 first_sinusitis_tips = loc.get("sinusitis_llm_prevention_tips")
+            if not first_hayfever_tips and loc.get("hayfever_llm_prevention_tips"):
+                first_hayfever_tips = loc.get("hayfever_llm_prevention_tips")
 
         context = {
             "user": user,
@@ -504,8 +573,10 @@ class NotificationService:
             "location_count": len(location_data),
             "has_migraine": has_migraine,
             "has_sinusitis": has_sinusitis,
+            "has_hayfever": has_hayfever,
             "first_migraine_tips": first_migraine_tips,
             "first_sinusitis_tips": first_sinusitis_tips,
+            "first_hayfever_tips": first_hayfever_tips,
         }
 
         # Activate user's language for email rendering
@@ -548,7 +619,8 @@ class NotificationService:
             )
             logger.info(
                 f"Sent combined alert email to {user.email} "
-                f"({len(migraine_predictions or [])} migraine, {len(sinusitis_predictions or [])} sinusitis "
+                f"({len(migraine_predictions or [])} migraine, {len(sinusitis_predictions or [])} sinusitis, "
+                f"{len(hayfever_predictions or [])} hay fever "
                 f"across {len(location_data)} location(s))"
             )
 
@@ -579,6 +651,7 @@ class NotificationService:
                     "user": user.username,
                     "migraine_count": len(migraine_predictions or []),
                     "sinusitis_count": len(sinusitis_predictions or []),
+                    "hayfever_count": len(hayfever_predictions or []),
                     "location_count": len(location_data),
                     "subject": subject,
                     "smtp_host": settings.EMAIL_HOST,
@@ -1088,22 +1161,103 @@ class NotificationService:
             logger.error(f"Failed to send sinusitis alert email: {e}")
             return False
 
-    def check_and_send_combined_notifications(self, migraine_predictions: dict, sinusitis_predictions: dict):
+    def send_hayfever_alert(self, prediction):
         """
-        Check both migraine and sinusitis predictions and send combined notifications.
+        Send hay fever alert email for a specific prediction.
+
+        Args:
+            prediction (HayFeverPrediction): The prediction model instance
+
+        Returns:
+            bool: True if email was sent successfully, False otherwise
+        """
+        user = prediction.user
+        location = prediction.location
+        forecast = prediction.forecast
+        probability_level = prediction.probability
+        weather_factors = prediction.weather_factors or {}
+
+        # Skip if user has no email
+        if not user.email:
+            logger.warning(f"Cannot send hay fever alert to user {user.username}: No email address")
+            return False
+
+        # Check if notification should be sent based on all preferences
+        should_send, reason = self._should_send_notification(user, probability_level, "hayfever")
+        if not should_send:
+            logger.info(f"Skipping hay fever alert for user {user.username}: {reason}")
+            return False
+
+        # Prepare email context
+        context = {
+            "user": user,
+            "location": location,
+            "prediction": prediction,
+            "forecast": forecast,
+            "start_time": prediction.target_time_start,
+            "end_time": prediction.target_time_end,
+            "temperature": forecast.temperature,
+            "humidity": forecast.humidity,
+            "pressure": forecast.pressure,
+            "precipitation": forecast.precipitation,
+            "cloud_cover": forecast.cloud_cover,
+            "probability_level": probability_level,
+            "weather_factors": weather_factors,
+            "pollen_available": weather_factors.get("pollen_available", True),
+            "llm_analysis_text": weather_factors.get("llm_analysis_text"),
+            "llm_rationale": (weather_factors.get("llm", {}) or {}).get("detail", {}).get("raw", {}).get("rationale"),
+            "llm_prevention_tips": weather_factors.get("llm_prevention_tips") or [],
+        }
+
+        # Activate user's language for email rendering
+        user_language = self._get_user_language(user)
+        if user_language:
+            translation.activate(user_language)
+
+        try:
+            subject = f"{probability_level} Hay Fever Alert for {location.city}"
+            html_message = render_to_string("forecast/email/hayfever_alert.html", context)
+            plain_message = strip_tags(html_message)
+        finally:
+            # Deactivate translation to avoid affecting other parts of the system
+            translation.deactivate()
+
+        try:
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            logger.info(f"Sent hay fever alert email to {user.email}")
+            self._update_last_notification_timestamp(user, "hayfever")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send hay fever alert email: {e}")
+            return False
+
+    def check_and_send_combined_notifications(self, migraine_predictions: dict, sinusitis_predictions: dict,
+                                              hayfever_predictions: dict = None):
+        """
+        Check migraine, sinusitis, and hay fever predictions and send combined notifications.
 
         This method groups predictions by user across ALL locations and sends:
         - A single email per user containing all their predictions from all locations
-        - Combines both migraine and sinusitis predictions in the same email
+        - Combines migraine, sinusitis, and hay fever predictions in the same email
 
         Args:
             migraine_predictions (dict): Dictionary mapping location IDs to migraine prediction data
             sinusitis_predictions (dict): Dictionary mapping location IDs to sinusitis prediction data
+            hayfever_predictions (dict, optional): Dictionary mapping location IDs to hay fever prediction data
 
         Returns:
             int: Number of notifications sent (one per user)
         """
         from django.db.models import Max
+
+        hayfever_predictions = hayfever_predictions or {}
 
         now = timezone.now()
         start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1148,6 +1302,14 @@ class NotificationService:
                 prediction_time__lt=end_of_day,
             ).values_list("user_id", flat=True).distinct()
         )
+        users_with_hayfever_today = set(
+            HayFeverPrediction.objects.filter(
+                user_id__in=user_ids,
+                notification_sent=True,
+                prediction_time__gte=start_of_day,
+                prediction_time__lt=end_of_day,
+            ).values_list("user_id", flat=True).distinct()
+        )
 
         # 4. Batch-check frequency: most recent notification time per user (2 queries total)
         migraine_recent_times = dict(
@@ -1159,6 +1321,13 @@ class NotificationService:
         )
         sinusitis_recent_times = dict(
             SinusitisPrediction.objects.filter(
+                user_id__in=user_ids,
+                notification_sent=True,
+                prediction_time__gte=now - timedelta(hours=24),
+            ).values("user_id").annotate(latest=Max("prediction_time")).values_list("user_id", "latest")
+        )
+        hayfever_recent_times = dict(
+            HayFeverPrediction.objects.filter(
                 user_id__in=user_ids,
                 notification_sent=True,
                 prediction_time__gte=now - timedelta(hours=24),
@@ -1183,7 +1352,11 @@ class NotificationService:
                 logger.debug(f"Notifications disabled for user {user.username} (limit={limit})")
                 continue
 
-            emails_sent_today = 1 if (uid in users_with_migraine_today or uid in users_with_sinusitis_today) else 0
+            emails_sent_today = 1 if (
+                uid in users_with_migraine_today
+                or uid in users_with_sinusitis_today
+                or uid in users_with_hayfever_today
+            ) else 0
             if emails_sent_today >= limit:
                 logger.debug(f"User {user.username} has reached daily limit ({limit})")
                 continue
@@ -1192,16 +1365,14 @@ class NotificationService:
             notification_frequency_hours = int(profile.notification_frequency_hours) if profile else 3
             frequency_cutoff = now - timedelta(hours=notification_frequency_hours)
 
-            latest_migraine_time = migraine_recent_times.get(uid)
-            latest_sinusitis_time = sinusitis_recent_times.get(uid)
-
-            most_recent_time = None
-            if latest_migraine_time and latest_sinusitis_time:
-                most_recent_time = max(latest_migraine_time, latest_sinusitis_time)
-            elif latest_migraine_time:
-                most_recent_time = latest_migraine_time
-            elif latest_sinusitis_time:
-                most_recent_time = latest_sinusitis_time
+            latest_times = [
+                t for t in (
+                    migraine_recent_times.get(uid),
+                    sinusitis_recent_times.get(uid),
+                    hayfever_recent_times.get(uid),
+                ) if t is not None
+            ]
+            most_recent_time = max(latest_times) if latest_times else None
 
             if most_recent_time and most_recent_time >= frequency_cutoff:
                 hours_since = (now - most_recent_time).total_seconds() / 3600
@@ -1219,8 +1390,10 @@ class NotificationService:
             # Collect predictions for ALL locations for this user (no queries — uses cached locations)
             user_migraine_preds = []
             user_sinusitis_preds = []
+            user_hayfever_preds = []
             migraine_enabled = profile.migraine_predictions_enabled if profile else True
             sinusitis_enabled = profile.sinusitis_predictions_enabled if profile else True
+            hayfever_enabled = profile.hay_fever_predictions_enabled if profile else True
 
             for loc in user_locations[uid]:
                 # Migraine predictions
@@ -1241,10 +1414,20 @@ class NotificationService:
                         if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
                             user_sinusitis_preds.append(pred)
 
-            if user_migraine_preds or user_sinusitis_preds:
+                # Hay fever predictions
+                if hayfever_enabled:
+                    hayfever_data = hayfever_predictions.get(loc.id)
+                    if hayfever_data:
+                        prob_level = hayfever_data.get("probability")
+                        pred = hayfever_data.get("prediction")
+                        if prob_level in ["HIGH", "MEDIUM"] and pred and not pred.notification_sent:
+                            user_hayfever_preds.append(pred)
+
+            if user_migraine_preds or user_sinusitis_preds or user_hayfever_preds:
                 user_predictions[uid] = {
                     "migraine": user_migraine_preds,
                     "sinusitis": user_sinusitis_preds,
+                    "hayfever": user_hayfever_preds,
                 }
 
         # --- Send one email per user ---
@@ -1253,19 +1436,27 @@ class NotificationService:
         for uid, predictions in user_predictions.items():
             migraine_preds = predictions["migraine"]
             sinusitis_preds = predictions["sinusitis"]
+            hayfever_preds = predictions.get("hayfever", [])
 
-            if not migraine_preds and not sinusitis_preds:
+            if not migraine_preds and not sinusitis_preds and not hayfever_preds:
                 continue
 
             user = user_map[uid]  # already cached, no query needed
 
-            if self.send_combined_alert(migraine_predictions=migraine_preds, sinusitis_predictions=sinusitis_preds):
+            if self.send_combined_alert(
+                migraine_predictions=migraine_preds,
+                sinusitis_predictions=sinusitis_preds,
+                hayfever_predictions=hayfever_preds,
+            ):
                 # Batch-update notification_sent
                 all_preds_to_update = []
                 for pred in migraine_preds:
                     pred.notification_sent = True
                     all_preds_to_update.append(pred)
                 for pred in sinusitis_preds:
+                    pred.notification_sent = True
+                    all_preds_to_update.append(pred)
+                for pred in hayfever_preds:
                     pred.notification_sent = True
                     all_preds_to_update.append(pred)
 
@@ -1277,13 +1468,20 @@ class NotificationService:
                     SinusitisPrediction.objects.filter(
                         id__in=[p.id for p in sinusitis_preds]
                     ).update(notification_sent=True)
+                if hayfever_preds:
+                    HayFeverPrediction.objects.filter(
+                        id__in=[p.id for p in hayfever_preds]
+                    ).update(notification_sent=True)
 
                 notifications_sent += 1
 
-                location_count = len(set(p.location_id for p in migraine_preds + sinusitis_preds))
+                location_count = len(set(
+                    p.location_id for p in migraine_preds + sinusitis_preds + hayfever_preds
+                ))
                 logger.info(
                     f"Sent combined alert to {user.email} covering {location_count} location(s) "
-                    f"({len(migraine_preds)} migraine, {len(sinusitis_preds)} sinusitis)"
+                    f"({len(migraine_preds)} migraine, {len(sinusitis_preds)} sinusitis, "
+                    f"{len(hayfever_preds)} hay fever)"
                 )
 
         logger.info(f"Sent {notifications_sent} combined alert notifications")

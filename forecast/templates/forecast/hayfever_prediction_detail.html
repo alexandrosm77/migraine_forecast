@@ -1,0 +1,125 @@
+{% extends 'forecast/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Hay Fever Prediction Details" %} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{% trans "Hay Fever Prediction Details" %}</h1>
+        <a href="{% url 'forecast:hayfever_prediction_list' %}" class="btn btn-outline-secondary">{% trans "Back to Predictions" %}</a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0">{% trans "Prediction Information" %}</h5></div>
+                <div class="card-body">
+                    <p><strong>{% trans "Location" %}:</strong> {{ prediction.location.city }}, {{ prediction.location.country }}</p>
+                    <p><strong>{% trans "Prediction Made" %}:</strong> {{ prediction.prediction_time|date:"F j, Y, g:i a" }}</p>
+                    <p><strong>{% trans "Target Time Window" %}:</strong> {{ prediction.target_time_start|date:"F j, Y, g:i a" }} - {{ prediction.target_time_end|date:"g:i a" }}</p>
+                    <p>
+                        <strong>{% trans "Hay Fever Probability" %}:</strong>
+                        {% if prediction.probability == 'HIGH' %}
+                        <span class="badge bg-danger">{% trans "High" %}</span>
+                        {% elif prediction.probability == 'MEDIUM' %}
+                        <span class="badge bg-warning text-dark">{% trans "Medium" %}</span>
+                        {% else %}
+                        <span class="badge bg-success">{% trans "Low" %}</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>{% trans "Notification Sent" %}:</strong> {{ prediction.notification_sent|yesno:"Yes,No" }}</p>
+                    {% if not pollen_available %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <small><strong>{% trans "Note:" %}</strong> {% trans "Pollen data is unavailable for this location (Europe only). Prediction is based on air-quality and weather factors with reduced confidence." %}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0">{% trans "Weather Conditions" %}</h5></div>
+                <div class="card-body">
+                    <p><strong>{% trans "Temperature" %}:</strong> {{ prediction.forecast.temperature|floatformat:1 }}°C</p>
+                    <p><strong>{% trans "Humidity" %}:</strong> {{ prediction.forecast.humidity|floatformat:0 }}%</p>
+                    <p><strong>{% trans "Wind Speed" %}:</strong> {{ prediction.forecast.wind_speed|floatformat:1 }} km/h</p>
+                    <p><strong>{% trans "Precipitation" %}:</strong> {{ prediction.forecast.precipitation|floatformat:1 }} mm</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if pollen_species %}
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">🌿 {% trans "Pollen Breakdown" %}</h5></div>
+        <div class="card-body">
+            <p class="text-muted"><small>{% trans "Peak concentration per species (grains/m³) in the forecast window." %}</small></p>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>{% trans "Species" %}</th><th>{% trans "Concentration" %}</th></tr></thead>
+                    <tbody>
+                        {% for species in pollen_species %}
+                        <tr>
+                            <td><strong>{{ species.name }}</strong></td>
+                            <td>{{ species.value|floatformat:1 }} grains/m³</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if air_quality %}
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">💨 {% trans "Air Quality Summary" %}</h5></div>
+        <div class="card-body">
+            <div class="row">
+                {% if air_quality.european_aqi is not None %}<div class="col-md-4 mb-2"><strong>{% trans "European AQI" %}:</strong> {{ air_quality.european_aqi|floatformat:0 }}</div>{% endif %}
+                {% if air_quality.us_aqi is not None %}<div class="col-md-4 mb-2"><strong>{% trans "US AQI" %}:</strong> {{ air_quality.us_aqi|floatformat:0 }}</div>{% endif %}
+                {% if air_quality.pm2_5 is not None %}<div class="col-md-4 mb-2"><strong>PM2.5:</strong> {{ air_quality.pm2_5|floatformat:1 }} µg/m³</div>{% endif %}
+                {% if air_quality.pm10 is not None %}<div class="col-md-4 mb-2"><strong>PM10:</strong> {{ air_quality.pm10|floatformat:1 }} µg/m³</div>{% endif %}
+                {% if air_quality.ozone is not None %}<div class="col-md-4 mb-2"><strong>{% trans "Ozone" %}:</strong> {{ air_quality.ozone|floatformat:1 }} µg/m³</div>{% endif %}
+                {% if air_quality.nitrogen_dioxide is not None %}<div class="col-md-4 mb-2"><strong>NO₂:</strong> {{ air_quality.nitrogen_dioxide|floatformat:1 }} µg/m³</div>{% endif %}
+                {% if air_quality.dust is not None %}<div class="col-md-4 mb-2"><strong>{% trans "Dust" %}:</strong> {{ air_quality.dust|floatformat:1 }} µg/m³</div>{% endif %}
+                {% if air_quality.uv_index is not None %}<div class="col-md-4 mb-2"><strong>{% trans "UV Index" %}:</strong> {{ air_quality.uv_index|floatformat:1 }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if llm_analysis_text %}
+    <div class="alert alert-info" role="alert">
+        <h5 class="alert-heading">📊 {% trans "Model Analysis" %}</h5>
+        <p class="mb-0">{{ llm_analysis_text }}</p>
+    </div>
+    {% endif %}
+
+    {% if llm_rationale %}
+    <div class="card mb-4">
+        <div class="card-header bg-light"><h5 class="mb-0">🔍 {% trans "Why This Alert?" %}</h5></div>
+        <div class="card-body">
+            <p class="mb-0">{{ llm_rationale }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if llm_prevention_tips and prediction.probability != 'LOW' %}
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">💡 {% trans "Prevention Tips" %}</h5></div>
+        <div class="card-body">
+            <ul class="mb-3">
+                {% for tip in llm_prevention_tips %}<li>{{ tip }}</li>{% endfor %}
+            </ul>
+            <div class="alert alert-info mb-0">
+                <small><strong>{% trans "Note:" %}</strong> {% trans "These are AI-generated suggestions based on current conditions and should not be considered medical advice. Please consult with your healthcare provider for personalized recommendations." %}</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

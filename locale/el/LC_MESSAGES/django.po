@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-03 15:06+0000\n"
+"POT-Creation-Date: 2026-04-17 13:49+0000\n"
 "PO-Revision-Date: 2025-11-03 12:00+0000\n"
 "Last-Translator: \n"
 "Language-Team: Greek\n"
@@ -17,74 +17,182 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: forecast/templates/forecast/base.html:7
+#: forecast/templates/forecast/base_v2.html:7
 #: forecast/templates/forecast/dashboard.html:4
+#: forecast/templates/forecast/dashboard_v2.html:4
+#: forecast/templates/forecast/hayfever_prediction_detail.html:4
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:4
+#: forecast/templates/forecast/hayfever_prediction_list.html:4
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:4
 #: forecast/templates/forecast/index.html:4
 #: forecast/templates/forecast/index.html:9
+#: forecast/templates/forecast/index_v2.html:4
+#: forecast/templates/forecast/location_add_v2.html:4
+#: forecast/templates/forecast/location_delete_v2.html:4
+#: forecast/templates/forecast/location_detail_v2.html:4
+#: forecast/templates/forecast/location_edit_v2.html:4
+#: forecast/templates/forecast/location_list_v2.html:4
 #: forecast/templates/forecast/login.html:4
+#: forecast/templates/forecast/login_v2.html:4
+#: forecast/templates/forecast/prediction_detail_v2.html:4
+#: forecast/templates/forecast/prediction_list_v2.html:4
 #: forecast/templates/forecast/profile.html:4
+#: forecast/templates/forecast/profile_v2.html:4
 #: forecast/templates/forecast/register.html:4
+#: forecast/templates/forecast/register_v2.html:4
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:4
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:4
+#: forecast/templates/forecast/user_list.html:4
+#: forecast/templates/forecast/user_list_v2.html:4
 msgid "Migraine Forecast"
 msgstr "Πρόβλεψη Ημικρανίας"
 
 # Navigation and common terms
 #: forecast/templates/forecast/base.html:50
+#: forecast/templates/forecast/base_v2.html:111
+#: forecast/templates/forecast/base_v2.html:248
 #: forecast/templates/forecast/index.html:4
+#: forecast/templates/forecast/index_v2.html:4
 msgid "Home"
 msgstr "Αρχική"
 
 #: forecast/templates/forecast/base.html:54
+#: forecast/templates/forecast/base_v2.html:115
+#: forecast/templates/forecast/base_v2.html:252
+#: forecast/templates/forecast/base_v2.html:376
 #: forecast/templates/forecast/dashboard.html:4
 #: forecast/templates/forecast/dashboard.html:8
+#: forecast/templates/forecast/dashboard_v2.html:4
+#: forecast/templates/forecast/dashboard_v2.html:10
 msgid "Dashboard"
 msgstr "Πίνακας Ελέγχου"
 
 #: forecast/templates/forecast/base.html:57
+#: forecast/templates/forecast/base_v2.html:118
+#: forecast/templates/forecast/base_v2.html:255
+#: forecast/templates/forecast/base_v2.html:377
 #: forecast/templates/forecast/location_list.html:4
-#: forecast/templates/forecast/profile.html:32
+#: forecast/templates/forecast/location_list_v2.html:4
+#: forecast/templates/forecast/profile.html:55
+#: forecast/templates/forecast/profile_v2.html:75
 msgid "Locations"
 msgstr "Τοποθεσίες"
 
 #: forecast/templates/forecast/base.html:61
+#: forecast/templates/forecast/base_v2.html:124
 #: forecast/templates/forecast/prediction_list.html:4
 msgid "Predictions"
 msgstr "Προβλέψεις"
 
 #: forecast/templates/forecast/base.html:64
+#: forecast/templates/forecast/base_v2.html:132
+#: forecast/templates/forecast/base_v2.html:258
+#: forecast/templates/forecast/dashboard_v2.html:400
+#: forecast/templates/forecast/dashboard_v2.html:615
 #: forecast/templates/forecast/prediction_list.html:8
+#: forecast/templates/forecast/prediction_list_v2.html:4
+#: forecast/templates/forecast/prediction_list_v2.html:11
 msgid "Migraine Predictions"
 msgstr "Προβλέψεις Ημικρανίας"
 
 #: forecast/templates/forecast/base.html:65
+#: forecast/templates/forecast/base_v2.html:135
+#: forecast/templates/forecast/base_v2.html:261
+#: forecast/templates/forecast/dashboard_v2.html:403
+#: forecast/templates/forecast/dashboard_v2.html:623
 #: forecast/templates/forecast/sinusitis_prediction_list.html:4
 #: forecast/templates/forecast/sinusitis_prediction_list.html:8
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:4
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:11
 msgid "Sinusitis Predictions"
 msgstr "Προβλέψεις Ιγμορίτιδας"
 
 #: forecast/templates/forecast/base.html:87
+#: forecast/templates/forecast/base_v2.html:198
+#: forecast/templates/forecast/base_v2.html:264
+#: forecast/templates/forecast/base_v2.html:378
+#: forecast/templates/forecast/profile_v2.html:4
 msgid "Profile"
 msgstr "Προφίλ"
 
-#: forecast/templates/forecast/base.html:93
+#: forecast/templates/forecast/base.html:90
+#: forecast/templates/forecast/base_v2.html:206
+msgid "Manage Users"
+msgstr ""
+
+#: forecast/templates/forecast/base.html:97
+#: forecast/templates/forecast/base_v2.html:216
+#: forecast/templates/forecast/base_v2.html:269
+#: forecast/templates/forecast/profile_v2.html:297
 msgid "Logout"
 msgstr "Αποσύνδεση"
 
-#: forecast/templates/forecast/base.html:101
+#: forecast/templates/forecast/base.html:105
+#: forecast/templates/forecast/base_v2.html:224
+#: forecast/templates/forecast/base_v2.html:274
+#: forecast/templates/forecast/base_v2.html:380
 #: forecast/templates/forecast/login.html:4
 #: forecast/templates/forecast/login.html:12
 #: forecast/templates/forecast/login.html:26
+#: forecast/templates/forecast/login_v2.html:4
 msgid "Login"
 msgstr "Σύνδεση"
 
-#: forecast/templates/forecast/base.html:104
+#: forecast/templates/forecast/base.html:108
+#: forecast/templates/forecast/base_v2.html:227
+#: forecast/templates/forecast/base_v2.html:277
+#: forecast/templates/forecast/base_v2.html:381
 #: forecast/templates/forecast/index.html:15
 #: forecast/templates/forecast/register.html:4
 #: forecast/templates/forecast/register.html:12
 #: forecast/templates/forecast/register.html:57
+#: forecast/templates/forecast/register_v2.html:4
 msgid "Register"
 msgstr "Εγγραφή"
 
+#: forecast/templates/forecast/base.html:122
+#: forecast/templates/forecast/base_v2.html:294
+#, fuzzy
+#| msgid "Notification Mode"
+msgid "Impersonation Mode"
+msgstr "Λειτουργία Ειδοποιήσεων"
+
+#: forecast/templates/forecast/base.html:123
+#: forecast/templates/forecast/base_v2.html:295
+msgid "You are currently viewing the site as"
+msgstr ""
+
+#: forecast/templates/forecast/base.html:126
+#: forecast/templates/forecast/base_v2.html:302
+msgid "Stop Impersonation"
+msgstr ""
+
+#: forecast/templates/forecast/base_v2.html:150
+msgid "Switch to Light Mode"
+msgstr ""
+
+#: forecast/templates/forecast/base_v2.html:150
+msgid "Switch to Dark Mode"
+msgstr ""
+
+#: forecast/templates/forecast/base_v2.html:362
+msgid "About"
+msgstr ""
+
+#: forecast/templates/forecast/base_v2.html:372
+msgid "Quick Links"
+msgstr ""
+
+#: forecast/templates/forecast/base_v2.html:389
+#, fuzzy
+#| msgid "Predictions"
+msgid "Credits"
+msgstr "Προβλέψεις"
+
 #: forecast/templates/forecast/dashboard.html:12
+#: forecast/templates/forecast/dashboard_v2.html:27
 #: forecast/templates/forecast/location_list.html:37
+#: forecast/templates/forecast/location_list_v2.html:92
 msgid ""
 "You haven't added any locations yet. Add a location to start receiving "
 "migraine forecasts."
@@ -93,148 +201,414 @@ msgstr ""
 "αρχίσετε να λαμβάνετε προβλέψεις ημικρανίας."
 
 #: forecast/templates/forecast/dashboard.html:13
+#: forecast/templates/forecast/dashboard_v2.html:33
+#: forecast/templates/forecast/dashboard_v2.html:228
+#: forecast/templates/forecast/hayfever_prediction_list.html:97
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:118
 #: forecast/templates/forecast/location_add.html:4
 #: forecast/templates/forecast/location_add.html:34
+#: forecast/templates/forecast/location_add_v2.html:4
+#: forecast/templates/forecast/location_add_v2.html:76
 #: forecast/templates/forecast/location_list.html:10
+#: forecast/templates/forecast/location_list_v2.html:18
 #: forecast/templates/forecast/prediction_list.html:118
+#: forecast/templates/forecast/prediction_list_v2.html:174
 #: forecast/templates/forecast/sinusitis_prediction_list.html:118
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:160
 msgid "Add Location"
 msgstr "Προσθήκη Τοποθεσίας"
 
 # Dashboard page
 #: forecast/templates/forecast/dashboard.html:21
+#: forecast/templates/forecast/dashboard_v2.html:49
 msgid "High Migraine Risk Alert"
 msgstr "Υψηλός Κίνδυνος Ημικρανίας"
 
 #: forecast/templates/forecast/dashboard.html:24
+#: forecast/templates/forecast/dashboard_v2.html:51
 msgid "High migraine probability detected in the next 24 hours:"
 msgstr "Εντοπίστηκε υψηλή πιθανότητα ημικρανίας τις επόμενες 24 ώρες:"
 
-#: forecast/templates/forecast/dashboard.html:32
-#: forecast/templates/forecast/dashboard.html:128
-#: forecast/templates/forecast/dashboard.html:176
-#: forecast/templates/forecast/location_detail.html:109
+#: forecast/templates/forecast/dashboard.html:35
+#: forecast/templates/forecast/dashboard.html:78
+#: forecast/templates/forecast/dashboard_v2.html:66
+#: forecast/templates/forecast/dashboard_v2.html:126
+#, fuzzy
+#| msgid "Weather Sensitivity"
+msgid "Weather Trends:"
+msgstr "Ευαισθησία στον Καιρό"
+
+#: forecast/templates/forecast/dashboard.html:48
+#: forecast/templates/forecast/dashboard.html:91
+#: forecast/templates/forecast/dashboard.html:134
+#: forecast/templates/forecast/dashboard_v2.html:79
+#: forecast/templates/forecast/dashboard_v2.html:139
+#: forecast/templates/forecast/dashboard_v2.html:199
+#, fuzzy
+#| msgid "Model Analysis"
+msgid "Analysis:"
+msgstr "Ανάλυση Μοντέλου"
+
+#: forecast/templates/forecast/dashboard.html:52
+#: forecast/templates/forecast/dashboard.html:95
+#: forecast/templates/forecast/dashboard.html:138
+#: forecast/templates/forecast/dashboard.html:213
+#: forecast/templates/forecast/dashboard.html:261
+#: forecast/templates/forecast/dashboard.html:309
+#: forecast/templates/forecast/dashboard_v2.html:85
+#: forecast/templates/forecast/dashboard_v2.html:145
+#: forecast/templates/forecast/dashboard_v2.html:205
+#: forecast/templates/forecast/dashboard_v2.html:450
+#: forecast/templates/forecast/dashboard_v2.html:515
+#: forecast/templates/forecast/dashboard_v2.html:580
+#: forecast/templates/forecast/hayfever_prediction_list.html:45
+#: forecast/templates/forecast/location_detail.html:111
+#: forecast/templates/forecast/location_detail_v2.html:165
 #: forecast/templates/forecast/prediction_list.html:45
 #: forecast/templates/forecast/sinusitis_prediction_list.html:45
 msgid "Details"
 msgstr "Λεπτομέρειες"
 
-#: forecast/templates/forecast/dashboard.html:43
+#: forecast/templates/forecast/dashboard.html:64
+#: forecast/templates/forecast/dashboard_v2.html:109
 msgid "High Sinusitis Risk Alert"
 msgstr "Υψηλός Κίνδυνος Ιγμορίτιδας"
 
-#: forecast/templates/forecast/dashboard.html:46
+#: forecast/templates/forecast/dashboard.html:67
+#: forecast/templates/forecast/dashboard_v2.html:111
 msgid "High sinusitis probability detected in the next 24 hours:"
 msgstr "Εντοπίστηκε υψηλή πιθανότητα ιγμορίτιδας τις επόμενες 24 ώρες:"
 
 # Dashboard page
-#: forecast/templates/forecast/dashboard.html:65
+#: forecast/templates/forecast/dashboard.html:107
+#: forecast/templates/forecast/dashboard_v2.html:169
+msgid "High Hay Fever Risk Alert"
+msgstr "Υψηλός Κίνδυνος Αλλεργικής Ρινίτιδας"
+
+#: forecast/templates/forecast/dashboard.html:110
+#: forecast/templates/forecast/dashboard_v2.html:171
+msgid "High hay fever probability detected in the next 24 hours:"
+msgstr "Εντοπίστηκε υψηλή πιθανότητα αλλεργικής ρινίτιδας τις επόμενες 24 ώρες:"
+
+#: forecast/templates/forecast/dashboard.html:121
+#: forecast/templates/forecast/dashboard_v2.html:186
+msgid "Conditions:"
+msgstr "Συνθήκες:"
+
+# Dashboard page
+#: forecast/templates/forecast/dashboard.html:150
 #: forecast/templates/forecast/location_list.html:9
+#: forecast/templates/forecast/location_list_v2.html:11
 msgid "Your Locations"
 msgstr "Οι Τοποθεσίες σας"
 
-#: forecast/templates/forecast/dashboard.html:76
+#: forecast/templates/forecast/dashboard.html:161
 msgid "Lat"
 msgstr "Γεωγρ. Πλάτος"
 
-#: forecast/templates/forecast/dashboard.html:76
+#: forecast/templates/forecast/dashboard.html:161
 msgid "Long"
 msgstr "Γεωγρ. Μήκος"
 
-#: forecast/templates/forecast/dashboard.html:78
+#: forecast/templates/forecast/dashboard.html:163
+#: forecast/templates/forecast/dashboard_v2.html:292
+#: forecast/templates/forecast/dashboard_v2.html:335
+#: forecast/templates/forecast/dashboard_v2.html:378
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:72
 #: forecast/templates/forecast/location_list.html:28
+#: forecast/templates/forecast/location_list_v2.html:64
+#: forecast/templates/forecast/prediction_list_v2.html:102
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:102
 msgid "View Details"
 msgstr "Προβολή Λεπτομερειών"
 
-#: forecast/templates/forecast/dashboard.html:87
+#: forecast/templates/forecast/dashboard.html:172
 #: forecast/templates/forecast/location_add.html:8
+#: forecast/templates/forecast/location_add_v2.html:10
 msgid "Add New Location"
 msgstr "Προσθήκη Νέας Τοποθεσίας"
 
-#: forecast/templates/forecast/dashboard.html:99
-#: forecast/templates/forecast/location_detail.html:80
+#: forecast/templates/forecast/dashboard.html:184
+#: forecast/templates/forecast/location_detail.html:82
+#: forecast/templates/forecast/location_detail_v2.html:129
 msgid "Recent Migraine Predictions"
 msgstr "Πρόσφατες Προβλέψεις Ημικρανίας"
 
-#: forecast/templates/forecast/dashboard.html:107
-#: forecast/templates/forecast/dashboard.html:155
+#: forecast/templates/forecast/dashboard.html:192
+#: forecast/templates/forecast/dashboard.html:240
+#: forecast/templates/forecast/dashboard.html:288
+#: forecast/templates/forecast/dashboard_v2.html:418
+#: forecast/templates/forecast/dashboard_v2.html:483
+#: forecast/templates/forecast/dashboard_v2.html:548
+#: forecast/templates/forecast/hayfever_prediction_detail.html:18
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:30
+#: forecast/templates/forecast/hayfever_prediction_list.html:22
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:34
+#: forecast/templates/forecast/prediction_detail_v2.html:33
 #: forecast/templates/forecast/prediction_list.html:22
+#: forecast/templates/forecast/prediction_list_v2.html:37
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:33
 #: forecast/templates/forecast/sinusitis_prediction_list.html:22
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:37
 msgid "Location"
 msgstr "Τοποθεσία"
 
-#: forecast/templates/forecast/dashboard.html:108
-#: forecast/templates/forecast/dashboard.html:156
+#: forecast/templates/forecast/dashboard.html:193
+#: forecast/templates/forecast/dashboard.html:241
+#: forecast/templates/forecast/dashboard.html:289
+#: forecast/templates/forecast/dashboard_v2.html:419
+#: forecast/templates/forecast/dashboard_v2.html:484
+#: forecast/templates/forecast/dashboard_v2.html:549
 msgid "Time Window"
 msgstr "Χρονικό Παράθυρο"
 
-#: forecast/templates/forecast/dashboard.html:109
-#: forecast/templates/forecast/dashboard.html:157
-#: forecast/templates/forecast/location_detail.html:90
+#: forecast/templates/forecast/dashboard.html:194
+#: forecast/templates/forecast/dashboard.html:242
+#: forecast/templates/forecast/dashboard.html:290
+#: forecast/templates/forecast/dashboard_v2.html:420
+#: forecast/templates/forecast/dashboard_v2.html:485
+#: forecast/templates/forecast/dashboard_v2.html:550
+#: forecast/templates/forecast/hayfever_prediction_list.html:25
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:37
+#: forecast/templates/forecast/location_detail.html:92
+#: forecast/templates/forecast/location_detail_v2.html:139
 #: forecast/templates/forecast/prediction_list.html:25
+#: forecast/templates/forecast/prediction_list_v2.html:46
 #: forecast/templates/forecast/sinusitis_prediction_list.html:25
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:46
 msgid "Probability"
 msgstr "Πιθανότητα"
 
-#: forecast/templates/forecast/dashboard.html:110
-#: forecast/templates/forecast/dashboard.html:158
-#: forecast/templates/forecast/location_detail.html:91
+#: forecast/templates/forecast/dashboard.html:195
+#: forecast/templates/forecast/dashboard.html:243
+#: forecast/templates/forecast/dashboard.html:291
+#: forecast/templates/forecast/dashboard_v2.html:421
+#: forecast/templates/forecast/dashboard_v2.html:486
+#: forecast/templates/forecast/dashboard_v2.html:551
+#: forecast/templates/forecast/hayfever_prediction_list.html:26
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:38
+#: forecast/templates/forecast/location_detail.html:93
+#: forecast/templates/forecast/location_detail_v2.html:140
 #: forecast/templates/forecast/prediction_list.html:26
+#: forecast/templates/forecast/prediction_list_v2.html:49
 #: forecast/templates/forecast/sinusitis_prediction_list.html:26
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:49
+#: forecast/templates/forecast/user_list.html:26
+#: forecast/templates/forecast/user_list_v2.html:41
 msgid "Actions"
 msgstr "Ενέργειες"
 
-#: forecast/templates/forecast/dashboard.html:120
-#: forecast/templates/forecast/dashboard.html:168
-#: forecast/templates/forecast/location_detail.html:101
+#: forecast/templates/forecast/dashboard.html:205
+#: forecast/templates/forecast/dashboard.html:253
+#: forecast/templates/forecast/dashboard.html:301
+#: forecast/templates/forecast/dashboard_v2.html:436
+#: forecast/templates/forecast/dashboard_v2.html:501
+#: forecast/templates/forecast/dashboard_v2.html:566
+#: forecast/templates/forecast/hayfever_prediction_detail.html:24
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:154
+#: forecast/templates/forecast/hayfever_prediction_list.html:37
+#: forecast/templates/forecast/location_detail.html:103
+#: forecast/templates/forecast/location_detail_v2.html:151
+#: forecast/templates/forecast/prediction_detail_v2.html:239
 #: forecast/templates/forecast/prediction_list.html:37
 #: forecast/templates/forecast/prediction_list.html:138
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:239
 #: forecast/templates/forecast/sinusitis_prediction_list.html:37
 msgid "High"
 msgstr "Υψηλή"
 
-#: forecast/templates/forecast/dashboard.html:122
-#: forecast/templates/forecast/dashboard.html:170
-#: forecast/templates/forecast/location_detail.html:103
+#: forecast/templates/forecast/dashboard.html:207
+#: forecast/templates/forecast/dashboard.html:255
+#: forecast/templates/forecast/dashboard.html:303
+#: forecast/templates/forecast/dashboard_v2.html:440
+#: forecast/templates/forecast/dashboard_v2.html:505
+#: forecast/templates/forecast/dashboard_v2.html:570
+#: forecast/templates/forecast/hayfever_prediction_detail.html:26
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:155
+#: forecast/templates/forecast/hayfever_prediction_list.html:39
+#: forecast/templates/forecast/location_detail.html:105
+#: forecast/templates/forecast/location_detail_v2.html:155
+#: forecast/templates/forecast/prediction_detail_v2.html:241
 #: forecast/templates/forecast/prediction_list.html:39
 #: forecast/templates/forecast/prediction_list.html:139
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:241
 #: forecast/templates/forecast/sinusitis_prediction_list.html:39
 msgid "Medium"
 msgstr "Μέτρια"
 
 # Probability levels
-#: forecast/templates/forecast/dashboard.html:124
-#: forecast/templates/forecast/dashboard.html:172
-#: forecast/templates/forecast/location_detail.html:105
+#: forecast/templates/forecast/dashboard.html:209
+#: forecast/templates/forecast/dashboard.html:257
+#: forecast/templates/forecast/dashboard.html:305
+#: forecast/templates/forecast/dashboard_v2.html:444
+#: forecast/templates/forecast/dashboard_v2.html:509
+#: forecast/templates/forecast/dashboard_v2.html:574
+#: forecast/templates/forecast/hayfever_prediction_detail.html:28
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:156
+#: forecast/templates/forecast/hayfever_prediction_list.html:41
+#: forecast/templates/forecast/location_detail.html:107
+#: forecast/templates/forecast/location_detail_v2.html:159
+#: forecast/templates/forecast/prediction_detail_v2.html:243
 #: forecast/templates/forecast/prediction_list.html:41
 #: forecast/templates/forecast/prediction_list.html:140
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:243
 #: forecast/templates/forecast/sinusitis_prediction_list.html:41
 msgid "Low"
 msgstr "Χαμηλή"
 
-#: forecast/templates/forecast/dashboard.html:136
+#: forecast/templates/forecast/dashboard.html:221
+#: forecast/templates/forecast/dashboard_v2.html:460
 msgid "View All Migraine Predictions"
 msgstr "Προβολή Όλων των Προβλέψεων Ημικρανίας"
 
-#: forecast/templates/forecast/dashboard.html:139
+#: forecast/templates/forecast/dashboard.html:224
+#: forecast/templates/forecast/dashboard_v2.html:471
 msgid "No recent migraine predictions available."
 msgstr "Δεν υπάρχουν πρόσφατες προβλέψεις ημικρανίας."
 
-#: forecast/templates/forecast/dashboard.html:147
+#: forecast/templates/forecast/dashboard.html:232
 msgid "Recent Sinusitis Predictions"
 msgstr "Πρόσφατες Προβλέψεις Ιγμορίτιδας"
 
-#: forecast/templates/forecast/dashboard.html:184
+#: forecast/templates/forecast/dashboard.html:269
+#: forecast/templates/forecast/dashboard_v2.html:525
 msgid "View All Sinusitis Predictions"
 msgstr "Προβολή Όλων των Προβλέψεων Ιγμορίτιδας"
 
-#: forecast/templates/forecast/dashboard.html:187
+#: forecast/templates/forecast/dashboard.html:272
+#: forecast/templates/forecast/dashboard_v2.html:536
 msgid "No recent sinusitis predictions available."
 msgstr "Δεν υπάρχουν πρόσφατες προβλέψεις ιγμορίτιδας."
 
+# Dashboard
+#: forecast/templates/forecast/dashboard.html:280
+msgid "Recent Hay Fever Predictions"
+msgstr "Πρόσφατες Προβλέψεις Αλλεργικής Ρινίτιδας"
+
+#: forecast/templates/forecast/dashboard.html:317
+#: forecast/templates/forecast/dashboard_v2.html:590
+msgid "View All Hay Fever Predictions"
+msgstr "Προβολή Όλων των Προβλέψεων Αλλεργικής Ρινίτιδας"
+
+#: forecast/templates/forecast/dashboard.html:320
+#: forecast/templates/forecast/dashboard_v2.html:601
+msgid "No recent hay fever predictions available."
+msgstr "Δεν υπάρχουν πρόσφατες προβλέψεις αλλεργικής ρινίτιδας."
+
+#: forecast/templates/forecast/dashboard_v2.html:11
+msgid "Your health forecast overview"
+msgstr ""
+
+#: forecast/templates/forecast/dashboard_v2.html:25
+#: forecast/templates/forecast/location_list_v2.html:90
+#, fuzzy
+#| msgid "No locations added yet"
+msgid "No locations yet"
+msgstr "Δεν έχουν προστεθεί τοποθεσίες ακόμα"
+
+#: forecast/templates/forecast/dashboard_v2.html:223
+msgid "Latest Predictions by Location"
+msgstr ""
+
+# Email templates
+#: forecast/templates/forecast/dashboard_v2.html:266
+#, fuzzy
+#| msgid "Migraine Alert"
+msgid "Migraine"
+msgstr "Ειδοποίηση Ημικρανίας"
+
+#: forecast/templates/forecast/dashboard_v2.html:271
+#: forecast/templates/forecast/dashboard_v2.html:314
+#: forecast/templates/forecast/dashboard_v2.html:357
+#: forecast/templates/forecast/dashboard_v2.html:658
+#: forecast/templates/forecast/dashboard_v2.html:728
+#: forecast/templates/forecast/dashboard_v2.html:798
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:45
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:63
+#: forecast/templates/forecast/prediction_detail_v2.html:49
+#: forecast/templates/forecast/prediction_list_v2.html:82
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:49
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:82
+#, fuzzy
+#| msgid "High Risk Alerts"
+msgid "High Risk"
+msgstr "Ειδοποιήσεις Υψηλού Κινδύνου"
+
+#: forecast/templates/forecast/dashboard_v2.html:275
+#: forecast/templates/forecast/dashboard_v2.html:318
+#: forecast/templates/forecast/dashboard_v2.html:361
+#: forecast/templates/forecast/dashboard_v2.html:665
+#: forecast/templates/forecast/dashboard_v2.html:735
+#: forecast/templates/forecast/dashboard_v2.html:805
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:47
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:65
+#: forecast/templates/forecast/prediction_detail_v2.html:53
+#: forecast/templates/forecast/prediction_list_v2.html:89
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:53
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:89
+#, fuzzy
+#| msgid "Medium"
+msgid "Medium Risk"
+msgstr "Μέτρια"
+
+#: forecast/templates/forecast/dashboard_v2.html:279
+#: forecast/templates/forecast/dashboard_v2.html:322
+#: forecast/templates/forecast/dashboard_v2.html:365
+#: forecast/templates/forecast/dashboard_v2.html:672
+#: forecast/templates/forecast/dashboard_v2.html:742
+#: forecast/templates/forecast/dashboard_v2.html:812
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:49
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:67
+#: forecast/templates/forecast/prediction_detail_v2.html:57
+#: forecast/templates/forecast/prediction_list_v2.html:96
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:57
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:96
+msgid "Low Risk"
+msgstr ""
+
+#: forecast/templates/forecast/dashboard_v2.html:288
+#: forecast/templates/forecast/dashboard_v2.html:331
+#: forecast/templates/forecast/dashboard_v2.html:374
+#, fuzzy
+#| msgid "Predictions"
+msgid "Predicted"
+msgstr "Προβλέψεις"
+
+#: forecast/templates/forecast/dashboard_v2.html:298
+#: forecast/templates/forecast/dashboard_v2.html:341
+#: forecast/templates/forecast/dashboard_v2.html:384
+#, fuzzy
+#| msgid "No recent migraine predictions available."
+msgid "No predictions available"
+msgstr "Δεν υπάρχουν πρόσφατες προβλέψεις ημικρανίας."
+
+#: forecast/templates/forecast/dashboard_v2.html:309
+#, fuzzy
+#| msgid "Sinusitis Predictions"
+msgid "Sinusitis"
+msgstr "Προβλέψεις Ιγμορίτιδας"
+
+#: forecast/templates/forecast/dashboard_v2.html:352
+msgid "Hay Fever"
+msgstr "Αλλεργική Ρινίτιδα"
+
+# Dashboard
+#: forecast/templates/forecast/dashboard_v2.html:406
+#: forecast/templates/forecast/dashboard_v2.html:631
+#: forecast/templates/forecast/hayfever_prediction_list.html:4
+#: forecast/templates/forecast/hayfever_prediction_list.html:8
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:4
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:10
+msgid "Hay Fever Predictions"
+msgstr "Προβλέψεις Αλλεργικής Ρινίτιδας"
+
+#: forecast/templates/forecast/dashboard_v2.html:610
+msgid "Prediction History (30 Days)"
+msgstr ""
+
 #: forecast/templates/forecast/email/combined_alert.html:6
-msgid "Health Alert - Migraine & Sinusitis"
-msgstr "Ειδοποίηση Υγείας - Ημικρανία & Ιγμορίτιδα"
+msgid "Health Alert - Migraine, Sinusitis & Hay Fever"
+msgstr "Ειδοποίηση Υγείας - Ημικρανία, Ιγμορίτιδα & Αλλεργική Ρινίτιδα"
 
 # Email templates
 #: forecast/templates/forecast/email/migraine_alert.html:6
@@ -255,155 +629,203 @@ msgid ""
 msgstr ""
 
 #: forecast/templates/forecast/email/migraine_alert.html:61
+#: forecast/templates/forecast/user_list_v2.html:141
 msgid "to"
 msgstr "έως"
 
 #: forecast/templates/forecast/email/migraine_alert.html:65
+#: forecast/templates/forecast/hayfever_prediction_detail.html:96
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:109
+#: forecast/templates/forecast/prediction_detail_v2.html:74
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:74
 msgid "Model Analysis"
 msgstr "Ανάλυση Μοντέλου"
 
-#: forecast/templates/forecast/email/migraine_alert.html:71
+#: forecast/templates/forecast/email/migraine_alert.html:72
+#: forecast/templates/forecast/hayfever_prediction_detail.html:103
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:118
+#: forecast/templates/forecast/prediction_detail_v2.html:86
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:86
+#, fuzzy
+#| msgid "High Risk Alerts"
+msgid "Why This Alert?"
+msgstr "Ειδοποιήσεις Υψηλού Κινδύνου"
+
+#: forecast/templates/forecast/email/migraine_alert.html:78
 #, python-format
 msgid "%(counter)s weather factor is contributing to this alert:"
 msgid_plural "%(counter)s weather factors are contributing to this alert:"
 msgstr[0] ""
 msgstr[1] ""
 
-#: forecast/templates/forecast/email/migraine_alert.html:78
+#: forecast/templates/forecast/email/migraine_alert.html:85
 msgid "Impact"
 msgstr "Επίδραση"
 
-#: forecast/templates/forecast/email/migraine_alert.html:87
+#: forecast/templates/forecast/email/migraine_alert.html:94
 msgid "Overall Risk Score"
 msgstr "Συνολική Βαθμολογία Κινδύνου"
 
-#: forecast/templates/forecast/email/migraine_alert.html:88
+#: forecast/templates/forecast/email/migraine_alert.html:95
 msgid "High risk - score ≥ 0.7"
 msgstr "Υψηλός κίνδυνος - βαθμολογία ≥ 0.7"
 
-#: forecast/templates/forecast/email/migraine_alert.html:88
+#: forecast/templates/forecast/email/migraine_alert.html:95
 msgid "Medium risk - score 0.4-0.69"
 msgstr "Μέτριος κίνδυνος - βαθμολογία 0.4-0.69"
 
-#: forecast/templates/forecast/email/migraine_alert.html:88
+#: forecast/templates/forecast/email/migraine_alert.html:95
 msgid "Low risk - score < 0.4"
 msgstr "Χαμηλός κίνδυνος - βαθμολογία < 0.4"
 
-#: forecast/templates/forecast/email/migraine_alert.html:90
+#: forecast/templates/forecast/email/migraine_alert.html:97
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:153
+#: forecast/templates/forecast/prediction_detail_v2.html:237
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:237
 msgid "Risk Level"
 msgstr "Επίπεδο Κινδύνου"
 
-#: forecast/templates/forecast/email/migraine_alert.html:91
+#: forecast/templates/forecast/email/migraine_alert.html:98
 msgid "Determined by AI analysis"
 msgstr "Καθορίστηκε από ανάλυση AI"
 
-#: forecast/templates/forecast/email/migraine_alert.html:95
+#: forecast/templates/forecast/email/migraine_alert.html:102
 msgid ""
 "This prediction is based on weather conditions known to trigger migraines:"
 msgstr ""
-"Αυτή η πρόβλεψη βασίζεται σε καιρικές συνθήκες που είναι γνωστό ότι προκαλούν ημικρανίες:"
+"Αυτή η πρόβλεψη βασίζεται σε καιρικές συνθήκες που είναι γνωστό ότι "
+"προκαλούν ημικρανίες:"
 
-#: forecast/templates/forecast/email/migraine_alert.html:98
+#: forecast/templates/forecast/email/migraine_alert.html:105
+#: forecast/templates/forecast/hayfever_prediction_detail.html:45
 msgid "Temperature"
 msgstr "Θερμοκρασία"
 
-#: forecast/templates/forecast/email/migraine_alert.html:99
+#: forecast/templates/forecast/email/migraine_alert.html:106
+#: forecast/templates/forecast/hayfever_prediction_detail.html:46
 msgid "Humidity"
 msgstr "Υγρασία"
 
-#: forecast/templates/forecast/email/migraine_alert.html:100
+#: forecast/templates/forecast/email/migraine_alert.html:107
 msgid "Barometric Pressure"
 msgstr "Βαρομετρική Πίεση"
 
-#: forecast/templates/forecast/email/migraine_alert.html:101
+#: forecast/templates/forecast/email/migraine_alert.html:108
+#: forecast/templates/forecast/hayfever_prediction_detail.html:48
+#: forecast/templates/forecast/prediction_detail_v2.html:200
 #: forecast/templates/forecast/prediction_list.html:133
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:200
 msgid "Precipitation"
 msgstr "Βροχόπτωση"
 
-#: forecast/templates/forecast/email/migraine_alert.html:102
+#: forecast/templates/forecast/email/migraine_alert.html:109
+#: forecast/templates/forecast/prediction_detail_v2.html:217
 #: forecast/templates/forecast/prediction_list.html:134
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:217
 msgid "Cloud Cover"
 msgstr "Νεφοκάλυψη"
 
-#: forecast/templates/forecast/email/migraine_alert.html:109
-msgid "Recommended Actions"
-msgstr "Προτεινόμενες Ενέργειες"
+#: forecast/templates/forecast/email/migraine_alert.html:116
+#: forecast/templates/forecast/hayfever_prediction_detail.html:112
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:127
+#: forecast/templates/forecast/prediction_detail_v2.html:98
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:98
+#, fuzzy
+#| msgid "Prediction Time"
+msgid "Prevention Tips"
+msgstr "Χρόνος Πρόβλεψης"
 
-#: forecast/templates/forecast/email/migraine_alert.html:110
+#: forecast/templates/forecast/email/migraine_alert.html:126
+msgid "These are AI-generated suggestions based on current weather conditions."
+msgstr ""
+
+#: forecast/templates/forecast/email/migraine_alert.html:130
 msgid "General preventive measures:"
 msgstr "Γενικά προληπτικά μέτρα:"
 
-#: forecast/templates/forecast/email/migraine_alert.html:112
+#: forecast/templates/forecast/email/migraine_alert.html:132
 msgid "Take prescribed preventive medication if you have any"
 msgstr "Πάρτε τα συνταγογραφημένα προληπτικά φάρμακα αν έχετε"
 
-#: forecast/templates/forecast/email/migraine_alert.html:113
+#: forecast/templates/forecast/email/migraine_alert.html:133
 msgid "Stay well hydrated throughout the day"
 msgstr "Παραμείνετε καλά ενυδατωμένοι όλη την ημέρα"
 
-#: forecast/templates/forecast/email/migraine_alert.html:114
+#: forecast/templates/forecast/email/migraine_alert.html:134
 msgid "Maintain regular sleep and meal schedules"
 msgstr "Διατηρήστε τακτικά προγράμματα ύπνου και γευμάτων"
 
-#: forecast/templates/forecast/email/migraine_alert.html:115
+#: forecast/templates/forecast/email/migraine_alert.html:135
 msgid "Avoid known personal triggers (certain foods, stress, etc.)"
 msgstr ""
 "Αποφύγετε γνωστούς προσωπικούς παράγοντες (συγκεκριμένα τρόφιμα, άγχος, κλπ.)"
 
-#: forecast/templates/forecast/email/migraine_alert.html:119
-msgid "Personalized tips based on current factors:"
-msgstr "Εξατομικευμένες συμβουλές βασισμένες στους τρέχοντες παράγοντες:"
-
-#: forecast/templates/forecast/email/migraine_alert.html:128
-msgid "Specific to today's weather conditions:"
-msgstr "Ειδικά για τις σημερινές καιρικές συνθήκες:"
-
-#: forecast/templates/forecast/email/migraine_alert.html:132
-msgid "Dress in layers to adapt to temperature changes"
-msgstr "Φορέστε ρούχα σε στρώσεις για να προσαρμοστείτε στις αλλαγές θερμοκρασίας"
-
-#: forecast/templates/forecast/email/migraine_alert.html:134
-msgid ""
-"Use a humidifier or dehumidifier to maintain comfortable indoor humidity"
-msgstr "Χρησιμοποιήστε υγραντήρα ή αφυγραντήρα για να διατηρήσετε άνετη εσωτερική υγρασία"
-
 #: forecast/templates/forecast/email/migraine_alert.html:136
-msgid "Consider staying indoors during the worst pressure changes"
-msgstr "Σκεφτείτε να μείνετε σε εσωτερικούς χώρους κατά τις χειρότερες αλλαγές πίεσης"
-
-#: forecast/templates/forecast/email/migraine_alert.html:137
-msgid "Some people find relief with pressure-equalizing techniques"
-msgstr "Μερικοί άνθρωποι βρίσκουν ανακούφιση με τεχνικές εξισορρόπησης πίεσης"
-
-#: forecast/templates/forecast/email/migraine_alert.html:139
-msgid "Limit outdoor activities during heavy rain or storms"
-msgstr "Περιορίστε τις υπαίθριες δραστηριότητες κατά τη διάρκεια έντονης βροχής ή καταιγίδων"
-
-#: forecast/templates/forecast/email/migraine_alert.html:141
-msgid "Use bright indoor lighting to compensate for reduced natural light"
-msgstr "Χρησιμοποιήστε έντονο εσωτερικό φωτισμό για να αντισταθμίσετε το μειωμένο φυσικό φως"
-
-#: forecast/templates/forecast/email/migraine_alert.html:148
-msgid "Remember:"
-msgstr "Θυμηθείτε:"
-
-#: forecast/templates/forecast/email/migraine_alert.html:148
-msgid ""
-"Have your rescue medication readily available and know your early warning "
-"signs."
+#, fuzzy
+#| msgid ""
+#| "Have your rescue medication readily available and know your early warning "
+#| "signs."
+msgid "Have your rescue medication readily available"
 msgstr ""
 "Έχετε τα φάρμακα έκτακτης ανάγκης εύκολα διαθέσιμα και γνωρίζετε τα πρώιμα "
 "προειδοποιητικά σημάδια σας."
 
-#: forecast/templates/forecast/email/migraine_alert.html:152
+#: forecast/templates/forecast/email/migraine_alert.html:140
+msgid "Specific to today's weather conditions:"
+msgstr "Ειδικά για τις σημερινές καιρικές συνθήκες:"
+
+#: forecast/templates/forecast/email/migraine_alert.html:144
+msgid "Dress in layers to adapt to temperature changes"
+msgstr ""
+"Φορέστε ρούχα σε στρώσεις για να προσαρμοστείτε στις αλλαγές θερμοκρασίας"
+
+#: forecast/templates/forecast/email/migraine_alert.html:146
+msgid ""
+"Use a humidifier or dehumidifier to maintain comfortable indoor humidity"
+msgstr ""
+"Χρησιμοποιήστε υγραντήρα ή αφυγραντήρα για να διατηρήσετε άνετη εσωτερική "
+"υγρασία"
+
+#: forecast/templates/forecast/email/migraine_alert.html:148
+msgid "Consider staying indoors during the worst pressure changes"
+msgstr ""
+"Σκεφτείτε να μείνετε σε εσωτερικούς χώρους κατά τις χειρότερες αλλαγές πίεσης"
+
+#: forecast/templates/forecast/email/migraine_alert.html:149
+msgid "Some people find relief with pressure-equalizing techniques"
+msgstr "Μερικοί άνθρωποι βρίσκουν ανακούφιση με τεχνικές εξισορρόπησης πίεσης"
+
+#: forecast/templates/forecast/email/migraine_alert.html:151
+msgid "Limit outdoor activities during heavy rain or storms"
+msgstr ""
+"Περιορίστε τις υπαίθριες δραστηριότητες κατά τη διάρκεια έντονης βροχής ή "
+"καταιγίδων"
+
+#: forecast/templates/forecast/email/migraine_alert.html:153
+msgid "Use bright indoor lighting to compensate for reduced natural light"
+msgstr ""
+"Χρησιμοποιήστε έντονο εσωτερικό φωτισμό για να αντισταθμίσετε το μειωμένο "
+"φυσικό φως"
+
+#: forecast/templates/forecast/email/migraine_alert.html:161
+msgid "Remember:"
+msgstr "Θυμηθείτε:"
+
+#: forecast/templates/forecast/email/migraine_alert.html:161
+msgid ""
+"These suggestions should not be considered medical advice. Consult with your "
+"healthcare provider for personalized recommendations."
+msgstr ""
+
+#: forecast/templates/forecast/email/migraine_alert.html:165
 msgid "Stay well,"
 msgstr "Να είστε καλά,"
 
-#: forecast/templates/forecast/email/migraine_alert.html:153
+#: forecast/templates/forecast/email/migraine_alert.html:166
 msgid "The Migraine Forecast Team"
 msgstr "Η Ομάδα Πρόβλεψης Ημικρανίας"
 
-#: forecast/templates/forecast/email/migraine_alert.html:156
+#: forecast/templates/forecast/email/migraine_alert.html:169
 msgid ""
 "This is an automated message from the Migraine Forecast application. The "
 "predictions are based on weather data and statistical models, and should not "
@@ -412,6 +834,352 @@ msgstr ""
 "Αυτό είναι ένα αυτοματοποιημένο μήνυμα από την εφαρμογή Πρόβλεψης "
 "Ημικρανίας. Οι προβλέψεις βασίζονται σε δεδομένα καιρού και στατιστικά "
 "μοντέλα, και δεν πρέπει να θεωρούνται ιατρική συμβουλή."
+
+# Dashboard
+#: forecast/templates/forecast/hayfever_prediction_detail.html:4
+#: forecast/templates/forecast/hayfever_prediction_detail.html:9
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:4
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:10
+msgid "Hay Fever Prediction Details"
+msgstr "Λεπτομέρειες Πρόβλεψης Αλλεργικής Ρινίτιδας"
+
+# Dashboard page
+#: forecast/templates/forecast/hayfever_prediction_detail.html:10
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:17
+#: forecast/templates/forecast/prediction_detail_v2.html:18
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:18
+#, fuzzy
+#| msgid "Back to Locations"
+msgid "Back to Predictions"
+msgstr "Επιστροφή στις Τοποθεσίες"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:16
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:25
+#: forecast/templates/forecast/prediction_detail_v2.html:28
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:28
+#, fuzzy
+#| msgid "Location Information"
+msgid "Prediction Information"
+msgstr "Πληροφορίες Τοποθεσίας"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:19
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:34
+#: forecast/templates/forecast/prediction_detail_v2.html:37
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:37
+#, fuzzy
+#| msgid "Prediction Time"
+msgid "Prediction Made"
+msgstr "Χρόνος Πρόβλεψης"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:20
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:38
+#: forecast/templates/forecast/prediction_detail_v2.html:41
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:41
+#, fuzzy
+#| msgid "Target Window"
+msgid "Target Time Window"
+msgstr "Χρονικό Παράθυρο Στόχου"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:22
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:42
+msgid "Hay Fever Probability"
+msgstr "Πιθανότητα Αλλεργικής Ρινίτιδας"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:31
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:54
+#: forecast/templates/forecast/prediction_detail_v2.html:63
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:63
+#, fuzzy
+#| msgid "Notification Settings"
+msgid "Notification Sent"
+msgstr "Ρυθμίσεις Ειδοποιήσεων"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:34
+#: forecast/templates/forecast/hayfever_prediction_detail.html:118
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:61
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:140
+#: forecast/templates/forecast/hayfever_prediction_list.html:116
+#: forecast/templates/forecast/prediction_detail_v2.html:113
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:113
+msgid "Note:"
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:34
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:61
+msgid ""
+"Pollen data is unavailable for this location (Europe only). Prediction is "
+"based on air-quality and weather factors with reduced confidence."
+msgstr ""
+"Τα δεδομένα γύρης δεν είναι διαθέσιμα για αυτή την τοποθεσία (μόνο Ευρώπη). "
+"Η πρόβλεψη βασίζεται σε παράγοντες ποιότητας αέρα και καιρού με μειωμένη "
+"αξιοπιστία."
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:43
+#, fuzzy
+#| msgid "Weather-Based Predictions"
+msgid "Weather Conditions"
+msgstr "Προβλέψεις Βασισμένες στον Καιρό"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:47
+msgid "Wind Speed"
+msgstr "Ταχύτητα Ανέμου"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:56
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:71
+msgid "Pollen Breakdown"
+msgstr "Ανάλυση Γύρης"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:58
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:74
+msgid "Peak concentration per species (grains/m³) in the forecast window."
+msgstr "Μέγιστη συγκέντρωση ανά είδος (κόκκοι/m³) στο παράθυρο πρόβλεψης."
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:61
+msgid "Species"
+msgstr "Είδος"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:61
+msgid "Concentration"
+msgstr "Συγκέντρωση"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:78
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:91
+msgid "Air Quality Summary"
+msgstr "Σύνοψη Ποιότητας Αέρα"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:81
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:95
+msgid "European AQI"
+msgstr "Ευρωπαϊκός Δείκτης Ποιότητας Αέρα"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:82
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:96
+msgid "US AQI"
+msgstr "Δείκτης Ποιότητας Αέρα ΗΠΑ"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:85
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:99
+msgid "Ozone"
+msgstr "Όζον"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:87
+msgid "Dust"
+msgstr "Σκόνη"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:88
+msgid "UV Index"
+msgstr "Δείκτης UV"
+
+#: forecast/templates/forecast/hayfever_prediction_detail.html:118
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:140
+msgid ""
+"These are AI-generated suggestions based on current conditions and should "
+"not be considered medical advice. Please consult with your healthcare "
+"provider for personalized recommendations."
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:150
+#: forecast/templates/forecast/prediction_detail_v2.html:234
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:234
+msgid "Quick Stats"
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:159
+msgid "Pollen Data"
+msgstr "Δεδομένα Γύρης"
+
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:160
+msgid "Available"
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:160
+msgid "Unavailable"
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:163
+#: forecast/templates/forecast/prediction_detail_v2.html:247
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:247
+msgid "Notified"
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:168
+#: forecast/templates/forecast/prediction_detail_v2.html:261
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:261
+#, fuzzy
+#| msgid "Location"
+msgid "View Location"
+msgstr "Τοποθεσία"
+
+#: forecast/templates/forecast/hayfever_prediction_detail_v2.html:169
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:17
+#: forecast/templates/forecast/location_list_v2.html:109
+#: forecast/templates/forecast/prediction_detail_v2.html:264
+#: forecast/templates/forecast/prediction_list_v2.html:18
+#: forecast/templates/forecast/profile.html:29
+#: forecast/templates/forecast/profile_v2.html:42
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:264
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:18
+#: forecast/templates/forecast/user_list.html:13
+#: forecast/templates/forecast/user_list_v2.html:18
+msgid "Back to Dashboard"
+msgstr "Επιστροφή στον Πίνακα Ελέγχου"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:15
+#: forecast/templates/forecast/prediction_list.html:15
+#: forecast/templates/forecast/sinusitis_prediction_list.html:15
+#, python-format
+msgid "Showing %(start)s - %(end)s of %(count)s predictions"
+msgstr "Εμφάνιση %(start)s - %(end)s από %(count)s προβλέψεις"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:23
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:35
+#: forecast/templates/forecast/location_detail.html:90
+#: forecast/templates/forecast/location_detail_v2.html:137
+#: forecast/templates/forecast/prediction_list.html:23
+#: forecast/templates/forecast/prediction_list_v2.html:40
+#: forecast/templates/forecast/sinusitis_prediction_list.html:23
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:40
+msgid "Prediction Time"
+msgstr "Χρόνος Πρόβλεψης"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:24
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:36
+#: forecast/templates/forecast/location_detail.html:91
+#: forecast/templates/forecast/location_detail_v2.html:138
+#: forecast/templates/forecast/prediction_list.html:24
+#: forecast/templates/forecast/prediction_list_v2.html:43
+#: forecast/templates/forecast/sinusitis_prediction_list.html:24
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:43
+msgid "Target Window"
+msgstr "Χρονικό Παράθυρο Στόχου"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:94
+#, fuzzy
+#| msgid ""
+#| "No prediction data available yet. Predictions will appear here once they "
+#| "are generated for your locations."
+msgid ""
+"No hay fever prediction data available yet. Predictions will appear here "
+"once they are generated for your locations."
+msgstr ""
+"Δεν υπάρχουν ακόμα διαθέσιμα δεδομένα πρόβλεψης. Οι προβλέψεις θα "
+"εμφανιστούν εδώ μόλις δημιουργηθούν για τις τοποθεσίες σας."
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:96
+msgid "You need to add locations first to receive hay fever predictions."
+msgstr ""
+"Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις αλλεργικής "
+"ρινίτιδας."
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:104
+msgid "About Hay Fever Predictions"
+msgstr "Σχετικά με τις Προβλέψεις Αλλεργικής Ρινίτιδας"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:107
+#, fuzzy
+#| msgid ""
+#| "Our prediction algorithm analyzes several weather parameters known to "
+#| "trigger migraines:"
+msgid "Our prediction algorithm analyses several drivers of allergic rhinitis:"
+msgstr ""
+"Ο αλγόριθμος πρόβλεψής μας αναλύει διάφορες παραμέτρους καιρού που είναι "
+"γνωστό ότι προκαλούν ημικρανίες:"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:109
+msgid "Pollen counts"
+msgstr "Μετρήσεις γύρης"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:109
+msgid ""
+"Per species (alder, birch, grass, mugwort, olive, ragweed). Pollen data is "
+"Europe only."
+msgstr ""
+"Ανά είδος (σκλήθρο, σημύδα, αγρωστώδη, αψέντι, ελιά, αμβροσία). Τα δεδομένα "
+"γύρης είναι διαθέσιμα μόνο στην Ευρώπη."
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:110
+#, fuzzy
+#| msgid "Wind Speed"
+msgid "Wind speed"
+msgstr "Ταχύτητα Ανέμου"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:110
+msgid "Disperses pollen through the air."
+msgstr "Διασπείρει τη γύρη στον αέρα."
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:111
+msgid "Dry, warm conditions"
+msgstr "Ξηρές, θερμές συνθήκες"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:111
+msgid "Favour pollen release."
+msgstr "Ευνοούν την απελευθέρωση γύρης."
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:112
+msgid "Air quality (PM2.5, PM10, ozone, NO₂)"
+msgstr "Ποιότητα αέρα (PM2.5, PM10, όζον, NO₂)"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:112
+msgid "Aggravates respiratory symptoms."
+msgstr "Επιδεινώνει τα αναπνευστικά συμπτώματα."
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:113
+msgid "Humidity extremes"
+msgstr "Ακραία υγρασία"
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:113
+msgid "Very dry or very humid air can worsen symptoms."
+msgstr "Ο πολύ ξηρός ή πολύ υγρός αέρας μπορεί να επιδεινώσει τα συμπτώματα."
+
+#: forecast/templates/forecast/hayfever_prediction_list.html:116
+msgid ""
+"Pollen coverage is Europe only. Outside Europe we fall back to air-quality "
+"and weather factors, which reduces prediction confidence."
+msgstr ""
+"Η κάλυψη γύρης είναι διαθέσιμη μόνο στην Ευρώπη. Εκτός Ευρώπης βασιζόμαστε "
+"σε παράγοντες ποιότητας αέρα και καιρού, μειώνοντας την αξιοπιστία της "
+"πρόβλεψης."
+
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:11
+msgid "View all hay fever risk predictions"
+msgstr "Προβολή όλων των προβλέψεων κινδύνου αλλεργικής ρινίτιδας"
+
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:25
+#: forecast/templates/forecast/prediction_list_v2.html:27
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:27
+#, fuzzy, python-format
+#| msgid "Showing %(start)s - %(end)s of %(count)s predictions"
+msgid ""
+"\n"
+"                Showing %(start)s - %(end)s of %(count)s predictions\n"
+"                "
+msgstr "Εμφάνιση %(start)s - %(end)s από %(count)s προβλέψεις"
+
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:90
+#: forecast/templates/forecast/prediction_list_v2.html:133
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:121
+msgid "Page"
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:90
+#: forecast/templates/forecast/prediction_list_v2.html:133
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:121
+#: forecast/templates/forecast/user_list_v2.html:143
+msgid "of"
+msgstr ""
+
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:111
+#: forecast/templates/forecast/prediction_list_v2.html:167
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:153
+#, fuzzy
+#| msgid "Predictions"
+msgid "No Predictions Yet"
+msgstr "Προβλέψεις"
+
+#: forecast/templates/forecast/hayfever_prediction_list_v2.html:112
+msgid "Add a location to start receiving hay fever predictions."
+msgstr ""
+"Προσθέστε μια τοποθεσία για να λαμβάνετε προβλέψεις αλλεργικής ρινίτιδας."
 
 # Index page
 #: forecast/templates/forecast/index.html:10
@@ -423,6 +1191,7 @@ msgstr ""
 "έγκαιρες ειδοποιήσεις."
 
 #: forecast/templates/forecast/index.html:12
+#: forecast/templates/forecast/index_v2.html:41
 msgid "Go to Dashboard"
 msgstr "Μετάβαση στον Πίνακα Ελέγχου"
 
@@ -454,46 +1223,171 @@ msgstr ""
 "Λάβετε έγκαιρες ειδοποιήσεις email όταν οι καιρικές συνθήκες υποδεικνύουν "
 "υψηλή πιθανότητα ημικρανίας."
 
+#: forecast/templates/forecast/index_v2.html:26
+msgid "Predict & Prevent"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:28
+msgid "Weather-Triggered Episodes"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:34
+msgid ""
+"Get personalized migraine and sinusitis forecasts based on weather patterns. "
+"Stay ahead of your health."
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:48
+msgid "Get Started Free"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:54
+#: forecast/templates/forecast/login_v2.html:68
+msgid "Sign In"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:66
+msgid "How It Works"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:69
+msgid "Advanced weather analysis for better health management"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:82
+#, fuzzy
+#| msgid "Model Analysis"
+msgid "Weather Analysis"
+msgstr "Ανάλυση Μοντέλου"
+
+#: forecast/templates/forecast/index_v2.html:85
+msgid ""
+"Our AI analyzes temperature, pressure, humidity, and other weather factors "
+"to predict migraine and sinusitis risk."
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:97
+#, fuzzy
+#| msgid "Email Alerts"
+msgid "Smart Alerts"
+msgstr "Ειδοποιήσεις Email"
+
+#: forecast/templates/forecast/index_v2.html:100
+#, fuzzy
+#| msgid ""
+#| "Receive timely email notifications when weather conditions indicate a "
+#| "high probability of migraines."
+msgid ""
+"Receive timely email notifications when high-risk conditions are detected, "
+"giving you time to prepare."
+msgstr ""
+"Λάβετε έγκαιρες ειδοποιήσεις email όταν οι καιρικές συνθήκες υποδεικνύουν "
+"υψηλή πιθανότητα ημικρανίας."
+
+#: forecast/templates/forecast/index_v2.html:112
+msgid "Personalized Settings"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:115
+msgid ""
+"Customize sensitivity levels, notification preferences, and track multiple "
+"locations for comprehensive coverage."
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:127
+msgid "Continuous Monitoring"
+msgstr ""
+
+#: forecast/templates/forecast/index_v2.html:131
+#, fuzzy
+#| msgid "Target Window"
+msgid "Forecast Window"
+msgstr "Χρονικό Παράθυρο Στόχου"
+
+# Dashboard
+#: forecast/templates/forecast/index_v2.html:135
+#, fuzzy
+#| msgid "Recent Predictions"
+msgid "Powered Predictions"
+msgstr "Πρόσφατες Προβλέψεις"
+
 #: forecast/templates/forecast/location_add.html:15
-#: forecast/templates/forecast/location_detail.html:24
+#: forecast/templates/forecast/location_add_v2.html:25
+#: forecast/templates/forecast/location_delete_v2.html:60
+#: forecast/templates/forecast/location_detail.html:25
+#: forecast/templates/forecast/location_detail_v2.html:52
+#: forecast/templates/forecast/location_edit.html:15
+#: forecast/templates/forecast/location_edit_v2.html:25
 msgid "City"
 msgstr "Πόλη"
 
 #: forecast/templates/forecast/location_add.html:19
-#: forecast/templates/forecast/location_detail.html:25
+#: forecast/templates/forecast/location_add_v2.html:35
+#: forecast/templates/forecast/location_delete_v2.html:64
+#: forecast/templates/forecast/location_detail.html:26
+#: forecast/templates/forecast/location_detail_v2.html:56
+#: forecast/templates/forecast/location_edit.html:19
+#: forecast/templates/forecast/location_edit_v2.html:35
 msgid "Country"
 msgstr "Χώρα"
 
 #: forecast/templates/forecast/location_add.html:23
-#: forecast/templates/forecast/location_detail.html:26
+#: forecast/templates/forecast/location_add_v2.html:45
+#: forecast/templates/forecast/location_delete_v2.html:68
+#: forecast/templates/forecast/location_detail.html:27
+#: forecast/templates/forecast/location_detail_v2.html:60
+#: forecast/templates/forecast/location_edit.html:23
+#: forecast/templates/forecast/location_edit_v2.html:45
 #: forecast/templates/forecast/location_list.html:22
+#: forecast/templates/forecast/location_list_v2.html:47
 msgid "Latitude"
 msgstr "Γεωγραφικό Πλάτος"
 
 #: forecast/templates/forecast/location_add.html:25
+#: forecast/templates/forecast/location_add_v2.html:50
+#: forecast/templates/forecast/location_edit.html:25
+#: forecast/templates/forecast/location_edit_v2.html:50
 msgid "Enter a decimal value (e.g., 40.7128 for New York)"
 msgstr "Εισάγετε μια δεκαδική τιμή (π.χ., 40.7128 για τη Νέα Υόρκη)"
 
 #: forecast/templates/forecast/location_add.html:28
-#: forecast/templates/forecast/location_detail.html:27
+#: forecast/templates/forecast/location_add_v2.html:56
+#: forecast/templates/forecast/location_delete_v2.html:72
+#: forecast/templates/forecast/location_detail.html:28
+#: forecast/templates/forecast/location_detail_v2.html:64
+#: forecast/templates/forecast/location_edit.html:28
+#: forecast/templates/forecast/location_edit_v2.html:56
 #: forecast/templates/forecast/location_list.html:23
+#: forecast/templates/forecast/location_list_v2.html:51
 msgid "Longitude"
 msgstr "Γεωγραφικό Μήκος"
 
 #: forecast/templates/forecast/location_add.html:30
+#: forecast/templates/forecast/location_add_v2.html:61
+#: forecast/templates/forecast/location_edit.html:30
+#: forecast/templates/forecast/location_edit_v2.html:61
 msgid "Enter a decimal value (e.g., -74.0060 for New York)"
 msgstr "Εισάγετε μια δεκαδική τιμή (π.χ., -74.0060 για τη Νέα Υόρκη)"
 
 #: forecast/templates/forecast/location_add.html:33
+#: forecast/templates/forecast/location_add_v2.html:70
 #: forecast/templates/forecast/location_delete.html:21
+#: forecast/templates/forecast/location_delete_v2.html:86
+#: forecast/templates/forecast/location_edit.html:38
+#: forecast/templates/forecast/location_edit_v2.html:82
 msgid "Cancel"
 msgstr "Ακύρωση"
 
 #: forecast/templates/forecast/location_add.html:42
+#: forecast/templates/forecast/location_add_v2.html:93
+#: forecast/templates/forecast/location_edit.html:47
+#: forecast/templates/forecast/location_edit_v2.html:102
 msgid "Find Coordinates"
 msgstr "Εύρεση Συντεταγμένων"
 
 #: forecast/templates/forecast/location_add.html:45
+#: forecast/templates/forecast/location_add_v2.html:96
+#: forecast/templates/forecast/location_edit.html:50
 msgid ""
 "You can find the latitude and longitude coordinates for your location using "
 "these methods:"
@@ -502,25 +1396,57 @@ msgstr ""
 "τοποθεσία σας χρησιμοποιώντας αυτές τις μεθόδους:"
 
 #: forecast/templates/forecast/location_add.html:47
+#: forecast/templates/forecast/location_add_v2.html:104
+#: forecast/templates/forecast/location_edit.html:52
 msgid "Search for your city on"
 msgstr "Αναζητήστε την πόλη σας στο"
 
 #: forecast/templates/forecast/location_add.html:48
+#: forecast/templates/forecast/location_add_v2.html:112
+#: forecast/templates/forecast/location_edit.html:53
 msgid "Use Google Maps: right-click on a location and select \\"
 msgstr ""
 "Χρησιμοποιήστε το Google Maps: κάντε δεξί κλικ σε μια τοποθεσία και επιλέξτε "
 "\\"
 
 #: forecast/templates/forecast/location_add.html:49
+#: forecast/templates/forecast/location_add_v2.html:120
+#: forecast/templates/forecast/location_edit.html:54
 msgid "Use your device's GPS to get your current location coordinates"
 msgstr ""
 "Χρησιμοποιήστε το GPS της συσκευής σας για να λάβετε τις συντεταγμένες της "
 "τρέχουσας τοποθεσίας σας"
 
+#: forecast/templates/forecast/location_add_v2.html:11
+msgid "Add a location to start tracking weather-based health forecasts"
+msgstr ""
+
+#: forecast/templates/forecast/location_add_v2.html:29
+#: forecast/templates/forecast/location_edit_v2.html:29
+msgid "e.g., Athens"
+msgstr ""
+
+#: forecast/templates/forecast/location_add_v2.html:39
+#: forecast/templates/forecast/location_edit_v2.html:39
+msgid "e.g., Greece"
+msgstr ""
+
+#: forecast/templates/forecast/location_add_v2.html:49
+#: forecast/templates/forecast/location_edit_v2.html:49
+msgid "e.g., 37.9838"
+msgstr ""
+
+#: forecast/templates/forecast/location_add_v2.html:60
+#: forecast/templates/forecast/location_edit_v2.html:60
+msgid "e.g., 23.7275"
+msgstr ""
+
 #: forecast/templates/forecast/location_delete.html:4
 #: forecast/templates/forecast/location_delete.html:12
 #: forecast/templates/forecast/location_delete.html:22
-#: forecast/templates/forecast/location_detail.html:12
+#: forecast/templates/forecast/location_delete_v2.html:4
+#: forecast/templates/forecast/location_delete_v2.html:19
+#: forecast/templates/forecast/location_detail.html:13
 msgid "Delete Location"
 msgstr "Διαγραφή Τοποθεσίας"
 
@@ -542,104 +1468,353 @@ msgstr ""
 "ημικρανίας και δεδομένα σύγκρισης για αυτήν την τοποθεσία. Αυτή η ενέργεια "
 "δεν μπορεί να αναιρεθεί."
 
+#: forecast/templates/forecast/location_delete_v2.html:27
+#, fuzzy, python-format
+#| msgid ""
+#| "Are you sure you want to delete the location <strong>%(city)s, "
+#| "%(country)s</strong>?"
+msgid ""
+"\n"
+"                        Are you sure you want to delete the location <strong "
+"class=\"text-red-600\">%(city)s, %(country)s</strong>?\n"
+"                        "
+msgstr ""
+"Είστε σίγουροι ότι θέλετε να διαγράψετε την τοποθεσία <strong>%(city)s, "
+"%(country)s</strong>;"
+
+#: forecast/templates/forecast/location_delete_v2.html:40
+msgid "Warning: This action cannot be undone"
+msgstr ""
+
+#: forecast/templates/forecast/location_delete_v2.html:42
+msgid "This will permanently delete:"
+msgstr ""
+
+#: forecast/templates/forecast/location_delete_v2.html:44
+#, fuzzy
+#| msgid "No forecast data available for this location."
+msgid "All weather forecasts for this location"
+msgstr ""
+"Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης καιρού για αυτήν την τοποθεσία."
+
+#: forecast/templates/forecast/location_delete_v2.html:45
+#, fuzzy
+#| msgid "No prediction data available for this location."
+msgid "All migraine predictions for this location"
+msgstr "Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης για αυτήν την τοποθεσία."
+
+#: forecast/templates/forecast/location_delete_v2.html:46
+#, fuzzy
+#| msgid "No prediction data available for this location."
+msgid "All sinusitis predictions for this location"
+msgstr "Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης για αυτήν την τοποθεσία."
+
+#: forecast/templates/forecast/location_delete_v2.html:47
+#, fuzzy
+#| msgid "No prediction data available for this location."
+msgid "All comparison data for this location"
+msgstr "Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης για αυτήν την τοποθεσία."
+
+#: forecast/templates/forecast/location_delete_v2.html:57
 #: forecast/templates/forecast/location_detail.html:4
+#: forecast/templates/forecast/location_detail_v2.html:4
 msgid "Location Details"
 msgstr "Λεπτομέρειες Τοποθεσίας"
 
+#: forecast/templates/forecast/location_delete_v2.html:92
+#, fuzzy
+#| msgid "Delete Location"
+msgid "Yes, Delete Location"
+msgstr "Διαγραφή Τοποθεσίας"
+
 # Dashboard page
 #: forecast/templates/forecast/location_detail.html:11
+#: forecast/templates/forecast/location_detail_v2.html:19
 msgid "Back to Locations"
 msgstr "Επιστροφή στις Τοποθεσίες"
 
-#: forecast/templates/forecast/location_detail.html:21
+#: forecast/templates/forecast/location_detail.html:12
+#: forecast/templates/forecast/location_edit.html:4
+#: forecast/templates/forecast/location_edit.html:8
+#: forecast/templates/forecast/location_edit_v2.html:4
+#: forecast/templates/forecast/location_edit_v2.html:10
+#, fuzzy
+#| msgid "Add Location"
+msgid "Edit Location"
+msgstr "Προσθήκη Τοποθεσίας"
+
+#: forecast/templates/forecast/location_detail.html:22
+#: forecast/templates/forecast/location_detail_v2.html:47
 msgid "Location Information"
 msgstr "Πληροφορίες Τοποθεσίας"
 
-#: forecast/templates/forecast/location_detail.html:28
+#: forecast/templates/forecast/location_detail.html:29
+#: forecast/templates/forecast/location_detail_v2.html:68
+#: forecast/templates/forecast/location_edit.html:33
+#: forecast/templates/forecast/location_edit_v2.html:67
+#, fuzzy
+#| msgid "Time"
+msgid "Timezone"
+msgstr "Ώρα"
+
+#: forecast/templates/forecast/location_detail.html:30
+#: forecast/templates/forecast/location_detail_v2.html:72
 #: forecast/templates/forecast/location_list.html:24
+#: forecast/templates/forecast/location_list_v2.html:55
 msgid "Added"
 msgstr "Προστέθηκε"
 
-#: forecast/templates/forecast/location_detail.html:39
+#: forecast/templates/forecast/location_detail.html:41
+#: forecast/templates/forecast/location_detail_v2.html:85
 msgid "Current Weather Forecast"
 msgstr "Τρέχουσα Πρόβλεψη Καιρού"
 
-#: forecast/templates/forecast/location_detail.html:47
+#: forecast/templates/forecast/location_detail.html:49
+#: forecast/templates/forecast/location_detail_v2.html:93
 msgid "Time"
 msgstr "Ώρα"
 
-#: forecast/templates/forecast/location_detail.html:48
+#: forecast/templates/forecast/location_detail.html:50
+#: forecast/templates/forecast/location_detail_v2.html:94
 msgid "Temp (°C)"
 msgstr "Θερμοκρασία (°C)"
 
-#: forecast/templates/forecast/location_detail.html:49
+#: forecast/templates/forecast/location_detail.html:51
+#: forecast/templates/forecast/location_detail_v2.html:95
 #, python-format
 msgid "Humidity (%%)"
 msgstr "Υγρασία (%%)"
 
-#: forecast/templates/forecast/location_detail.html:50
+#: forecast/templates/forecast/location_detail.html:52
+#: forecast/templates/forecast/location_detail_v2.html:96
 msgid "Pressure (hPa)"
 msgstr "Πίεση (hPa)"
 
-#: forecast/templates/forecast/location_detail.html:51
+#: forecast/templates/forecast/location_detail.html:53
 msgid "Precipitation (mm)"
 msgstr "Βροχόπτωση (mm)"
 
-#: forecast/templates/forecast/location_detail.html:52
+#: forecast/templates/forecast/location_detail.html:54
 #, python-format
 msgid "Cloud Cover (%%)"
 msgstr "Νεφοκάλυψη (%%)"
 
-#: forecast/templates/forecast/location_detail.html:70
+#: forecast/templates/forecast/location_detail.html:72
+#: forecast/templates/forecast/location_detail_v2.html:120
 msgid "No forecast data available for this location."
 msgstr ""
 "Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης καιρού για αυτήν την τοποθεσία."
 
-#: forecast/templates/forecast/location_detail.html:88
-#: forecast/templates/forecast/prediction_list.html:23
-#: forecast/templates/forecast/sinusitis_prediction_list.html:23
-msgid "Prediction Time"
-msgstr "Χρόνος Πρόβλεψης"
-
-#: forecast/templates/forecast/location_detail.html:89
-#: forecast/templates/forecast/prediction_list.html:24
-#: forecast/templates/forecast/sinusitis_prediction_list.html:24
-msgid "Target Window"
-msgstr "Χρονικό Παράθυρο Στόχου"
-
-#: forecast/templates/forecast/location_detail.html:117
+#: forecast/templates/forecast/location_detail.html:119
+#: forecast/templates/forecast/location_detail_v2.html:178
 msgid "No prediction data available for this location."
 msgstr "Δεν υπάρχουν διαθέσιμα δεδομένα πρόβλεψης για αυτήν την τοποθεσία."
 
+#: forecast/templates/forecast/location_detail_v2.html:12
+#, fuzzy
+#| msgid "Location Details"
+msgid "Location details and forecasts"
+msgstr "Λεπτομέρειες Τοποθεσίας"
+
+# Common actions
+#: forecast/templates/forecast/location_detail_v2.html:25
+msgid "Edit"
+msgstr "Επεξεργασία"
+
+#: forecast/templates/forecast/location_detail_v2.html:31
 #: forecast/templates/forecast/location_list.html:29
+#: forecast/templates/forecast/location_list_v2.html:73
 msgid "Delete"
 msgstr "Διαγραφή"
 
+#: forecast/templates/forecast/location_detail_v2.html:97
+#, fuzzy
+#| msgid "Precipitation (mm)"
+msgid "Precip (mm)"
+msgstr "Βροχόπτωση (mm)"
+
+#: forecast/templates/forecast/location_detail_v2.html:98
+#, fuzzy, python-format
+#| msgid "Cloud Cover (%%)"
+msgid "Cloud (%%)"
+msgstr "Νεφοκάλυψη (%%)"
+
+#: forecast/templates/forecast/location_edit.html:35
+#: forecast/templates/forecast/location_edit_v2.html:72
+msgid ""
+"IANA timezone name (e.g., 'America/New_York', 'Europe/Athens'). Used for "
+"digest scheduling."
+msgstr ""
+
+#: forecast/templates/forecast/location_edit.html:39
+#: forecast/templates/forecast/location_edit_v2.html:89
+#: forecast/templates/forecast/profile_v2.html:303
+msgid "Save Changes"
+msgstr "Αποθήκευση Αλλαγών"
+
+#: forecast/templates/forecast/location_edit.html:61
+msgid "Find Timezone"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit.html:64
+msgid "Common timezone examples:"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit.html:73
+msgid "Find more timezones at"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit_v2.html:11
+msgid "Update location details and timezone settings"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit_v2.html:107
+msgid "Search on"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit_v2.html:111
+msgid "Right-click on Google Maps"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit_v2.html:115
+msgid "Use your device's GPS"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit_v2.html:123
+msgid "Common Timezones"
+msgstr ""
+
+#: forecast/templates/forecast/location_edit_v2.html:133
+msgid "View all timezones"
+msgstr ""
+
+#: forecast/templates/forecast/location_list_v2.html:12
+msgid "Manage the locations you're tracking"
+msgstr ""
+
+# Dashboard page
+#: forecast/templates/forecast/location_list_v2.html:98
+#, fuzzy
+#| msgid "Your Locations"
+msgid "Add Your First Location"
+msgstr "Οι Τοποθεσίες σας"
+
 #: forecast/templates/forecast/login.html:18
-#: forecast/templates/forecast/profile.html:20
+#: forecast/templates/forecast/login_v2.html:31
+#: forecast/templates/forecast/profile.html:43
 #: forecast/templates/forecast/register.html:20
+#: forecast/templates/forecast/register_v2.html:47
+#: forecast/templates/forecast/user_list.html:22
 msgid "Username"
 msgstr "Όνομα Χρήστη"
 
 # Login/Register pages
 #: forecast/templates/forecast/login.html:22
+#: forecast/templates/forecast/login_v2.html:48
 #: forecast/templates/forecast/register.html:32
+#: forecast/templates/forecast/register_v2.html:67
 msgid "Password"
 msgstr "Κωδικός Πρόσβασης"
 
 #: forecast/templates/forecast/login.html:31
+#: forecast/templates/forecast/login_v2.html:77
 msgid "Don't have an account?"
 msgstr "Δεν έχετε λογαριασμό;"
 
 #: forecast/templates/forecast/login.html:31
+#: forecast/templates/forecast/login_v2.html:79
 msgid "Register here"
 msgstr "Εγγραφείτε εδώ"
 
-#: forecast/templates/forecast/prediction_list.html:15
-#: forecast/templates/forecast/sinusitis_prediction_list.html:15
-#, python-format
-msgid "Showing %(start)s - %(end)s of %(count)s predictions"
-msgstr "Εμφάνιση %(start)s - %(end)s από %(count)s προβλέψεις"
+#: forecast/templates/forecast/login_v2.html:18
+msgid "Welcome Back"
+msgstr ""
+
+#: forecast/templates/forecast/login_v2.html:19
+msgid "Sign in to your account"
+msgstr ""
+
+#: forecast/templates/forecast/login_v2.html:41
+msgid "Enter your username"
+msgstr ""
+
+#: forecast/templates/forecast/login_v2.html:58
+msgid "Enter your password"
+msgstr ""
+
+# Dashboard page
+#: forecast/templates/forecast/login_v2.html:91
+#: forecast/templates/forecast/register_v2.html:136
+#, fuzzy
+#| msgid "Back to Locations"
+msgid "Back to Home"
+msgstr "Επιστροφή στις Τοποθεσίες"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:4
+#, fuzzy
+#| msgid "Location Details"
+msgid "Prediction Details"
+msgstr "Λεπτομέρειες Τοποθεσίας"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:11
+#, fuzzy
+#| msgid "Migraine Predictions"
+msgid "Migraine Prediction Details"
+msgstr "Προβλέψεις Ημικρανίας"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:45
+#, fuzzy
+#| msgid "Probability"
+msgid "Migraine Probability"
+msgstr "Πιθανότητα"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:113
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:113
+msgid ""
+"These are AI-generated suggestions based on current weather conditions and "
+"should not be considered medical advice. Please consult with your healthcare "
+"provider for personalized recommendations."
+msgstr ""
+
+#: forecast/templates/forecast/prediction_detail_v2.html:124
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:124
+#, fuzzy
+#| msgid "Model Analysis"
+msgid "Analysis"
+msgstr "Ανάλυση Μοντέλου"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:136
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:136
+#, fuzzy
+#| msgid "Current Weather Forecast"
+msgid "Weather Factors"
+msgstr "Τρέχουσα Πρόβλεψη Καιρού"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:149
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:149
+#, fuzzy
+#| msgid "Temperature"
+msgid "Temperature Change"
+msgstr "Θερμοκρασία"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:166
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:166
+#, fuzzy
+#| msgid "Pressure (hPa)"
+msgid "Pressure Change"
+msgstr "Πίεση (hPa)"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:183
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:183
+#, fuzzy
+#| msgid "Humidity"
+msgid "Humidity Change"
+msgstr "Υγρασία"
+
+#: forecast/templates/forecast/prediction_detail_v2.html:252
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:252
+msgid "Created"
+msgstr ""
 
 #: forecast/templates/forecast/prediction_list.html:115
 msgid ""
@@ -715,123 +1890,310 @@ msgstr "Κάποιοι παράγοντες πρόκλησης ημικρανί�
 msgid "Few or no migraine triggers detected"
 msgstr "Λίγοι ή καθόλου παράγοντες πρόκλησης ημικρανίας εντοπίστηκαν"
 
+#: forecast/templates/forecast/prediction_list_v2.html:12
+#, fuzzy
+#| msgid "View All Migraine Predictions"
+msgid "View all migraine risk predictions"
+msgstr "Προβολή Όλων των Προβλέψεων Ημικρανίας"
+
+#: forecast/templates/forecast/prediction_list_v2.html:121
+#: forecast/templates/forecast/prediction_list_v2.html:140
+#: forecast/templates/forecast/user_list.html:78
+#: forecast/templates/forecast/user_list.html:82
+#: forecast/templates/forecast/user_list_v2.html:127
+msgid "Previous"
+msgstr ""
+
+#: forecast/templates/forecast/prediction_list_v2.html:126
+#: forecast/templates/forecast/prediction_list_v2.html:148
+#: forecast/templates/forecast/user_list.html:100
+#: forecast/templates/forecast/user_list.html:104
+#: forecast/templates/forecast/user_list_v2.html:132
+msgid "Next"
+msgstr ""
+
+#: forecast/templates/forecast/prediction_list_v2.html:168
+#, fuzzy
+#| msgid "You need to add locations first to receive migraine predictions."
+msgid "Add a location to start receiving migraine predictions."
+msgstr ""
+"Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις ημικρανίας."
+
 # Profile page
 #: forecast/templates/forecast/profile.html:4
-#: forecast/templates/forecast/profile.html:12
+#: forecast/templates/forecast/profile.html:14
+#: forecast/templates/forecast/profile.html:16
 msgid "User Profile"
 msgstr "Προφίλ Χρήστη"
 
-#: forecast/templates/forecast/profile.html:13
-msgid "Back to Dashboard"
-msgstr "Επιστροφή στον Πίνακα Ελέγχου"
+#: forecast/templates/forecast/profile.html:23
+#: forecast/templates/forecast/profile_v2.html:30
+#: forecast/templates/forecast/user_list.html:55
+#: forecast/templates/forecast/user_list_v2.html:93
+msgid "Are you sure you want to impersonate"
+msgstr ""
 
-#: forecast/templates/forecast/profile.html:18
+#: forecast/templates/forecast/profile.html:24
+#: forecast/templates/forecast/profile_v2.html:34
+msgid "Impersonate User"
+msgstr ""
+
+# Dashboard page
+#: forecast/templates/forecast/profile.html:29
+#: forecast/templates/forecast/profile_v2.html:42
+#, fuzzy
+#| msgid "Back to Locations"
+msgid "Back to User List"
+msgstr "Επιστροφή στις Τοποθεσίες"
+
+#: forecast/templates/forecast/profile.html:36
+#: forecast/templates/forecast/profile_v2.html:55
+msgid "Admin View"
+msgstr ""
+
+#: forecast/templates/forecast/profile.html:36
+#: forecast/templates/forecast/profile_v2.html:55
+msgid "You are viewing"
+msgstr ""
+
+#: forecast/templates/forecast/profile.html:36
+#: forecast/templates/forecast/profile_v2.html:55
+#, fuzzy
+#| msgid "Profile"
+msgid "profile"
+msgstr "Προφίλ"
+
+#: forecast/templates/forecast/profile.html:41
 msgid "Account Info"
 msgstr "Πληροφορίες Λογαριασμού"
 
-#: forecast/templates/forecast/profile.html:24
+#: forecast/templates/forecast/profile.html:47
+#: forecast/templates/forecast/user_list.html:23
+#: forecast/templates/forecast/user_list_v2.html:32
 msgid "Email"
 msgstr "Email"
 
-#: forecast/templates/forecast/profile.html:28
+#: forecast/templates/forecast/profile.html:51
+#: forecast/templates/forecast/user_list.html:24
+#: forecast/templates/forecast/user_list_v2.html:35
 msgid "Date Joined"
 msgstr "Ημερομηνία Εγγραφής"
 
-#: forecast/templates/forecast/profile.html:36
+#: forecast/templates/forecast/profile.html:59
 msgid "Notifications"
 msgstr "Ειδοποιήσεις"
 
-#: forecast/templates/forecast/profile.html:39
+#: forecast/templates/forecast/profile.html:62
 msgid "Disabled (no email provided)"
 msgstr "Απενεργοποιημένο (δεν έχει δοθεί email)"
 
-#: forecast/templates/forecast/profile.html:42
+#: forecast/templates/forecast/profile.html:65
 msgid "Enabled"
 msgstr "Ενεργοποιημένο"
 
-#: forecast/templates/forecast/profile.html:44
+#: forecast/templates/forecast/profile.html:67
 msgid "Disabled by user"
 msgstr "Απενεργοποιημένο από τον χρήστη"
 
-#: forecast/templates/forecast/profile.html:51
+#: forecast/templates/forecast/profile.html:74
 msgid "Health & Sensitivity"
 msgstr "Υγεία & Ευαισθησία"
 
-#: forecast/templates/forecast/profile.html:56
+#: forecast/templates/forecast/profile.html:79
+#: forecast/templates/forecast/profile_v2.html:92
 msgid "Language"
 msgstr "Γλώσσα"
 
-#: forecast/templates/forecast/profile.html:58
+#: forecast/templates/forecast/profile.html:81
+#: forecast/templates/forecast/profile_v2.html:95
 msgid "Preferred language for the interface"
 msgstr "Προτιμώμενη γλώσσα για τη διεπαφή"
 
-#: forecast/templates/forecast/profile.html:61
+#: forecast/templates/forecast/profile.html:84
+#: forecast/templates/forecast/profile_v2.html:99
+msgid "UI Version"
+msgstr ""
+
+#: forecast/templates/forecast/profile.html:86
+#: forecast/templates/forecast/profile_v2.html:102
+msgid "Choose between Classic or Modern UI"
+msgstr ""
+
+#: forecast/templates/forecast/profile.html:89
+#: forecast/templates/forecast/profile_v2.html:113
 msgid "Age"
 msgstr "Ηλικία"
 
-#: forecast/templates/forecast/profile.html:65
+#: forecast/templates/forecast/profile.html:93
+#: forecast/templates/forecast/profile_v2.html:125
 msgid "Prior Health Issues"
 msgstr "Προηγούμενα Προβλήματα Υγείας"
 
-#: forecast/templates/forecast/profile.html:67
+#: forecast/templates/forecast/profile.html:95
+#: forecast/templates/forecast/profile_v2.html:128
 msgid "Optional: anything that influences your migraines."
 msgstr "Προαιρετικό: οτιδήποτε επηρεάζει τις ημικρανίες σας."
 
-#: forecast/templates/forecast/profile.html:71
+#: forecast/templates/forecast/profile.html:99
+#: forecast/templates/forecast/profile_v2.html:134
 msgid "Notification Settings"
 msgstr "Ρυθμίσεις Ειδοποιήσεων"
 
-#: forecast/templates/forecast/profile.html:77
+#: forecast/templates/forecast/profile.html:105
+#: forecast/templates/forecast/profile_v2.html:140
 msgid "Enable Email Notifications"
 msgstr "Ενεργοποίηση Ειδοποιήσεων Email"
 
-#: forecast/templates/forecast/profile.html:79
+#: forecast/templates/forecast/profile.html:107
+#: forecast/templates/forecast/profile_v2.html:142
 msgid "Master switch for all email alerts"
 msgstr "Κύριος διακόπτης για όλες τις ειδοποιήσεις email"
 
-#: forecast/templates/forecast/profile.html:83
+#: forecast/templates/forecast/profile.html:111
+#: forecast/templates/forecast/profile_v2.html:148
 msgid "Notification Mode"
 msgstr "Λειτουργία Ειδοποιήσεων"
 
-#: forecast/templates/forecast/profile.html:85
+#: forecast/templates/forecast/profile.html:113
+#: forecast/templates/forecast/profile_v2.html:151
 msgid "How to deliver notifications"
 msgstr "Πώς να παραδοθούν οι ειδοποιήσεις"
 
-#: forecast/templates/forecast/profile.html:88
+#: forecast/templates/forecast/profile.html:116
+#: forecast/templates/forecast/profile_v2.html:155
 msgid "Digest Time"
 msgstr "Ώρα Σύνοψης"
 
-#: forecast/templates/forecast/profile.html:90
+#: forecast/templates/forecast/profile.html:118
+#: forecast/templates/forecast/profile_v2.html:158
 msgid "Time to send daily digest"
 msgstr "Ώρα αποστολής ημερήσιας σύνοψης"
 
-#: forecast/templates/forecast/profile.html:93
+#: forecast/templates/forecast/profile.html:121
+#: forecast/templates/forecast/profile_v2.html:162
 msgid "Severity Threshold"
 msgstr "Όριο Σοβαρότητας"
 
-#: forecast/templates/forecast/profile.html:95
+#: forecast/templates/forecast/profile.html:123
+#: forecast/templates/forecast/profile_v2.html:165
 msgid "Minimum severity for notifications"
 msgstr "Ελάχιστη σοβαρότητα για ειδοποιήσεις"
 
-#: forecast/templates/forecast/profile.html:98
+#: forecast/templates/forecast/profile.html:126
+#: forecast/templates/forecast/profile_v2.html:169
 msgid "Notification Frequency"
 msgstr "Συχνότητα Ειδοποιήσεων"
 
-#: forecast/templates/forecast/profile.html:100
+#: forecast/templates/forecast/profile.html:128
+#: forecast/templates/forecast/profile_v2.html:172
 msgid "Minimum hours between notifications"
 msgstr "Ελάχιστες ώρες μεταξύ ειδοποιήσεων"
 
+#: forecast/templates/forecast/profile.html:205
+#: forecast/templates/forecast/profile_v2.html:277
+#, fuzzy
+#| msgid "Notification Settings"
+msgid "Sensitivity Settings"
+msgstr "Ρυθμίσεις Ειδοποιήσεων"
+
+#: forecast/templates/forecast/profile.html:206
+#: forecast/templates/forecast/profile_v2.html:282
+msgid "Weather Sensitivity"
+msgstr "Ευαισθησία στον Καιρό"
+
+#: forecast/templates/forecast/profile.html:208
+#: forecast/templates/forecast/profile_v2.html:285
+msgid ""
+"How sensitive you are to weather changes. This setting is passed directly to "
+"the prediction model."
+msgstr ""
+
+#: forecast/templates/forecast/profile.html:218
+#: forecast/templates/forecast/profile_v2.html:313
+msgid ""
+"You are viewing this profile as an administrator. Changes cannot be saved "
+"from this view."
+msgstr ""
+
+#: forecast/templates/forecast/profile_v2.html:13
+#: forecast/templates/forecast/profile_v2.html:15
+#, fuzzy
+#| msgid "Notification Settings"
+msgid "Profile Settings"
+msgstr "Ρυθμίσεις Ειδοποιήσεων"
+
+#: forecast/templates/forecast/profile_v2.html:20
+msgid "Viewing user profile as administrator"
+msgstr ""
+
+#: forecast/templates/forecast/profile_v2.html:22
+msgid "Manage your account and preferences"
+msgstr ""
+
+#: forecast/templates/forecast/profile_v2.html:71
+msgid "Member since"
+msgstr ""
+
+#: forecast/templates/forecast/profile_v2.html:88
+msgid "Preferences"
+msgstr ""
+
+#: forecast/templates/forecast/profile_v2.html:106
+msgid "Theme"
+msgstr ""
+
+#: forecast/templates/forecast/profile_v2.html:109
+msgid "Light or Dark mode"
+msgstr ""
+
+#: forecast/templates/forecast/profile_v2.html:122
+#, fuzzy
+#| msgid "Location Information"
+msgid "Health Information"
+msgstr "Πληροφορίες Τοποθεσίας"
+
+#: forecast/templates/forecast/profile_v2.html:242
+#, fuzzy
+#| msgid "Notification Settings"
+msgid "Prediction Settings"
+msgstr "Ρυθμίσεις Ειδοποιήσεων"
+
 #: forecast/templates/forecast/register.html:45
+#: forecast/templates/forecast/register_v2.html:90
 msgid "Confirm Password"
 msgstr "Επιβεβαίωση Κωδικού"
 
 #: forecast/templates/forecast/register.html:62
+#: forecast/templates/forecast/register_v2.html:122
 msgid "Already have an account?"
 msgstr "Έχετε ήδη λογαριασμό;"
 
 #: forecast/templates/forecast/register.html:62
+#: forecast/templates/forecast/register_v2.html:124
 msgid "Login here"
 msgstr "Συνδεθείτε εδώ"
+
+#: forecast/templates/forecast/register_v2.html:18
+#: forecast/templates/forecast/register_v2.html:113
+msgid "Create Account"
+msgstr ""
+
+#: forecast/templates/forecast/register_v2.html:19
+msgid "Join us to start tracking your health"
+msgstr ""
+
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:4
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:11
+#, fuzzy
+#| msgid "Sinusitis Predictions"
+msgid "Sinusitis Prediction Details"
+msgstr "Προβλέψεις Ιγμορίτιδας"
+
+#: forecast/templates/forecast/sinusitis_prediction_detail_v2.html:45
+#, fuzzy
+#| msgid "Probability"
+msgid "Sinusitis Probability"
+msgstr "Πιθανότητα"
 
 #: forecast/templates/forecast/sinusitis_prediction_list.html:115
 msgid ""
@@ -846,6 +2208,104 @@ msgid "You need to add locations first to receive sinusitis predictions."
 msgstr ""
 "Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις "
 "ιγμορίτιδας."
+
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:12
+#, fuzzy
+#| msgid "View All Sinusitis Predictions"
+msgid "View all sinusitis risk predictions"
+msgstr "Προβολή Όλων των Προβλέψεων Ιγμορίτιδας"
+
+#: forecast/templates/forecast/sinusitis_prediction_list_v2.html:154
+#, fuzzy
+#| msgid "You need to add locations first to receive sinusitis predictions."
+msgid "Add a location to start receiving sinusitis predictions."
+msgstr ""
+"Πρέπει πρώτα να προσθέσετε τοποθεσίες για να λαμβάνετε προβλέψεις "
+"ιγμορίτιδας."
+
+#: forecast/templates/forecast/user_list.html:4
+#: forecast/templates/forecast/user_list.html:12
+#: forecast/templates/forecast/user_list_v2.html:4
+#: forecast/templates/forecast/user_list_v2.html:11
+#, fuzzy
+#| msgid "Username"
+msgid "User Management"
+msgstr "Όνομα Χρήστη"
+
+#: forecast/templates/forecast/user_list.html:16
+msgid "Manage and impersonate users in the system."
+msgstr ""
+
+#: forecast/templates/forecast/user_list.html:25
+#: forecast/templates/forecast/user_list_v2.html:38
+msgid "Status"
+msgstr ""
+
+#: forecast/templates/forecast/user_list.html:35
+#: forecast/templates/forecast/user_list_v2.html:59
+msgid "Admin"
+msgstr ""
+
+#: forecast/templates/forecast/user_list.html:42
+#: forecast/templates/forecast/user_list_v2.html:74
+#, fuzzy
+#| msgid "Actions"
+msgid "Active"
+msgstr "Ενέργειες"
+
+#: forecast/templates/forecast/user_list.html:44
+#: forecast/templates/forecast/user_list_v2.html:78
+msgid "Inactive"
+msgstr ""
+
+# Profile page
+#: forecast/templates/forecast/user_list.html:50
+#: forecast/templates/forecast/user_list_v2.html:88
+#, fuzzy
+#| msgid "User Profile"
+msgid "View Profile"
+msgstr "Προφίλ Χρήστη"
+
+#: forecast/templates/forecast/user_list.html:56
+#: forecast/templates/forecast/user_list_v2.html:97
+#, fuzzy
+#| msgid "Temperature"
+msgid "Impersonate"
+msgstr "Θερμοκρασία"
+
+#: forecast/templates/forecast/user_list.html:59
+#: forecast/templates/forecast/user_list_v2.html:100
+msgid "Cannot impersonate admin"
+msgstr ""
+
+#: forecast/templates/forecast/user_list.html:65
+#: forecast/templates/forecast/user_list_v2.html:111
+msgid "No users found."
+msgstr ""
+
+#: forecast/templates/forecast/user_list_v2.html:12
+msgid "Manage and impersonate users in the system"
+msgstr ""
+
+#: forecast/templates/forecast/user_list_v2.html:29
+#, fuzzy
+#| msgid "Username"
+msgid "User"
+msgstr "Όνομα Χρήστη"
+
+#: forecast/templates/forecast/user_list_v2.html:139
+msgid "Showing"
+msgstr ""
+
+#: forecast/templates/forecast/user_list_v2.html:145
+msgid "users"
+msgstr ""
+
+#~ msgid "Recommended Actions"
+#~ msgstr "Προτεινόμενες Ενέργειες"
+
+#~ msgid "Personalized tips based on current factors:"
+#~ msgstr "Εξατομικευμένες συμβουλές βασισμένες στους τρέχοντες παράγοντες:"
 
 #~ msgid "Not provided"
 #~ msgstr "Δεν έχει δοθεί"
@@ -907,9 +2367,6 @@ msgstr ""
 #~ msgid "Hours ahead to end predictions"
 #~ msgstr "Ώρες μπροστά για λήξη προβλέψεων"
 
-#~ msgid "Weather Sensitivity"
-#~ msgstr "Ευαισθησία στον Καιρό"
-
 #~ msgid "Overall Sensitivity"
 #~ msgstr "Συνολική Ευαισθησία"
 
@@ -925,23 +2382,6 @@ msgstr ""
 #~ msgid "Precipitation Sensitivity"
 #~ msgstr "Ευαισθησία στις Βροχοπτώσεις"
 
-#~ msgid "Save Changes"
-#~ msgstr "Αποθήκευση Αλλαγών"
-
-# Dashboard
-#~ msgid "Recent Predictions"
-#~ msgstr "Πρόσφατες Προβλέψεις"
-
-#~ msgid "High Risk Alerts"
-#~ msgstr "Ειδοποιήσεις Υψηλού Κινδύνου"
-
-#~ msgid "No locations added yet"
-#~ msgstr "Δεν έχουν προστεθεί τοποθεσίες ακόμα"
-
-# Common actions
-#~ msgid "Edit"
-#~ msgstr "Επεξεργασία"
-
 #~ msgid "View"
 #~ msgstr "Προβολή"
 
@@ -950,9 +2390,6 @@ msgstr ""
 
 #~ msgid "Close"
 #~ msgstr "Κλείσιμο"
-
-#~ msgid "Wind Speed"
-#~ msgstr "Ταχύτητα Ανέμου"
 
 # Messages
 #~ msgid "Health profile updated successfully."
