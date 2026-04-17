@@ -4,7 +4,6 @@ import numpy as np
 
 from .models import SinusitisPrediction
 from .prediction_service_base import BasePredictionService
-from .prediction_service_hayfever import HayFeverPredictionService
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,7 @@ class SinusitisPredictionService(BasePredictionService):
         # the exact AQ snapshot used by the manual scorer.
         location = kwargs.get("location")
         forecasts = kwargs.get("forecasts") or []
-        aq_rows = HayFeverPredictionService._fetch_air_quality(location, forecasts)
+        aq_rows = self._fetch_air_quality(location, forecasts)
         kwargs["air_quality_forecasts"] = list(aq_rows)
         return client.predict_sinusitis_probability(**kwargs)
 
@@ -80,7 +79,7 @@ class SinusitisPredictionService(BasePredictionService):
 
         fc_list = list(forecasts)
         location = fc_list[0].location
-        aq_rows = list(HayFeverPredictionService._fetch_air_quality(location, fc_list))
+        aq_rows = list(self._fetch_air_quality(location, fc_list))
         if not aq_rows:
             return scores
 
