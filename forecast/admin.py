@@ -63,6 +63,7 @@ class WeatherForecastAdmin(admin.ModelAdmin):
 class MigrainePredictionAdmin(admin.ModelAdmin):
     list_display = ("user", "location", "probability", "prediction_time", "notification_sent")
     list_select_related = ("user", "location")
+    raw_id_fields = ("user", "location", "forecast")
     search_fields = ("user__username", "location__city")
     list_filter = ("probability", "notification_sent", "prediction_time")
     date_hierarchy = "prediction_time"
@@ -82,6 +83,7 @@ class MigrainePredictionAdmin(admin.ModelAdmin):
 class SinusitisPredictionAdmin(admin.ModelAdmin):
     list_display = ("user", "location", "probability", "prediction_time", "notification_sent")
     list_select_related = ("user", "location")
+    raw_id_fields = ("user", "location", "forecast")
     search_fields = ("user__username", "location__city")
     list_filter = ("probability", "notification_sent", "prediction_time")
     date_hierarchy = "prediction_time"
