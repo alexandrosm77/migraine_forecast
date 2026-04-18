@@ -380,7 +380,7 @@ jobs:
           rm -f ~/.ssh/deploy_key
 
   cleanup-ci:
-    if: always()
+    if: always() && github.ref != 'refs/heads/main'
     needs: [build, test-linting, test-unittest, test-integration]
     runs-on: self-hosted
     steps:
