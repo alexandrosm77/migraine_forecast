@@ -89,6 +89,29 @@
                     </div>
                 </div>
             {% endif %}
+            {% if form.non_field_errors %}
+                <div class="px-6 pt-6">
+                    <div class="rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 p-3 text-sm text-red-700 dark:text-red-200">
+                        {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            {% if form.errors %}
+                <div class="px-6 pt-6">
+                    <div class="rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 p-3 text-sm text-red-700 dark:text-red-200">
+                        <p class="font-medium">{% trans "Please correct the following errors:" %}</p>
+                        <ul class="mt-1 list-disc list-inside">
+                        {% for field, errors in form.errors.items %}
+                            {% if field != "__all__" %}
+                            <li><strong>{{ field|title }}:</strong> {{ errors|join:", " }}</li>
+                            {% endif %}
+                        {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
 
             <!-- Account Section -->
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">

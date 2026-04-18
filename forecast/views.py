@@ -770,7 +770,18 @@ def profile(request, user_id=None):
             messages.success(request, "Profile updated successfully.")
             return redirect("forecast:profile")
         else:
-            messages.error(request, "Please correct the errors below.")
+            # Build detailed error message with field-specific errors
+            error_details = []
+            for field, errors in form.errors.items():
+                if field == "__all__":
+                    error_details.extend(errors)
+                else:
+                    label = form.fields[field].label or field.replace("_", " ").title()
+                    error_details.append(f"{label}: {', '.join(errors)}")
+            if error_details:
+                messages.error(request, "Please correct the following errors: " + "; ".join(error_details))
+            else:
+                messages.error(request, "Please correct the errors in the form.")
     else:
         form = UserHealthProfileForm(instance=profile)
         email_form = UserEmailForm(instance=profile_user)

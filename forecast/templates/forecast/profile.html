@@ -71,6 +71,25 @@
                             <form method="post" novalidate>
                                 {% csrf_token %}
                                 {{ email_form.non_field_errors }}
+                                {% if form.non_field_errors %}
+                                <div class="alert alert-danger mb-3">
+                                    {% for error in form.non_field_errors %}
+                                    <p class="mb-0">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                {% if form.errors %}
+                                <div class="alert alert-danger mb-3">
+                                    <strong>{% trans "Please correct the following errors:" %}</strong>
+                                    <ul class="mb-0 mt-1">
+                                    {% for field, errors in form.errors.items %}
+                                        {% if field != "__all__" %}
+                                        <li><strong>{{ field|title }}:</strong> {{ errors|join:", " }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
                                 <div class="row g-3">
                                     <div class="col-12">
                                         <label for="id_email" class="form-label">{% trans "Email" %}</label>
