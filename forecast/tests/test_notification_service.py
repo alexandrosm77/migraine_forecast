@@ -34,7 +34,7 @@ class NotificationServiceTest(TestCase):
         self.assertIsNotNone(self.service.sinusitis_prediction_service)
         self.assertIsNotNone(self.service.weather_service)
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_send_migraine_alert_email(self, mock_send_mail):
         """Test sending migraine alert email"""
         now = timezone.now()
@@ -99,7 +99,7 @@ class NotificationServiceTest(TestCase):
         self.assertIsNotNone(detailed)
         self.assertIn("factors", detailed)
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_notification_frequency_respected(self, mock_send_mail):
         """Test that notification frequency preference is respected"""
         # Create user profile with 4-hour notification frequency
@@ -164,7 +164,7 @@ class NotificationServiceTest(TestCase):
         self.assertEqual(result, 0)
         mock_send_mail.assert_not_called()
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_notification_sent_after_frequency_window(self, mock_send_mail):
         """Test that notification is sent after frequency window has passed"""
         # Create user profile with 3-hour notification frequency
@@ -235,7 +235,7 @@ class NotificationServiceTest(TestCase):
         self.assertEqual(result, 1)
         mock_send_mail.assert_called_once()
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_digest_user_skipped_in_check_and_send_combined(self, mock_send_mail):
         """Test that DIGEST mode users are skipped in check_and_send_combined_notifications"""
         # Create user profile in DIGEST mode
@@ -311,7 +311,7 @@ class NotificationServiceTest(TestCase):
         self.assertTrue(should_send)
         self.assertEqual(reason, "All checks passed")
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_send_combined_alert_with_is_digest_bypasses_digest_block(self, mock_send_mail):
         """Test that send_combined_alert with is_digest=True works for DIGEST mode users"""
         UserHealthProfile.objects.create(
@@ -357,7 +357,7 @@ class NotificationServiceTest(TestCase):
         self.assertTrue(result_sent)
         mock_send_mail.assert_called_once()
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_send_migraine_alert_blocked_for_digest_user(self, mock_send_mail):
         """Test that individual migraine alerts are blocked for DIGEST mode users"""
         UserHealthProfile.objects.create(
@@ -419,7 +419,7 @@ class NotificationServiceTest(TestCase):
             weather_factors={"pollen_available": True, "tree_pollen": 4.0},
         )
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_send_hayfever_alert_email(self, mock_send_mail):
         """send_hayfever_alert sends an email when user has hay fever enabled."""
         UserHealthProfile.objects.create(
@@ -434,7 +434,7 @@ class NotificationServiceTest(TestCase):
         self.assertTrue(result)
         mock_send_mail.assert_called_once()
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_send_hayfever_alert_blocked_for_digest_user(self, mock_send_mail):
         """Individual hay fever alerts are blocked for DIGEST mode users."""
         UserHealthProfile.objects.create(
@@ -450,7 +450,7 @@ class NotificationServiceTest(TestCase):
         self.assertFalse(result)
         mock_send_mail.assert_not_called()
 
-    @patch("forecast.notification_service.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_send_combined_alert_includes_hayfever(self, mock_send_mail):
         """send_combined_alert accepts hayfever_predictions and logs them."""
         UserHealthProfile.objects.create(

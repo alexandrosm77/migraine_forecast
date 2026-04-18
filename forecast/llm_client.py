@@ -182,8 +182,24 @@ class LLMClient:
                     continue
         return None
 
-    def predict_probability(
+    @staticmethod
+    def _build_language_instruction(user_profile: Optional[Dict[str, Any]]) -> str:
+        """Build the language instruction suffix for the system prompt."""
+        user_language = None
+        if user_profile and "language" in user_profile:
+            user_language = user_profile["language"]
+
+        if user_language == "el":
+            return "\nReply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
+        elif user_language and user_language != "en":
+            return f"\nReply in the user's language ({user_language}) for all text fields."
+        return ""
+
+    def _predict(
         self,
+        sys_prompt: str,
+        context_builder_method: str,
+        condition_label: str,
         scores: Dict[str, float],
         location_label: str,
         user_profile: Optional[Dict[str, Any]] = None,
@@ -196,65 +212,29 @@ class LLMClient:
         air_quality_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
-        Ask the LLM to output a JSON with keys:
-          - probability_level: one of LOW, MEDIUM, HIGH
-          - confidence: float 0-1
-          - rationale: short string
-        Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
+        Common prediction method used by all condition-specific predict_*() methods.
 
         Args:
-            scores: Normalized weather scores (kept for fallback, not sent to LLM)
-            location_label: Human-readable location string
-            user_profile: User health profile with sensitivities
-            context: Legacy context dict (deprecated, use forecasts instead)
-            forecasts: List of WeatherForecast objects for prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
-            location: Location model instance
-            high_token_budget: Whether to use detailed context (default: False)
-            outlook_forecasts: List of WeatherForecast objects for the next 24 hours
+            sys_prompt: System prompt describing the condition and triggers.
+            context_builder_method: Name of the LLMContextBuilder method to call
+                (e.g. "build_migraine_context").
+            condition_label: Human-readable condition name for log messages.
+            scores: Normalized weather scores (kept for fallback, not sent to LLM).
+            location_label: Human-readable location string.
+            user_profile: User health profile with sensitivities.
+            context: Legacy context dict (deprecated, use forecasts instead).
+            forecasts: List of WeatherForecast objects for prediction window.
+            previous_forecasts: List of WeatherForecast objects from previous period.
+            location: Location model instance.
+            high_token_budget: Whether to use detailed context (default: False).
+            outlook_forecasts: List of WeatherForecast objects for the next 24 hours.
+            air_quality_forecasts: List of AirQualityForecast objects.
         """
-        # Determine user's preferred language
-        user_language = None
-        if user_profile and "language" in user_profile:
-            user_language = user_profile["language"]
-
-        # Build language instruction for LLM
-        language_instruction = ""
-        if user_language == "el":
-            language_instruction = (
-                "\nReply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
-            )
-        elif user_language and user_language != "en":
-            language_instruction = f"\nReply in the user's language ({user_language}) for all text fields."
-
-        # Simplified system prompt - let the model use its own medical/scientific reasoning
-        sys_prompt = (
-            "You are a migraine risk assessor. Analyze the weather data provided and assess "
-            "migraine risk for the forecast window.\n\n"
-            "Consider known migraine triggers including:\n"
-            "- Rapid barometric pressure changes (especially drops)\n"
-            "- Significant temperature swings beyond normal diurnal variation\n"
-            "- Humidity extremes (very high or very low)\n"
-            "- Approaching weather fronts and storm systems\n"
-            "- Air pollution, especially elevated PM2.5, ozone, and NO₂, which can trigger or worsen migraines\n\n"
-            "Use the user's sensitivity profile and recent weather trends as context for your assessment.\n"
-            f"{language_instruction}\n"
-            "Output ONLY valid JSON matching the schema below.\n"
-            "<schema>\n"
-            "{\n"
-            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
-            '  "confidence": <float between 0 and 1>,\n'
-            '  "rationale": "<brief 3 sentence explanation of your reasoning>",\n'
-            '  "analysis_text": "<concise 3 sentence user-facing explanation>",\n'
-            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
-            "}\n"
-            "</schema>"
-        )
-
         # Build user prompt using the new context builder if forecasts are provided
         if forecasts and location:
             context_builder = LLMContextBuilder(high_token_budget=high_token_budget)
-            user_prompt_str = context_builder.build_migraine_context(
+            builder_fn = getattr(context_builder, context_builder_method)
+            user_prompt_str = builder_fn(
                 forecasts=forecasts,
                 previous_forecasts=previous_forecasts or [],
                 location=location,
@@ -285,7 +265,7 @@ class LLMClient:
         request_payload.update(self.extra_payload)
 
         # Log the full request for debugging
-        logger.info(f"LLM Request for {location_label}:")
+        logger.info(f"LLM {condition_label} request for {location_label}:")
         logger.info(f"User prompt: {user_prompt_str}")
         logger.info(f"Request payload: {request_payload}")
 
@@ -295,7 +275,7 @@ class LLMClient:
                 temperature=0.2,
             )
         except Exception as e:
-            logger.warning("LLM chat request failed: %s", e)
+            logger.warning("LLM chat request failed for %s: %s", condition_label, e)
             return None, {"error": str(e), "request_payload": request_payload}
 
         try:
@@ -304,23 +284,72 @@ class LLMClient:
             content = (choices[0]["message"]["content"] if choices else "").strip()
             parsed = self._extract_json(content) if content else None
             if not parsed:
-                logger.warning("LLM response not JSON parsable: %s", content[:200])
+                logger.warning("LLM %s response not JSON parsable: %s", condition_label, content[:200])
                 return None, {"raw": result, "request_payload": request_payload, "inference_time": inference_time}
             level = parsed.get("probability_level")
 
             # Log the LLM response for debugging
-            logger.info(f"LLM Response for {location_label}: {parsed}")
+            logger.info(f"LLM {condition_label} response for {location_label}: {parsed}")
 
             if isinstance(level, str):
                 level_up = level.strip().upper()
                 if level_up in {"LOW", "MEDIUM", "HIGH"}:
                     logger.info(f"LLM classified as {level_up} for {location_label}")
                     return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
-            logger.warning("LLM response missing/invalid probability_level: %s", parsed)
+            logger.warning("LLM %s response missing/invalid probability_level: %s", condition_label, parsed)
             return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
         except Exception:
-            logger.exception("Failed to process LLM response")
+            logger.exception("Failed to process LLM %s response", condition_label)
             return None, {"raw": result, "request_payload": request_payload}
+
+    def predict_probability(
+        self,
+        scores: Dict[str, float],
+        location_label: str,
+        user_profile: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None,
+        forecasts: Optional[List[Any]] = None,
+        previous_forecasts: Optional[List[Any]] = None,
+        location: Optional[Any] = None,
+        high_token_budget: bool = False,
+        outlook_forecasts: Optional[List[Any]] = None,
+        air_quality_forecasts: Optional[List[Any]] = None,
+    ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+        """
+        Assess migraine risk. Returns (probability_level, raw_payload) or (None, payload).
+        """
+        language_instruction = self._build_language_instruction(user_profile)
+        sys_prompt = (
+            "You are a migraine risk assessor. Analyze the weather data provided and assess "
+            "migraine risk for the forecast window.\n\n"
+            "Consider known migraine triggers including:\n"
+            "- Rapid barometric pressure changes (especially drops)\n"
+            "- Significant temperature swings beyond normal diurnal variation\n"
+            "- Humidity extremes (very high or very low)\n"
+            "- Approaching weather fronts and storm systems\n"
+            "- Air pollution, especially elevated PM2.5, ozone, and NO₂, which can trigger or worsen migraines\n\n"
+            "Use the user's sensitivity profile and recent weather trends as context for your assessment.\n"
+            f"{language_instruction}\n"
+            "Output ONLY valid JSON matching the schema below.\n"
+            "<schema>\n"
+            "{\n"
+            '  "probability_level": "LOW" | "MEDIUM" | "HIGH",\n'
+            '  "confidence": <float between 0 and 1>,\n'
+            '  "rationale": "<brief 3 sentence explanation of your reasoning>",\n'
+            '  "analysis_text": "<concise 3 sentence user-facing explanation>",\n'
+            '  "prevention_tips": ["<tip1>", "<tip2>", ...]\n'
+            "}\n"
+            "</schema>"
+        )
+        return self._predict(
+            sys_prompt=sys_prompt,
+            context_builder_method="build_migraine_context",
+            condition_label="migraine",
+            scores=scores, location_label=location_label, user_profile=user_profile,
+            context=context, forecasts=forecasts, previous_forecasts=previous_forecasts,
+            location=location, high_token_budget=high_token_budget,
+            outlook_forecasts=outlook_forecasts, air_quality_forecasts=air_quality_forecasts,
+        )
 
     def _build_legacy_prompt(
         self,
@@ -414,38 +443,9 @@ class LLMClient:
         air_quality_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
-        Ask the LLM to output a JSON with keys for sinusitis risk assessment:
-          - probability_level: one of LOW, MEDIUM, HIGH
-          - confidence: float 0-1
-          - rationale: short string
-        Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
-
-        Args:
-            scores: Normalized weather scores (kept for fallback, not sent to LLM)
-            location_label: Human-readable location string
-            user_profile: User health profile with sensitivities
-            context: Legacy context dict (deprecated, use forecasts instead)
-            forecasts: List of WeatherForecast objects for prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
-            location: Location model instance
-            high_token_budget: Whether to use detailed context (default: False)
-            outlook_forecasts: List of WeatherForecast objects for the next 24 hours
+        Assess sinusitis flare-up risk. Returns (probability_level, raw_payload) or (None, payload).
         """
-        # Determine user's preferred language
-        user_language = None
-        if user_profile and "language" in user_profile:
-            user_language = user_profile["language"]
-
-        # Build language instruction for LLM
-        language_instruction = ""
-        if user_language == "el":
-            language_instruction = (
-                "\nReply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
-            )
-        elif user_language and user_language != "en":
-            language_instruction = f"\nReply in the user's language ({user_language}) for all text fields."
-
-        # Simplified system prompt - let the model use its own medical/scientific reasoning
+        language_instruction = self._build_language_instruction(user_profile)
         sys_prompt = (
             "You are a sinusitis risk assessor. Analyze the weather data provided and assess "
             "sinusitis flare-up risk for the forecast window.\n\n"
@@ -469,67 +469,15 @@ class LLMClient:
             "}\n"
             "</schema>"
         )
-
-        # Build user prompt using the new context builder if forecasts are provided
-        if forecasts and location:
-            context_builder = LLMContextBuilder(high_token_budget=high_token_budget)
-            user_prompt_str = context_builder.build_sinusitis_context(
-                forecasts=forecasts,
-                previous_forecasts=previous_forecasts or [],
-                location=location,
-                air_quality_forecasts=air_quality_forecasts or [],
-                user_profile=user_profile,
-                outlook_forecasts=outlook_forecasts or [],
-            )
-        else:
-            # Fallback to legacy context building (for backwards compatibility)
-            user_prompt_str = self._build_legacy_prompt(
-                scores=scores,
-                location_label=location_label,
-                user_profile=user_profile,
-                context=context,
-            )
-
-        # Build the actual request payload that will be sent to the LLM
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_prompt_str},
-        ]
-        request_payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": 0.2,
-        }
-        # Merge extra_payload to get the actual payload that will be sent
-        request_payload.update(self.extra_payload)
-
-        try:
-            result = self.chat_complete(
-                messages=messages,
-                temperature=0.2,
-            )
-        except Exception as e:
-            logger.warning("LLM chat request failed for sinusitis: %s", e)
-            return None, {"error": str(e), "request_payload": request_payload}
-
-        try:
-            inference_time = result.pop("_inference_time", None)
-            choices = result.get("choices", [])
-            content = (choices[0]["message"]["content"] if choices else "").strip()
-            parsed = self._extract_json(content) if content else None
-            if not parsed:
-                logger.warning("LLM sinusitis response not JSON parsable: %s", content[:200])
-                return None, {"raw": result, "request_payload": request_payload, "inference_time": inference_time}
-            level = parsed.get("probability_level")
-            if isinstance(level, str):
-                level_up = level.strip().upper()
-                if level_up in {"LOW", "MEDIUM", "HIGH"}:
-                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
-            logger.warning("LLM sinusitis response missing/invalid probability_level: %s", parsed)
-            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
-        except Exception:
-            logger.exception("Failed to process LLM sinusitis response")
-            return None, {"raw": result, "request_payload": request_payload}
+        return self._predict(
+            sys_prompt=sys_prompt,
+            context_builder_method="build_sinusitis_context",
+            condition_label="sinusitis",
+            scores=scores, location_label=location_label, user_profile=user_profile,
+            context=context, forecasts=forecasts, previous_forecasts=previous_forecasts,
+            location=location, high_token_budget=high_token_budget,
+            outlook_forecasts=outlook_forecasts, air_quality_forecasts=air_quality_forecasts,
+        )
 
     def predict_hayfever_probability(
         self,
@@ -545,36 +493,9 @@ class LLMClient:
         air_quality_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
-        Ask the LLM to output a JSON with keys for hay fever (allergic rhinitis) risk:
-          - probability_level: one of LOW, MEDIUM, HIGH
-          - confidence: float 0-1
-          - rationale: short string
-        Returns (probability_level, raw_payload) or (None, raw_payload) on failure.
-
-        Args:
-            scores: Normalized weather/AQ scores (kept for fallback, not sent to LLM)
-            location_label: Human-readable location string
-            user_profile: User health profile with sensitivities and language
-            context: Legacy context dict (deprecated)
-            forecasts: List of WeatherForecast objects for prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
-            location: Location model instance
-            high_token_budget: Whether to use detailed context (default: False)
-            outlook_forecasts: List of WeatherForecast objects for the next 24 hours
-            air_quality_forecasts: List of AirQualityForecast objects for the prediction window
+        Assess hay fever (allergic rhinitis) risk. Returns (probability_level, raw_payload) or (None, payload).
         """
-        user_language = None
-        if user_profile and "language" in user_profile:
-            user_language = user_profile["language"]
-
-        language_instruction = ""
-        if user_language == "el":
-            language_instruction = (
-                "\nReply in Greek (Ελληνικά) for all text fields (rationale, analysis_text, prevention_tips)."
-            )
-        elif user_language and user_language != "en":
-            language_instruction = f"\nReply in the user's language ({user_language}) for all text fields."
-
+        language_instruction = self._build_language_instruction(user_profile)
         sys_prompt = (
             "You are a hay fever (allergic rhinitis) risk assessor. Analyze the pollen, "
             "air-quality, and weather data provided and assess hay fever risk for the forecast window.\n\n"
@@ -602,60 +523,12 @@ class LLMClient:
             "}\n"
             "</schema>"
         )
-
-        if forecasts and location:
-            context_builder = LLMContextBuilder(high_token_budget=high_token_budget)
-            user_prompt_str = context_builder.build_hayfever_context(
-                forecasts=forecasts,
-                previous_forecasts=previous_forecasts or [],
-                location=location,
-                air_quality_forecasts=air_quality_forecasts or [],
-                user_profile=user_profile,
-                outlook_forecasts=outlook_forecasts or [],
-            )
-        else:
-            user_prompt_str = self._build_legacy_prompt(
-                scores=scores,
-                location_label=location_label,
-                user_profile=user_profile,
-                context=context,
-            )
-
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_prompt_str},
-        ]
-        request_payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": 0.2,
-        }
-        request_payload.update(self.extra_payload)
-
-        try:
-            result = self.chat_complete(
-                messages=messages,
-                temperature=0.2,
-            )
-        except Exception as e:
-            logger.warning("LLM chat request failed for hay fever: %s", e)
-            return None, {"error": str(e), "request_payload": request_payload}
-
-        try:
-            inference_time = result.pop("_inference_time", None)
-            choices = result.get("choices", [])
-            content = (choices[0]["message"]["content"] if choices else "").strip()
-            parsed = self._extract_json(content) if content else None
-            if not parsed:
-                logger.warning("LLM hay fever response not JSON parsable: %s", content[:200])
-                return None, {"raw": result, "request_payload": request_payload, "inference_time": inference_time}
-            level = parsed.get("probability_level")
-            if isinstance(level, str):
-                level_up = level.strip().upper()
-                if level_up in {"LOW", "MEDIUM", "HIGH"}:
-                    return level_up, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
-            logger.warning("LLM hay fever response missing/invalid probability_level: %s", parsed)
-            return None, {"raw": parsed, "api_raw": result, "request_payload": request_payload, "inference_time": inference_time}  # noqa
-        except Exception:
-            logger.exception("Failed to process LLM hay fever response")
-            return None, {"raw": result, "request_payload": request_payload}
+        return self._predict(
+            sys_prompt=sys_prompt,
+            context_builder_method="build_hayfever_context",
+            condition_label="hay fever",
+            scores=scores, location_label=location_label, user_profile=user_profile,
+            context=context, forecasts=forecasts, previous_forecasts=previous_forecasts,
+            location=location, high_token_budget=high_token_budget,
+            outlook_forecasts=outlook_forecasts, air_quality_forecasts=air_quality_forecasts,
+        )
