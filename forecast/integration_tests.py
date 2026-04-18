@@ -205,7 +205,7 @@ class EndToEndWorkflowTest(TestCase):
         self.mock_weather_parse = self.weather_api_parse_patcher.start()
 
         # Mock email sending
-        self.email_patcher = patch("forecast.notification_service.send_mail")
+        self.email_patcher = patch("forecast.email_sender.send_mail")
         self.mock_send_mail = self.email_patcher.start()
 
         self.client = Client()
