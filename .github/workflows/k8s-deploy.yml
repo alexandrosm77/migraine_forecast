@@ -379,6 +379,22 @@ jobs:
           # Clean up key
           rm -f ~/.ssh/deploy_key
 
+  cleanup-ci:
+    if: always()
+    needs: [build, test-linting, test-unittest, test-integration]
+    runs-on: self-hosted
+    steps:
+      -
+        name: Remove local CI Docker images
+        continue-on-error: true
+        run: |
+          echo "Cleaning up local CI Docker images..."
+          # Remove the CI-tagged image built for this run
+          docker rmi "${{ needs.build.outputs.image-tag }}" 2>/dev/null || true
+          # Remove any dangling images left from buildx
+          docker image prune -f
+          echo "Local CI cleanup complete"
+
   cleanup:
     if: always() && github.ref == 'refs/heads/main'
     needs: deploy
