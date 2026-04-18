@@ -193,6 +193,7 @@ class LLMClient:
         location: Optional[Any] = None,
         high_token_budget: bool = False,
         outlook_forecasts: Optional[List[Any]] = None,
+        air_quality_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
         Ask the LLM to output a JSON with keys:
@@ -234,7 +235,8 @@ class LLMClient:
             "- Rapid barometric pressure changes (especially drops)\n"
             "- Significant temperature swings beyond normal diurnal variation\n"
             "- Humidity extremes (very high or very low)\n"
-            "- Approaching weather fronts and storm systems\n\n"
+            "- Approaching weather fronts and storm systems\n"
+            "- Air pollution, especially elevated PM2.5, ozone, and NO₂, which can trigger or worsen migraines\n\n"
             "Use the user's sensitivity profile and recent weather trends as context for your assessment.\n"
             f"{language_instruction}\n"
             "Output ONLY valid JSON matching the schema below.\n"
@@ -256,6 +258,7 @@ class LLMClient:
                 forecasts=forecasts,
                 previous_forecasts=previous_forecasts or [],
                 location=location,
+                air_quality_forecasts=air_quality_forecasts or [],
                 user_profile=user_profile,
                 outlook_forecasts=outlook_forecasts or [],
             )
@@ -408,6 +411,7 @@ class LLMClient:
         location: Optional[Any] = None,
         high_token_budget: bool = False,
         outlook_forecasts: Optional[List[Any]] = None,
+        air_quality_forecasts: Optional[List[Any]] = None,
     ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         """
         Ask the LLM to output a JSON with keys for sinusitis risk assessment:
@@ -450,7 +454,8 @@ class LLMClient:
             "- Humidity extremes (high promotes mold/allergens, low dries sinuses)\n"
             "- Barometric pressure changes\n"
             "- Precipitation (increases allergens)\n"
-            "- Seasonal factors (pollen season, indoor heating drying air)\n\n"
+            "- Seasonal factors (pollen season, indoor heating drying air)\n"
+            "- Air pollution, especially coarse particulates (PM10, dust) and ozone, which irritate sinus mucosa\n\n"
             "Use the user's sensitivity profile and recent weather trends as context for your assessment.\n"
             f"{language_instruction}\n"
             "Output ONLY valid JSON matching the schema below.\n"
@@ -472,6 +477,7 @@ class LLMClient:
                 forecasts=forecasts,
                 previous_forecasts=previous_forecasts or [],
                 location=location,
+                air_quality_forecasts=air_quality_forecasts or [],
                 user_profile=user_profile,
                 outlook_forecasts=outlook_forecasts or [],
             )

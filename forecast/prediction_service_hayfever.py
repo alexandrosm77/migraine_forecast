@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from .models import HayFeverPrediction, AirQualityForecast
+from .models import HayFeverPrediction
 from .prediction_service_base import BasePredictionService
 
 logger = logging.getLogger(__name__)
@@ -89,22 +89,6 @@ class HayFeverPredictionService(BasePredictionService):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _fetch_air_quality(location, forecasts):
-        """Fetch AirQualityForecast rows aligned with the given weather forecasts."""
-        if not location or not forecasts:
-            return AirQualityForecast.objects.none()
-        fc_list = list(forecasts)
-        if not fc_list:
-            return AirQualityForecast.objects.none()
-        first = fc_list[0]
-        last = fc_list[-1]
-        return AirQualityForecast.objects.filter(
-            location=location,
-            target_time__gte=first.target_time,
-            target_time__lte=last.target_time,
-        ).order_by("target_time")
 
     def _calculate_weather_scores(self, forecasts, previous_forecasts):
         """Compute normalised 0-1 scores for hay fever drivers.
