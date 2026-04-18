@@ -365,7 +365,7 @@ class NotificationLogAdmin(admin.ModelAdmin):
         "sent_at",
     )
     search_fields = ("user__username", "subject", "recipient", "error_message")
-    readonly_fields = ("created_at", "updated_at", "sent_at")
+    readonly_fields = ("created_at", "updated_at", "sent_at", "migraine_predictions_links", "sinusitis_predictions_links", "hayfever_predictions_links")
     date_hierarchy = "created_at"
 
     fieldsets = (
@@ -384,7 +384,7 @@ class NotificationLogAdmin(admin.ModelAdmin):
         (
             "Related Predictions",
             {
-                "fields": ("migraine_predictions", "sinusitis_predictions", "hayfever_predictions"),
+                "fields": ("migraine_predictions_links", "sinusitis_predictions_links", "hayfever_predictions_links"),
             },
         ),
         (
@@ -404,6 +404,42 @@ class NotificationLogAdmin(admin.ModelAdmin):
     formfield_overrides = {
         JSONField: {"widget": JSONEditorWidget(options={"mode": "text", "modes": ["text", "tree", "view"]})},
     }
+
+    def _build_prediction_links(self, queryset, url_name):
+        """Build clickable links for a set of related predictions."""
+        from django.urls import reverse
+        from django.utils.html import format_html, format_html_join
+
+        predictions = queryset.all()
+        if not predictions:
+            return "-"
+        return format_html_join(
+            ", ",
+            '<a href="{}">{} ({})</a>',
+            (
+                (
+                    reverse(url_name, args=[p.pk]),
+                    f"#{p.pk}",
+                    p.probability,
+                )
+                for p in predictions
+            ),
+        )
+
+    def migraine_predictions_links(self, obj):
+        return self._build_prediction_links(obj.migraine_predictions, "admin:forecast_migraineprediction_change")
+
+    migraine_predictions_links.short_description = "Migraine Predictions"
+
+    def sinusitis_predictions_links(self, obj):
+        return self._build_prediction_links(obj.sinusitis_predictions, "admin:forecast_sinusitisprediction_change")
+
+    sinusitis_predictions_links.short_description = "Sinusitis Predictions"
+
+    def hayfever_predictions_links(self, obj):
+        return self._build_prediction_links(obj.hayfever_predictions, "admin:forecast_hayfeverprediction_change")
+
+    hayfever_predictions_links.short_description = "Hay Fever Predictions"
 
     def get_queryset(self, request):
         """Filter notification logs to show only the user's own logs unless they're a superuser."""
