@@ -28,9 +28,25 @@ from django.contrib.auth.admin import UserAdmin, GroupAdmin
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ("city", "country", "user", "latitude", "longitude", "created_at")
+    list_display = ("city", "country", "user", "latitude", "longitude", "timezone", "created_at")
+    list_select_related = ("user",)
     search_fields = ("city", "country", "user__username")
     list_filter = ("country", "created_at", "user")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("user", "city", "country", "latitude", "longitude", "timezone"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
+    )
 
     def get_queryset(self, request):
         """Filter locations to show only the user's own locations unless they're a superuser."""
@@ -48,10 +64,33 @@ class LocationAdmin(admin.ModelAdmin):
 
 @admin.register(WeatherForecast)
 class WeatherForecastAdmin(admin.ModelAdmin):
-    list_display = ("location", "forecast_time", "target_time", "temperature", "humidity", "pressure", "wind_speed", "precipitation", "cloud_cover", "created_at")
+    list_display = ("location", "forecast_time", "target_time", "temperature", "humidity", "pressure")
+    list_select_related = ("location",)
+    show_full_result_count = False
     search_fields = ("location__city", "location__country")
     list_filter = ("forecast_time", "target_time", "location")
     date_hierarchy = "forecast_time"
+    readonly_fields = ("created_at",)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("location", "forecast_time", "target_time"),
+            },
+        ),
+        (
+            "Weather Data",
+            {
+                "fields": ("temperature", "humidity", "pressure", "wind_speed", "precipitation", "cloud_cover"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at",),
+            },
+        ),
+    )
 
     def get_queryset(self, request):
         """Filter forecasts to show only those for the user's locations unless they're a superuser."""
@@ -61,74 +100,118 @@ class WeatherForecastAdmin(admin.ModelAdmin):
         return qs.filter(location__user=request.user)
 
 
-@admin.register(MigrainePrediction)
-class MigrainePredictionAdmin(admin.ModelAdmin):
-    list_display = ("user", "location", "probability", "prediction_time", "notification_sent")
+class BasePredictionAdmin(admin.ModelAdmin):
+    """Shared configuration for MigrainePrediction, SinusitisPrediction, and HayFeverPrediction."""
+
+    list_display = ("user", "location", "probability", "prediction_time", "target_time_start", "target_time_end", "notification_sent")
     list_select_related = ("user", "location")
-    raw_id_fields = ("user", "location", "forecast")
+    show_full_result_count = False
     search_fields = ("user__username", "location__city")
     list_filter = ("probability", "notification_sent", "prediction_time")
     date_hierarchy = "prediction_time"
+    readonly_fields = ("prediction_time",)
     formfield_overrides = {
         JSONField: {"widget": JSONEditorWidget(options={"mode": "text", "modes": ["text", "tree", "view"]})},
     }
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("user", "location", "forecast", "probability", "notification_sent"),
+            },
+        ),
+        (
+            "Time Window",
+            {
+                "fields": ("prediction_time", "target_time_start", "target_time_end"),
+            },
+        ),
+        (
+            "Weather Factors",
+            {
+                "fields": ("weather_factors",),
+            },
+        ),
+    )
 
     def get_queryset(self, request):
-        """Filter predictions to show only the user's own predictions unless they're a superuser."""
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
         return qs.filter(user=request.user)
+
+
+@admin.register(MigrainePrediction)
+class MigrainePredictionAdmin(BasePredictionAdmin):
+    raw_id_fields = ("user", "location", "forecast")
 
 
 @admin.register(SinusitisPrediction)
-class SinusitisPredictionAdmin(admin.ModelAdmin):
-    list_display = ("user", "location", "probability", "prediction_time", "notification_sent")
-    list_select_related = ("user", "location")
+class SinusitisPredictionAdmin(BasePredictionAdmin):
     raw_id_fields = ("user", "location", "forecast")
-    search_fields = ("user__username", "location__city")
-    list_filter = ("probability", "notification_sent", "prediction_time")
-    date_hierarchy = "prediction_time"
-    formfield_overrides = {
-        JSONField: {"widget": JSONEditorWidget(options={"mode": "text", "modes": ["text", "tree", "view"]})},
-    }
-
-    def get_queryset(self, request):
-        """Filter predictions to show only the user's own predictions unless they're a superuser."""
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        return qs.filter(user=request.user)
 
 
 @admin.register(HayFeverPrediction)
-class HayFeverPredictionAdmin(admin.ModelAdmin):
-    list_display = ("user", "location", "probability", "prediction_time", "notification_sent")
-    list_select_related = ("user", "location")
+class HayFeverPredictionAdmin(BasePredictionAdmin):
     raw_id_fields = ("user", "location", "forecast", "air_quality_forecast")
-    search_fields = ("user__username", "location__city")
-    list_filter = ("probability", "notification_sent", "prediction_time")
-    date_hierarchy = "prediction_time"
-    formfield_overrides = {
-        JSONField: {"widget": JSONEditorWidget(options={"mode": "text", "modes": ["text", "tree", "view"]})},
-    }
-
-    def get_queryset(self, request):
-        """Filter predictions to show only the user's own predictions unless they're a superuser."""
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        return qs.filter(user=request.user)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("user", "location", "forecast", "air_quality_forecast", "probability", "notification_sent"),
+            },
+        ),
+        (
+            "Time Window",
+            {
+                "fields": ("prediction_time", "target_time_start", "target_time_end"),
+            },
+        ),
+        (
+            "Weather Factors",
+            {
+                "fields": ("weather_factors",),
+            },
+        ),
+    )
 
 
 @admin.register(AirQualityForecast)
 class AirQualityForecastAdmin(admin.ModelAdmin):
-    list_display = ("location", "forecast_time", "target_time", "european_aqi", "pm2_5", "grass_pollen")
+    list_display = ("location", "forecast_time", "target_time", "european_aqi", "us_aqi", "pm2_5", "pm10", "grass_pollen", "uv_index")
     list_select_related = ("location",)
+    show_full_result_count = False
     raw_id_fields = ("location",)
     search_fields = ("location__city", "location__country")
     list_filter = ("forecast_time", "target_time", "location")
     date_hierarchy = "forecast_time"
+    readonly_fields = ("created_at",)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("location", "forecast_time", "target_time"),
+            },
+        ),
+        (
+            "Pollen (grains/m³)",
+            {
+                "fields": ("alder_pollen", "birch_pollen", "grass_pollen", "mugwort_pollen", "olive_pollen", "ragweed_pollen"),
+            },
+        ),
+        (
+            "Air Quality",
+            {
+                "fields": ("pm10", "pm2_5", "ozone", "nitrogen_dioxide", "dust", "uv_index", "european_aqi", "us_aqi"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at",),
+            },
+        ),
+    )
 
     def get_queryset(self, request):
         """Filter air-quality rows to show only those for the user's locations unless superuser."""
@@ -143,6 +226,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
     list_display = (
         "user",
         "language",
+        "sensitivity_preset",
         "age",
         "email_notifications_enabled",
         "notification_mode",
@@ -154,9 +238,11 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "hay_fever_predictions_enabled",
         "updated_at",
     )
+    list_select_related = ("user",)
     search_fields = ("user__username",)
     list_filter = (
         "language",
+        "sensitivity_preset",
         "email_notifications_enabled",
         "notification_mode",
         "notification_severity_threshold",
@@ -169,7 +255,13 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         (
             "User Information",
             {
-                "fields": ("user", "language", "age"),
+                "fields": ("user", "language", "age", "prior_conditions", "sensitivity_preset"),
+            },
+        ),
+        (
+            "UI Preferences",
+            {
+                "fields": ("ui_version", "theme"),
             },
         ),
         (
@@ -225,6 +317,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
                     "last_migraine_notification_sent_at",
                     "last_sinusitis_notification_sent_at",
                     "last_hay_fever_notification_sent_at",
+                    "created_at",
                     "updated_at",
                 ),
             },
@@ -235,6 +328,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "last_migraine_notification_sent_at",
         "last_sinusitis_notification_sent_at",
         "last_hay_fever_notification_sent_at",
+        "created_at",
         "updated_at",
     )
 
@@ -260,6 +354,8 @@ class NotificationLogAdmin(admin.ModelAdmin):
         "sent_at",
         "created_at",
     )
+    list_select_related = ("user",)
+    show_full_result_count = False
     list_filter = (
         "notification_type",
         "channel",
@@ -268,8 +364,8 @@ class NotificationLogAdmin(admin.ModelAdmin):
         "created_at",
         "sent_at",
     )
-    search_fields = ("user__username", "subject", "error_message")
-    readonly_fields = ("created_at", "sent_at")
+    search_fields = ("user__username", "subject", "recipient", "error_message")
+    readonly_fields = ("created_at", "updated_at", "sent_at")
     date_hierarchy = "created_at"
 
     fieldsets = (
@@ -282,25 +378,25 @@ class NotificationLogAdmin(admin.ModelAdmin):
         (
             "Content",
             {
-                "fields": ("subject", "severity_level", "locations_count", "predictions_count"),
+                "fields": ("subject", "recipient", "severity_level", "locations_count", "predictions_count"),
             },
         ),
         (
             "Related Predictions",
             {
-                "fields": ("migraine_predictions", "sinusitis_predictions"),
+                "fields": ("migraine_predictions", "sinusitis_predictions", "hayfever_predictions"),
             },
         ),
         (
             "Delivery Information",
             {
-                "fields": ("sent_at", "error_message", "retry_count"),
+                "fields": ("scheduled_time", "sent_at", "error_message", "retry_count"),
             },
         ),
         (
             "Metadata",
             {
-                "fields": ("metadata", "created_at"),
+                "fields": ("metadata", "created_at", "updated_at"),
             },
         ),
     )
@@ -319,9 +415,25 @@ class NotificationLogAdmin(admin.ModelAdmin):
 
 @admin.register(LocationNotificationPreference)
 class LocationNotificationPreferenceAdmin(admin.ModelAdmin):
-    list_display = ("user", "location", "notifications_enabled", "priority")
+    list_display = ("user", "location", "notifications_enabled", "priority", "created_at")
+    list_select_related = ("user", "location")
     list_filter = ("notifications_enabled", "priority")
     search_fields = ("user__username", "location__city")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("user", "location", "notifications_enabled", "priority"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
+    )
 
     def get_queryset(self, request):
         """Filter location preferences to show only the user's own preferences unless they're a superuser."""
@@ -343,28 +455,65 @@ class LLMResponseAdmin(admin.ModelAdmin):
         "original_probability_level",
         "confidence",
         "confidence_adjusted",
+        "inference_time",
     )
+    list_select_related = ("user", "location", "migraine_prediction", "sinusitis_prediction", "hayfever_prediction")
+    show_full_result_count = False
     list_filter = ("prediction_type", "probability_level", "confidence_adjusted", "created_at", "location")
     search_fields = ("location__city", "location__country", "user__username")
     readonly_fields = ("created_at",)
+    raw_id_fields = ("user", "location", "migraine_prediction", "sinusitis_prediction", "hayfever_prediction")
     formfield_overrides = {
         JSONField: {"widget": JSONEditorWidget(options={"mode": "text", "modes": ["text", "tree", "view"]})},
     }
+    fieldsets = (
+        (
+            "Associations",
+            {
+                "fields": ("user", "location", "prediction_type", "migraine_prediction", "sinusitis_prediction", "hayfever_prediction"),
+            },
+        ),
+        (
+            "Classification",
+            {
+                "fields": ("probability_level", "original_probability_level", "confidence", "confidence_adjusted"),
+            },
+        ),
+        (
+            "LLM Output",
+            {
+                "fields": ("rationale", "analysis_text", "prevention_tips", "inference_time"),
+            },
+        ),
+        (
+            "Raw Data",
+            {
+                "classes": ("collapse",),
+                "fields": ("request_payload", "response_api_raw", "response_parsed"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at",),
+            },
+        ),
+    )
 
     def get_prediction_link(self, obj):
         """Display a link to the associated prediction."""
         from django.urls import reverse
         from django.utils.html import format_html
 
-        if obj.prediction_type == "migraine" and obj.migraine_prediction:
-            url = reverse("admin:forecast_migraineprediction_change", args=[obj.migraine_prediction.id])
-            return format_html('<a href="{}">Migraine #{}</a>', url, obj.migraine_prediction.id)
-        elif obj.prediction_type == "sinusitis" and obj.sinusitis_prediction:
-            url = reverse("admin:forecast_sinusitisprediction_change", args=[obj.sinusitis_prediction.id])
-            return format_html('<a href="{}">Sinusitis #{}</a>', url, obj.sinusitis_prediction.id)
-        elif obj.prediction_type == "hayfever" and obj.hayfever_prediction:
-            url = reverse("admin:forecast_hayfeverprediction_change", args=[obj.hayfever_prediction.id])
-            return format_html('<a href="{}">Hay Fever #{}</a>', url, obj.hayfever_prediction.id)
+        if obj.prediction_type == "migraine" and obj.migraine_prediction_id:
+            url = reverse("admin:forecast_migraineprediction_change", args=[obj.migraine_prediction_id])
+            return format_html('<a href="{}">Migraine #{}</a>', url, obj.migraine_prediction_id)
+        elif obj.prediction_type == "sinusitis" and obj.sinusitis_prediction_id:
+            url = reverse("admin:forecast_sinusitisprediction_change", args=[obj.sinusitis_prediction_id])
+            return format_html('<a href="{}">Sinusitis #{}</a>', url, obj.sinusitis_prediction_id)
+        elif obj.prediction_type == "hayfever" and obj.hayfever_prediction_id:
+            url = reverse("admin:forecast_hayfeverprediction_change", args=[obj.hayfever_prediction_id])
+            return format_html('<a href="{}">Hay Fever #{}</a>', url, obj.hayfever_prediction_id)
         return "-"
 
     get_prediction_link.short_description = "Prediction"
