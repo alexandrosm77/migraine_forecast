@@ -17,6 +17,67 @@ class WeatherService:
         self.api_client = OpenMeteoClient()
         self.air_quality_client = OpenMeteoAirQualityClient()
 
+    # Fields to update on conflict for WeatherForecast bulk upsert
+    _WEATHER_UPDATE_FIELDS = [
+        "forecast_time", "temperature", "humidity", "pressure",
+        "wind_speed", "precipitation", "cloud_cover",
+    ]
+
+    # Fields to update on conflict for AirQualityForecast bulk upsert
+    _AQ_UPDATE_FIELDS = [
+        "forecast_time", "alder_pollen", "birch_pollen", "grass_pollen",
+        "mugwort_pollen", "olive_pollen", "ragweed_pollen",
+        "pm10", "pm2_5", "ozone", "nitrogen_dioxide", "dust",
+        "uv_index", "european_aqi", "us_aqi",
+    ]
+
+    def _bulk_upsert_weather(self, parsed_data):
+        """
+        Bulk upsert WeatherForecast rows using INSERT … ON CONFLICT UPDATE.
+        Returns (created_count, updated_count).
+        """
+        if not parsed_data:
+            return 0, 0
+
+        objs = [WeatherForecast(**entry) for entry in parsed_data]
+        before_count = WeatherForecast.objects.count()
+
+        WeatherForecast.objects.bulk_create(
+            objs,
+            update_conflicts=True,
+            unique_fields=["location", "target_time"],
+            update_fields=self._WEATHER_UPDATE_FIELDS,
+        )
+
+        after_count = WeatherForecast.objects.count()
+        created_count = after_count - before_count
+        updated_count = len(objs) - created_count
+        return created_count, updated_count
+
+    def _bulk_upsert_air_quality(self, parsed_data):
+        """
+        Bulk upsert AirQualityForecast rows using INSERT … ON CONFLICT UPDATE.
+        Returns (created_count, updated_count).
+        """
+        if not parsed_data:
+            return 0, 0
+
+        objs = [AirQualityForecast(**entry) for entry in parsed_data]
+        before_count = AirQualityForecast.objects.count()
+
+        AirQualityForecast.objects.bulk_create(
+            objs,
+            update_conflicts=True,
+            unique_fields=["location", "target_time"],
+            update_fields=self._AQ_UPDATE_FIELDS,
+        )
+
+        after_count = AirQualityForecast.objects.count()
+        created_count = after_count - before_count
+        updated_count = len(objs) - created_count
+        return created_count, updated_count
+
+
     def update_forecast_for_location(self, location):
         """
         Update weather forecast for a specific location.
@@ -118,24 +179,8 @@ class WeatherService:
                     )
                     return 0, 0
 
-                # Store the forecast data in the database using update_or_create
-                created_count = 0
-                updated_count = 0
-
-                for entry in parsed_data:
-                    # Extract the unique key fields
-                    location_obj = entry.pop("location")
-                    target_time = entry.pop("target_time")
-
-                    # Use update_or_create to avoid duplicates
-                    forecast, created = WeatherForecast.objects.update_or_create(
-                        location=location_obj, target_time=target_time, defaults=entry
-                    )
-
-                    if created:
-                        created_count += 1
-                    else:
-                        updated_count += 1
+                # Bulk upsert forecast data to avoid N+1 queries
+                created_count, updated_count = self._bulk_upsert_weather(parsed_data)
 
                 logger.info(f"Created {created_count} and updated {updated_count} forecast entries for {location}")
 
@@ -240,24 +285,8 @@ class WeatherService:
                         location_results[location.id] = {"created": 0, "updated": 0}
                         continue
 
-                    # Store the forecast data in the database using update_or_create
-                    created_count = 0
-                    updated_count = 0
-
-                    for entry in parsed_data:
-                        # Extract the unique key fields
-                        location_obj = entry.pop("location")
-                        target_time = entry.pop("target_time")
-
-                        # Use update_or_create to avoid duplicates
-                        forecast, created = WeatherForecast.objects.update_or_create(
-                            location=location_obj, target_time=target_time, defaults=entry
-                        )
-
-                        if created:
-                            created_count += 1
-                        else:
-                            updated_count += 1
+                    # Bulk upsert forecast data to avoid N+1 queries
+                    created_count, updated_count = self._bulk_upsert_weather(parsed_data)
 
                     total_created += created_count
                     total_updated += updated_count
@@ -431,21 +460,8 @@ class WeatherService:
                     )
                     return 0, 0
 
-                created_count = 0
-                updated_count = 0
-
-                for entry in parsed_data:
-                    location_obj = entry.pop("location")
-                    target_time = entry.pop("target_time")
-
-                    _, created = AirQualityForecast.objects.update_or_create(
-                        location=location_obj, target_time=target_time, defaults=entry
-                    )
-
-                    if created:
-                        created_count += 1
-                    else:
-                        updated_count += 1
+                # Bulk upsert air-quality data to avoid N+1 queries
+                created_count, updated_count = self._bulk_upsert_air_quality(parsed_data)
 
                 logger.info(
                     f"Created {created_count} and updated {updated_count} air-quality entries for {location}"
@@ -542,21 +558,8 @@ class WeatherService:
                         location_results[location.id] = {"created": 0, "updated": 0}
                         continue
 
-                    created_count = 0
-                    updated_count = 0
-
-                    for entry in parsed_data:
-                        location_obj = entry.pop("location")
-                        target_time = entry.pop("target_time")
-
-                        _, created = AirQualityForecast.objects.update_or_create(
-                            location=location_obj, target_time=target_time, defaults=entry
-                        )
-
-                        if created:
-                            created_count += 1
-                        else:
-                            updated_count += 1
+                    # Bulk upsert air-quality data to avoid N+1 queries
+                    created_count, updated_count = self._bulk_upsert_air_quality(parsed_data)
 
                     total_created += created_count
                     total_updated += updated_count

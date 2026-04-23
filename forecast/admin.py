@@ -1,10 +1,11 @@
 # flake8: noqa
 from django.contrib import admin
-from django_json_widget.widgets import JSONEditorWidget
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
+from django.contrib.auth.models import User, Group
 from django.db.models import JSONField
 from django.urls import path
-from django.shortcuts import render
-from django.http import StreamingHttpResponse
+from django_json_widget.widgets import JSONEditorWidget
+
 from forecast.models import (
     Location,
     WeatherForecast,
@@ -18,12 +19,6 @@ from forecast.models import (
     NotificationLog,
     LocationNotificationPreference,
 )
-import subprocess
-import time
-import sys
-from django.conf import settings
-from django.contrib.auth.models import User, Group
-from django.contrib.auth.admin import UserAdmin, GroupAdmin
 
 
 @admin.register(Location)
@@ -617,22 +612,24 @@ class MigraineAdminSite(admin.AdminSite):
     index_template = "admin/custom_index.html"
 
     def get_urls(self):
+        from . import admin_views
+
         urls = super().get_urls()
         custom_urls = [
             path("run-prediction-check/", self.admin_view(self.run_prediction_check_view), name="run_prediction_check"),
             path(
                 "run-prediction-check/execute/",
-                self.admin_view(self.execute_prediction_check),
+                self.admin_view(admin_views.execute_prediction_check),
                 name="execute_prediction_check",
             ),
             path(
                 "run-prediction-check/logs/",
-                self.admin_view(self.view_prediction_logs),
+                self.admin_view(admin_views.view_prediction_logs),
                 name="view_prediction_logs",
             ),
             path(
                 "run-prediction-check/cancel/",
-                self.admin_view(self.cancel_prediction_check),
+                self.admin_view(admin_views.cancel_prediction_check),
                 name="cancel_prediction_check",
             ),
         ]
@@ -645,457 +642,9 @@ class MigraineAdminSite(admin.AdminSite):
         return super().index(request, extra_context)
 
     def run_prediction_check_view(self, request):
-        """View to display the prediction check form."""
-        if not request.user.is_superuser:
-            from django.core.exceptions import PermissionDenied
+        from . import admin_views
+        return admin_views.run_prediction_check_view(request, self)
 
-            raise PermissionDenied("Only superusers can access this page.")
-
-        context = {
-            **self.each_context(request),
-            "title": "Run Prediction Check",
-        }
-        return render(request, "admin/run_prediction_check.html", context)
-
-    def execute_prediction_check(self, request):
-        """Execute the prediction check command in background."""
-        if not request.user.is_superuser:
-            from django.core.exceptions import PermissionDenied
-
-            raise PermissionDenied("Only superusers can access this page.")
-
-        import os
-        from django.http import HttpResponseRedirect
-        from django.urls import reverse
-
-        # Get parameters from request
-        test_notification = request.GET.get("test_notification", "")
-        test_type = request.GET.get("test_type", "both")
-        update_weather = request.GET.get("update_weather", "") == "on"
-        get_predictions = request.GET.get("get_predictions", "") == "on"
-        send_notifications = request.GET.get("send_notifications", "") == "on"
-
-        # Build command
-        log_file = os.path.join(settings.BASE_DIR, "prediction_check.log")
-
-        # Clear the log file first
-        try:
-            with open(log_file, 'w') as f:
-                f.write(f"=== Prediction Check Started at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n\n")
-        except Exception:
-            pass
-
-        # Create a shell script to run in background
-        script_lines = ["#!/bin/bash", ""]
-
-        if test_notification:
-            script_lines.append(f"{sys.executable} manage.py check_migraine_probability --test-notification {test_notification} --test-type {test_type}")
-        else:
-            if update_weather:
-                script_lines.append("echo '=== Task 1: Collecting Weather Data ==='")
-                script_lines.append(f"{sys.executable} manage.py collect_weather_data")
-                script_lines.append("echo ''")
-            if get_predictions:
-                script_lines.append("echo '=== Task 2: Generating Predictions ==='")
-                script_lines.append(f"{sys.executable} manage.py generate_predictions")
-                script_lines.append("echo ''")
-            if send_notifications:
-                script_lines.append("echo '=== Task 3: Processing Notifications ==='")
-                script_lines.append(f"{sys.executable} manage.py process_notifications")
-                script_lines.append("echo ''")
-            if update_weather or get_predictions or send_notifications:
-                script_lines.append("echo \"=== All Tasks Completed at $(date '+%Y-%m-%d %H:%M:%S') ===\"")
-            else:
-                script_lines.append("echo 'No tasks selected. Please select at least one pipeline step.'")
-                script_lines.append("echo \"=== Completed at $(date '+%Y-%m-%d %H:%M:%S') ===\"")
-
-        # Write script to temp file
-        script_file = os.path.join(settings.BASE_DIR, "prediction_check_runner.sh")
-        try:
-            with open(script_file, 'w') as f:
-                f.write('\n'.join(script_lines))
-            os.chmod(script_file, 0o755)
-        except Exception as e:
-            # Fallback: write error to log
-            with open(log_file, 'a') as f:
-                f.write(f"Error creating script: {str(e)}\n")
-            return HttpResponseRedirect(reverse('admin:view_prediction_logs'))
-
-        # Execute script in background, redirecting output to log file
-        subprocess.Popen(
-            ['/bin/bash', script_file],
-            stdout=open(log_file, 'a'),
-            stderr=subprocess.STDOUT,
-            cwd=settings.BASE_DIR,
-            start_new_session=True  # Detach from parent process
-        )
-
-        # Redirect to log viewer with auto-refresh
-        return HttpResponseRedirect(reverse('admin:view_prediction_logs') + '?auto_refresh=true')
-
-    def view_prediction_logs(self, request):
-        """View to display prediction check logs with auto-refresh."""
-        if not request.user.is_superuser:
-            from django.core.exceptions import PermissionDenied
-
-            raise PermissionDenied("Only superusers can access this page.")
-
-        import os
-        from django.http import HttpResponse
-
-        log_file = os.path.join(settings.BASE_DIR, "prediction_check.log")
-        auto_refresh = request.GET.get("auto_refresh", "false") == "true"
-        refresh_interval = int(request.GET.get("refresh_interval", "3"))  # seconds
-        message = request.GET.get("message", "")
-
-        # Read log file
-        log_content = ""
-        file_exists = os.path.exists(log_file)
-
-        if file_exists:
-            try:
-                with open(log_file, "r") as f:
-                    log_content = f.read()
-                    if not log_content:
-                        log_content = "Log file is empty. Waiting for output..."
-            except Exception as e:
-                log_content = f"Error reading log file: {str(e)}"
-        else:
-            log_content = "Log file not found. Start a prediction check to create it."
-
-        # Check if process is still running
-        process_running = False
-        try:
-            # First check for the bash script runner
-            result = subprocess.run(
-                ["pgrep", "-f", "prediction_check_runner.sh"],
-                capture_output=True,
-                text=True
-            )
-            if result.stdout.strip():
-                process_running = True
-            else:
-                # Check for individual management commands (simpler patterns for macOS compatibility)
-                for cmd in ["collect_weather_data", "generate_predictions", "process_notifications", "check_migraine_probability"]:
-                    result = subprocess.run(
-                        ["pgrep", "-f", f"manage.py {cmd}"],
-                        capture_output=True,
-                        text=True
-                    )
-                    if result.stdout.strip():
-                        process_running = True
-                        break
-        except Exception:
-            pass
-
-        html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>Prediction Check Logs</title>
-    <meta charset="utf-8">
-    {'<meta http-equiv="refresh" content="' + str(refresh_interval) + '">' if auto_refresh and process_running else ''}
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #1e1e1e;
-            color: #d4d4d4;
-            padding: 20px;
-            margin: 0;
-        }}
-        .container {{
-            max-width: 1400px;
-            margin: 0 auto;
-        }}
-        .header {{
-            background-color: #2d2d30;
-            padding: 20px;
-            border-radius: 8px 8px 0 0;
-            border-left: 4px solid #007acc;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }}
-        h1 {{
-            color: #4ec9b0;
-            margin: 0;
-            font-size: 24px;
-        }}
-        .controls {{
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }}
-        .button {{
-            background-color: #007acc;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }}
-        .button:hover {{
-            background-color: #005a9e;
-        }}
-        .button.secondary {{
-            background-color: #3e3e42;
-        }}
-        .button.secondary:hover {{
-            background-color: #505053;
-        }}
-        .button.success {{
-            background-color: #28a745;
-        }}
-        .button.success:hover {{
-            background-color: #218838;
-        }}
-        .status-badge {{
-            padding: 5px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }}
-        .status-badge.running {{
-            background-color: #28a745;
-            color: white;
-            animation: pulse 2s infinite;
-        }}
-        .status-badge.stopped {{
-            background-color: #6c757d;
-            color: white;
-        }}
-        @keyframes pulse {{
-            0%, 100% {{ opacity: 1; }}
-            50% {{ opacity: 0.6; }}
-        }}
-        .log-container {{
-            background-color: #1e1e1e;
-            border: 1px solid #3e3e42;
-            border-radius: 0 0 8px 8px;
-            padding: 20px;
-            min-height: 400px;
-            max-height: 800px;
-            overflow-y: auto;
-        }}
-        .log-content {{
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            color: #d4d4d4;
-        }}
-        .info-box {{
-            background-color: #2d2d30;
-            border-left: 4px solid #007acc;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }}
-        .refresh-controls {{
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }}
-        select {{
-            background-color: #3e3e42;
-            color: #d4d4d4;
-            border: 1px solid #555;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-        }}
-        .spinner {{
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }}
-        @keyframes spin {{
-            to {{ transform: rotate(360deg); }}
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>📋 Prediction Check Logs</h1>
-                <div style="margin-top: 5px;">
-                    <span class="status-badge {'running' if process_running else 'stopped'}">
-                        {'🟢 RUNNING' if process_running else '⚪ STOPPED'}
-                    </span>
-                </div>
-            </div>
-            <div class="controls">
-                <div class="refresh-controls">
-                    <label style="color: #d4d4d4; font-size: 14px;">
-                        Auto-refresh:
-                        <select id="refreshToggle" onchange="toggleRefresh()">
-                            <option value="false" {'selected' if not auto_refresh else ''}>Off</option>
-                            <option value="true" {'selected' if auto_refresh else ''}>On</option>
-                        </select>
-                    </label>
-                    <label style="color: #d4d4d4; font-size: 14px;">
-                        Interval:
-                        <select id="refreshInterval" onchange="updateInterval()" {'disabled' if not auto_refresh else ''}>
-                            <option value="2" {'selected' if refresh_interval == 2 else ''}>2s</option>
-                            <option value="3" {'selected' if refresh_interval == 3 else ''}>3s</option>
-                            <option value="5" {'selected' if refresh_interval == 5 else ''}>5s</option>
-                            <option value="10" {'selected' if refresh_interval == 10 else ''}>10s</option>
-                        </select>
-                    </label>
-                </div>
-                <button class="button" onclick="window.location.reload()">
-                    🔄 Refresh Now
-                </button>
-                {'<button class="button" style="background-color: #dc3545;" onclick="cancelProcess()">⏹ Cancel Process</button>' if process_running else ''}
-                <a href="/admin/run-prediction-check/" class="button secondary">
-                    ← Back
-                </a>
-            </div>
-        </div>
-
-        {f'''<div style="background-color: #28a745; color: white; padding: 15px; margin: 20px 0; border-radius: 4px; border-left: 4px solid #1e7e34;">
-            <strong>✓ {message}</strong>
-        </div>''' if message else ''}
-
-        <div class="log-container">
-            <div class="log-content">{log_content if log_content else 'No logs available yet.'}</div>
-        </div>
-    </div>
-
-    <script>
-        // Auto-scroll to bottom immediately and on load
-        function scrollToBottom() {{
-            const logContainer = document.querySelector('.log-container');
-            if (logContainer) {{
-                logContainer.scrollTop = logContainer.scrollHeight;
-            }}
-            // Also scroll window to bottom
-            window.scrollTo(0, document.body.scrollHeight);
-        }}
-
-        // Scroll immediately (before page fully loads)
-        scrollToBottom();
-
-        // Scroll again after page fully loads (in case content loaded late)
-        window.addEventListener('load', scrollToBottom);
-
-        // Scroll after a short delay to catch any late-loading content
-        setTimeout(scrollToBottom, 100);
-
-        function toggleRefresh() {{
-            const enabled = document.getElementById('refreshToggle').value;
-            const interval = document.getElementById('refreshInterval').value;
-            const url = new URL(window.location);
-            url.searchParams.set('auto_refresh', enabled);
-            url.searchParams.set('refresh_interval', interval);
-            window.location.href = url.toString();
-        }}
-
-        function updateInterval() {{
-            const interval = document.getElementById('refreshInterval').value;
-            const url = new URL(window.location);
-            url.searchParams.set('refresh_interval', interval);
-            window.location.href = url.toString();
-        }}
-
-        function cancelProcess() {{
-            if (confirm('Are you sure you want to cancel the running prediction check?\\n\\nThis will terminate all running tasks.')) {{
-                window.location.href = '/admin/run-prediction-check/cancel/';
-            }}
-        }}
-    </script>
-</body>
-</html>"""
-
-        return HttpResponse(html)
-
-    def cancel_prediction_check(self, request):
-        """Cancel running prediction check process."""
-        if not request.user.is_superuser:
-            from django.core.exceptions import PermissionDenied
-
-            raise PermissionDenied("Only superusers can access this page.")
-
-        import os
-        import signal
-        from django.http import HttpResponse, HttpResponseRedirect
-        from django.urls import reverse
-
-        log_file = os.path.join(settings.BASE_DIR, "prediction_check.log")
-
-        # Find and kill the running processes
-        killed_count = 0
-        pids_to_kill = set()
-        try:
-            # First check for the bash script runner
-            result = subprocess.run(
-                ["pgrep", "-f", "prediction_check_runner.sh"],
-                capture_output=True,
-                text=True
-            )
-            if result.stdout.strip():
-                pids_to_kill.update(result.stdout.strip().split('\n'))
-
-            # Check for individual management commands (simpler patterns for macOS compatibility)
-            for cmd in ["collect_weather_data", "generate_predictions", "process_notifications", "check_migraine_probability"]:
-                result = subprocess.run(
-                    ["pgrep", "-f", f"manage.py {cmd}"],
-                    capture_output=True,
-                    text=True
-                )
-                if result.stdout.strip():
-                    pids_to_kill.update(result.stdout.strip().split('\n'))
-
-            if pids_to_kill:
-                for pid in pids_to_kill:
-                    try:
-                        os.kill(int(pid), signal.SIGTERM)  # Graceful termination
-                        killed_count += 1
-                    except ProcessLookupError:
-                        pass  # Process already finished
-                    except Exception:
-                        pass  # Ignore other errors
-
-                # Log the cancellation
-                try:
-                    with open(log_file, 'a') as f:
-                        f.write(f"\n\n=== Process Cancelled by {request.user.username} at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                        f.write(f"Terminated {killed_count} process(es)\n")
-                except Exception:
-                    pass
-
-                message = f"Successfully cancelled prediction check ({killed_count} process(es) terminated)"
-            else:
-                message = "No running prediction check process found"
-                try:
-                    with open(log_file, 'a') as f:
-                        f.write(f"\n\n=== Cancel attempted but no process running at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                except Exception:
-                    pass
-
-        except Exception as e:
-            message = f"Error cancelling process: {str(e)}"
-            try:
-                with open(log_file, 'a') as f:
-                    f.write(f"\n\n=== Error during cancellation: {str(e)} ===\n")
-            except Exception:
-                pass
-
-        # Redirect back to logs with message
-        return HttpResponseRedirect(reverse('admin:view_prediction_logs') + f'?message={message}')
 
 
 # Replace the default admin site

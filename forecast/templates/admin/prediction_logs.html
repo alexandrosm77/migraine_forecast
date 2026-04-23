@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prediction Check Logs</title>
+    <meta charset="utf-8">
+    {% if auto_refresh and process_running %}<meta http-equiv="refresh" content="{{ refresh_interval }}">{% endif %}
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #1e1e1e; color: #d4d4d4; padding: 20px; margin: 0; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background-color: #2d2d30; padding: 20px; border-radius: 8px 8px 0 0; border-left: 4px solid #007acc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        h1 { color: #4ec9b0; margin: 0; font-size: 24px; }
+        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .button { background-color: #007acc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
+        .button:hover { background-color: #005a9e; }
+        .button.secondary { background-color: #3e3e42; }
+        .button.secondary:hover { background-color: #505053; }
+        .status-badge { padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-badge.running { background-color: #28a745; color: white; animation: pulse 2s infinite; }
+        .status-badge.stopped { background-color: #6c757d; color: white; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .log-container { background-color: #1e1e1e; border: 1px solid #3e3e42; border-radius: 0 0 8px 8px; padding: 20px; min-height: 400px; max-height: 800px; overflow-y: auto; }
+        .log-content { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; color: #d4d4d4; }
+        .refresh-controls { display: flex; gap: 10px; align-items: center; }
+        select { background-color: #3e3e42; color: #d4d4d4; border: 1px solid #555; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📋 Prediction Check Logs</h1>
+                <div style="margin-top: 5px;">
+                    <span class="status-badge {% if process_running %}running{% else %}stopped{% endif %}">
+                        {% if process_running %}🟢 RUNNING{% else %}⚪ STOPPED{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="refresh-controls">
+                    <label style="color: #d4d4d4; font-size: 14px;">
+                        Auto-refresh:
+                        <select id="refreshToggle" onchange="toggleRefresh()">
+                            <option value="false" {% if not auto_refresh %}selected{% endif %}>Off</option>
+                            <option value="true" {% if auto_refresh %}selected{% endif %}>On</option>
+                        </select>
+                    </label>
+                    <label style="color: #d4d4d4; font-size: 14px;">
+                        Interval:
+                        <select id="refreshInterval" onchange="updateInterval()" {% if not auto_refresh %}disabled{% endif %}>
+                            <option value="2" {% if refresh_interval == 2 %}selected{% endif %}>2s</option>
+                            <option value="3" {% if refresh_interval == 3 %}selected{% endif %}>3s</option>
+                            <option value="5" {% if refresh_interval == 5 %}selected{% endif %}>5s</option>
+                            <option value="10" {% if refresh_interval == 10 %}selected{% endif %}>10s</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="button" onclick="window.location.reload()">🔄 Refresh Now</button>
+                {% if process_running %}
+                <button class="button" style="background-color: #dc3545;" onclick="cancelProcess()">⏹ Cancel Process</button>
+                {% endif %}
+                <a href="/admin/run-prediction-check/" class="button secondary">← Back</a>
+            </div>
+        </div>
+
+        {% if message %}
+        <div style="background-color: #28a745; color: white; padding: 15px; margin: 20px 0; border-radius: 4px; border-left: 4px solid #1e7e34;">
+            <strong>✓ {{ message }}</strong>
+        </div>
+        {% endif %}
+
+        <div class="log-container">
+            <div class="log-content">{% if log_content %}{{ log_content }}{% else %}No logs available yet.{% endif %}</div>
+        </div>
+    </div>
+
+    <script>
+        function scrollToBottom() {
+            var lc = document.querySelector('.log-container');
+            if (lc) lc.scrollTop = lc.scrollHeight;
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+        scrollToBottom();
+        window.addEventListener('load', scrollToBottom);
+        setTimeout(scrollToBottom, 100);
+
+        function toggleRefresh() {
+            var enabled = document.getElementById('refreshToggle').value;
+            var interval = document.getElementById('refreshInterval').value;
+            var url = new URL(window.location);
+            url.searchParams.set('auto_refresh', enabled);
+            url.searchParams.set('refresh_interval', interval);
+            window.location.href = url.toString();
+        }
+        function updateInterval() {
+            var interval = document.getElementById('refreshInterval').value;
+            var url = new URL(window.location);
+            url.searchParams.set('refresh_interval', interval);
+            window.location.href = url.toString();
+        }
+        function cancelProcess() {
+            if (confirm('Are you sure you want to cancel the running prediction check?\n\nThis will terminate all running tasks.')) {
+                window.location.href = '/admin/run-prediction-check/cancel/';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -268,6 +268,10 @@ class WeatherForecast(models.Model):
                 name="unique_location_target_time",
             )
         ]
+        indexes = [
+            models.Index(fields=["location", "target_time"]),
+            models.Index(fields=["target_time"]),
+        ]
 
     def __str__(self):
         return f"Forecast for {self.location} at {self.target_time}"
