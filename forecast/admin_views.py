@@ -140,6 +140,11 @@ def execute_prediction_check(request):
         start_new_session=True,
     )
 
+    return HttpResponseRedirect(
+        reverse("admin:view_prediction_logs")
+        + "?auto_refresh=true&message=Prediction+check+started"
+    )
+
 
 def view_prediction_logs(request):
     """Display prediction check logs with auto-refresh."""
