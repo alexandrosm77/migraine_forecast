@@ -18,7 +18,7 @@ from django.core.exceptions import PermissionDenied
 
 from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction, HayFeverPrediction
 from .weather_service import WeatherService
-from .notification_service import NotificationService
+from .weather_factor_explainer import WeatherFactorExplainer
 from .forms import UserHealthProfileForm, UserEmailForm
 
 logger = logging.getLogger(__name__)
@@ -569,9 +569,9 @@ def prediction_detail(request, prediction_id):
     prediction = get_object_or_404(MigrainePrediction, id=prediction_id, user=request.user)
 
     # Build detailed factors similar to email, and expose LLM analysis/tips
-    notif = NotificationService()
+    explainer = WeatherFactorExplainer()
     try:
-        detailed_factors = notif._get_detailed_weather_factors(prediction)
+        detailed_factors = explainer.get_detailed_weather_factors(prediction)
     except Exception:
         logger.exception("Failed to get detailed weather factors for prediction %s", prediction_id)
         detailed_factors = {"factors": [], "total_score": 0, "contributing_factors_count": 0}
@@ -622,9 +622,9 @@ def sinusitis_prediction_detail(request, prediction_id):
     prediction = get_object_or_404(SinusitisPrediction, id=prediction_id, user=request.user)
 
     # Build detailed factors similar to email, and expose LLM analysis/tips
-    notif = NotificationService()
+    explainer = WeatherFactorExplainer()
     try:
-        detailed_factors = notif._get_detailed_sinusitis_factors(prediction)
+        detailed_factors = explainer.get_detailed_sinusitis_factors(prediction)
     except Exception:
         logger.exception("Failed to get detailed sinusitis factors for prediction %s", prediction_id)
         detailed_factors = {"factors": [], "total_score": 0, "contributing_factors_count": 0}

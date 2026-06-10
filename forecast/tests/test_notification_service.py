@@ -16,6 +16,9 @@ from forecast.models import (
     UserHealthProfile,
 )
 from forecast.notification_service import NotificationService
+from forecast.email_sender import EmailSender
+from forecast.notification_preferences import NotificationPreferences
+from forecast.weather_factor_explainer import WeatherFactorExplainer
 
 
 class NotificationServiceTest(TestCase):
@@ -27,12 +30,6 @@ class NotificationServiceTest(TestCase):
             user=self.user, city="Austin", country="USA", latitude=30.2672, longitude=-97.7431
         )
         self.service = NotificationService()
-
-    def test_notification_service_initialization(self):
-        """Test NotificationService initializes correctly"""
-        self.assertIsNotNone(self.service.prediction_service)
-        self.assertIsNotNone(self.service.sinusitis_prediction_service)
-        self.assertIsNotNone(self.service.weather_service)
 
     @patch("forecast.email_sender.send_mail")
     def test_send_migraine_alert_email(self, mock_send_mail):
@@ -61,7 +58,7 @@ class NotificationServiceTest(TestCase):
         )
 
         # Call the public method
-        result = self.service.send_migraine_alert(prediction)
+        result = EmailSender().send_migraine_alert(prediction)
 
         # Verify email was sent
         self.assertTrue(result)
@@ -94,7 +91,7 @@ class NotificationServiceTest(TestCase):
             weather_factors={"temperature_score": 0.8, "humidity_score": 0.7, "pressure_score": 0.9},
         )
 
-        detailed = self.service._get_detailed_weather_factors(prediction)
+        detailed = WeatherFactorExplainer().get_detailed_weather_factors(prediction)
 
         self.assertIsNotNone(detailed)
         self.assertIn("factors", detailed)
@@ -291,7 +288,7 @@ class NotificationServiceTest(TestCase):
             email_notifications_enabled=True,
         )
 
-        should_send, reason = self.service._should_send_notification(self.user, "HIGH", "migraine")
+        should_send, reason = NotificationPreferences().should_send_notification(self.user, "HIGH", "migraine")
 
         self.assertFalse(should_send)
         self.assertIn("digest", reason.lower())
@@ -304,7 +301,7 @@ class NotificationServiceTest(TestCase):
             email_notifications_enabled=True,
         )
 
-        should_send, reason = self.service._should_send_notification(
+        should_send, reason = NotificationPreferences().should_send_notification(
             self.user, "HIGH", "general", is_digest=True
         )
 
@@ -344,14 +341,14 @@ class NotificationServiceTest(TestCase):
         )
 
         # Without is_digest, should be blocked
-        result_blocked = self.service.send_combined_alert(
+        result_blocked = EmailSender().send_combined_alert(
             migraine_predictions=[prediction], is_digest=False
         )
         self.assertFalse(result_blocked)
         mock_send_mail.assert_not_called()
 
         # With is_digest=True, should send
-        result_sent = self.service.send_combined_alert(
+        result_sent = EmailSender().send_combined_alert(
             migraine_predictions=[prediction], is_digest=True
         )
         self.assertTrue(result_sent)
@@ -389,7 +386,7 @@ class NotificationServiceTest(TestCase):
             weather_factors={"temperature_score": 0.8},
         )
 
-        result = self.service.send_migraine_alert(prediction)
+        result = EmailSender().send_migraine_alert(prediction)
 
         # Should NOT send because user is in DIGEST mode
         self.assertFalse(result)
@@ -429,7 +426,7 @@ class NotificationServiceTest(TestCase):
         )
         prediction = self._make_hayfever_prediction(probability="HIGH")
 
-        result = self.service.send_hayfever_alert(prediction)
+        result = EmailSender().send_hayfever_alert(prediction)
 
         self.assertTrue(result)
         mock_send_mail.assert_called_once()
@@ -445,7 +442,7 @@ class NotificationServiceTest(TestCase):
         )
         prediction = self._make_hayfever_prediction(probability="HIGH")
 
-        result = self.service.send_hayfever_alert(prediction)
+        result = EmailSender().send_hayfever_alert(prediction)
 
         self.assertFalse(result)
         mock_send_mail.assert_not_called()
@@ -460,7 +457,7 @@ class NotificationServiceTest(TestCase):
         )
         prediction = self._make_hayfever_prediction(probability="HIGH")
 
-        result = self.service.send_combined_alert(hayfever_predictions=[prediction])
+        result = EmailSender().send_combined_alert(hayfever_predictions=[prediction])
 
         self.assertTrue(result)
         mock_send_mail.assert_called_once()

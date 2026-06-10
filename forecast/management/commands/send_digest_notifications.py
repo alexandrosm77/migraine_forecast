@@ -222,13 +222,13 @@ class Command(SilentStdoutCommand):
 
     def send_digest_email(self, user, migraine_preds, sinusitis_preds, hayfever_preds=None):
         """Send a daily digest email to a user."""
-        from forecast.notification_service import NotificationService
+        from forecast.notification_preferences import NotificationPreferences
 
         hayfever_preds = hayfever_preds or []
-        notification_service = NotificationService()
+        prefs = NotificationPreferences()
 
         # Create notification log
-        notification_log = notification_service._create_notification_log(
+        notification_log = prefs.create_notification_log(
             user, "digest",
             migraine_preds=migraine_preds,
             sinusitis_preds=sinusitis_preds,
@@ -287,7 +287,7 @@ class Command(SilentStdoutCommand):
             )
 
             notification_log.mark_sent()
-            notification_service._update_last_notification_timestamp(user, "combined")
+            prefs.update_last_notification_timestamp(user, "combined")
 
             logger.info(f"Sent daily digest to {user.email}")
             return True

@@ -237,7 +237,7 @@ def send_prediction_notification(self, prediction_id, prediction_type):
         prediction_type: 'migraine', 'sinusitis', or 'hayfever'
     """
     from forecast.models import MigrainePrediction, SinusitisPrediction, HayFeverPrediction
-    from forecast.notification_service import NotificationService
+    from forecast.email_sender import EmailSender
 
     logger.info(f"Sending notification for {prediction_type} prediction {prediction_id}")
 
@@ -250,13 +250,13 @@ def send_prediction_notification(self, prediction_id, prediction_type):
         prediction = HayFeverPrediction.objects.get(id=prediction_id)
 
     # Send notification
-    service = NotificationService()
+    email = EmailSender()
     if prediction_type == "migraine":
-        result = service.send_migraine_alert(prediction)
+        result = email.send_migraine_alert(prediction)
     elif prediction_type == "sinusitis":
-        result = service.send_sinusitis_alert(prediction)
+        result = email.send_sinusitis_alert(prediction)
     else:
-        result = service.send_hayfever_alert(prediction)
+        result = email.send_hayfever_alert(prediction)
 
     return {
         "status": "completed",
@@ -279,7 +279,7 @@ def send_digest_email(self, user_id):
     """
     from django.contrib.auth.models import User
     from forecast.models import MigrainePrediction, SinusitisPrediction, HayFeverPrediction
-    from forecast.notification_service import NotificationService
+    from forecast.email_sender import EmailSender
 
     logger.info(f"Generating digest email for user {user_id}")
 
@@ -326,8 +326,8 @@ def send_digest_email(self, user_id):
 
     # Send combined email if we have any predictions
     if migraine_predictions or sinusitis_predictions or hayfever_predictions:
-        service = NotificationService()
-        result = service.send_combined_alert(
+        email = EmailSender()
+        result = email.send_combined_alert(
             migraine_predictions=migraine_predictions,
             sinusitis_predictions=sinusitis_predictions,
             hayfever_predictions=hayfever_predictions,

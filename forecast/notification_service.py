@@ -9,102 +9,24 @@ from .models import (
     HayFeverPrediction,
     Location,
 )
-from .prediction_service import PredictionService
-from .weather_service import WeatherService
-
-# Re-export for backward compatibility
-from .notification_preferences import NotificationPreferences  # noqa: F401
-from .weather_factor_explainer import WeatherFactorExplainer  # noqa: F401
-from .email_sender import EmailSender  # noqa: F401
+from .email_sender import EmailSender
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
     """
-    Orchestrator for the notification system.
+    Combined-notification orchestrator.
 
-    Composes:
-      - NotificationPreferences  (preference checks, notification logs, timestamps)
-      - WeatherFactorExplainer   (human-friendly weather factor explanations)
-      - EmailSender              (email rendering and sending)
-
-    All public methods from the old monolith are preserved as thin delegations
-    so that existing callers (tasks.py, views.py, management commands) continue
-    to work without changes.
+    Exposes a single deep entry point, check_and_send_combined_notifications,
+    which groups predictions by user across all locations and sends one email
+    per user. Email rendering/sending, preference checks, and weather-factor
+    explanations live in their own modules (EmailSender, NotificationPreferences,
+    WeatherFactorExplainer) and are used directly by their respective callers.
     """
 
-    def __init__(self):
-        self.prediction_service = PredictionService.for_condition("migraine")
-        self.sinusitis_prediction_service = PredictionService.for_condition("sinusitis")
-        self.hayfever_prediction_service = PredictionService.for_condition("hayfever")
-        self.weather_service = WeatherService()
-
-        self._prefs = NotificationPreferences()
-        self._explainer = WeatherFactorExplainer()
-        self._email = EmailSender()
-
-    # ------------------------------------------------------------------
-    # Delegated public API — email sending
-    # ------------------------------------------------------------------
-
-    def send_migraine_alert(self, prediction):
-        """Send migraine alert email for a specific prediction."""
-        return self._email.send_migraine_alert(prediction)
-
-    def send_sinusitis_alert(self, prediction):
-        """Send sinusitis alert email for a specific prediction."""
-        return self._email.send_sinusitis_alert(prediction)
-
-    def send_hayfever_alert(self, prediction):
-        """Send hay fever alert email for a specific prediction."""
-        return self._email.send_hayfever_alert(prediction)
-
-    def send_combined_alert(self, migraine_predictions=None, sinusitis_predictions=None,
-                            hayfever_predictions=None, is_digest=False):
-        """Send a combined alert email for predictions across multiple locations."""
-        return self._email.send_combined_alert(
-            migraine_predictions=migraine_predictions,
-            sinusitis_predictions=sinusitis_predictions,
-            hayfever_predictions=hayfever_predictions,
-            is_digest=is_digest,
-        )
-
-    def send_test_email(self, user_email):
-        """Send a test email to verify email configuration."""
-        return self._email.send_test_email(user_email)
-
-    # ------------------------------------------------------------------
-    # Delegated public API — preferences & logging (used by digest command)
-    # ------------------------------------------------------------------
-
-    def _get_user_language(self, user):
-        return self._prefs.get_user_language(user)
-
-    def _should_send_notification(self, user, severity_level, notification_type="general", is_digest=False):
-        return self._prefs.should_send_notification(user, severity_level, notification_type, is_digest)
-
-    def _create_notification_log(self, user, notification_type, **kwargs):
-        return self._prefs.create_notification_log(user, notification_type, **kwargs)
-
-    def _update_last_notification_timestamp(self, user, notification_type):
-        return self._prefs.update_last_notification_timestamp(user, notification_type)
-
-    # ------------------------------------------------------------------
-    # Delegated public API — weather factor explanations
-    # ------------------------------------------------------------------
-
-    def _get_detailed_weather_factors(self, prediction):
-        return self._explainer.get_detailed_weather_factors(prediction)
-
-    def _get_detailed_sinusitis_factors(self, prediction):
-        return self._explainer.get_detailed_sinusitis_factors(prediction)
-
-    # ------------------------------------------------------------------
-    # Combined notification orchestration
-    # ------------------------------------------------------------------
-
-    def check_and_send_combined_notifications(self, migraine_predictions: dict, sinusitis_predictions: dict,
+    @staticmethod
+    def check_and_send_combined_notifications(migraine_predictions: dict, sinusitis_predictions: dict,
                                               hayfever_predictions: dict = None):
         """
         Check migraine, sinusitis, and hay fever predictions and send combined notifications.
@@ -296,7 +218,7 @@ class NotificationService:
 
             user = user_map[uid]
 
-            if self.send_combined_alert(
+            if EmailSender().send_combined_alert(
                 migraine_predictions=migraine_preds,
                 sinusitis_predictions=sinusitis_preds,
                 hayfever_predictions=hayfever_preds,
