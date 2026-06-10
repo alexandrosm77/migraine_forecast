@@ -198,7 +198,7 @@ class LLMClient:
     def _predict(
         self,
         sys_prompt: str,
-        context_builder_method: str,
+        condition_type: str,
         condition_label: str,
         scores: Dict[str, float],
         location_label: str,
@@ -216,8 +216,7 @@ class LLMClient:
 
         Args:
             sys_prompt: System prompt describing the condition and triggers.
-            context_builder_method: Name of the LLMContextBuilder method to call
-                (e.g. "build_migraine_context").
+            condition_type: Condition to build context for (e.g. "migraine").
             condition_label: Human-readable condition name for log messages.
             scores: Normalized weather scores (kept for fallback, not sent to LLM).
             location_label: Human-readable location string.
@@ -233,8 +232,8 @@ class LLMClient:
         # Build user prompt using the new context builder if forecasts are provided
         if forecasts and location:
             context_builder = LLMContextBuilder(high_token_budget=high_token_budget)
-            builder_fn = getattr(context_builder, context_builder_method)
-            user_prompt_str = builder_fn(
+            user_prompt_str = context_builder.build_context(
+                condition_type,
                 forecasts=forecasts,
                 previous_forecasts=previous_forecasts or [],
                 location=location,
@@ -343,7 +342,7 @@ class LLMClient:
         )
         return self._predict(
             sys_prompt=sys_prompt,
-            context_builder_method="build_migraine_context",
+            condition_type="migraine",
             condition_label="migraine",
             scores=scores, location_label=location_label, user_profile=user_profile,
             context=context, forecasts=forecasts, previous_forecasts=previous_forecasts,
@@ -471,7 +470,7 @@ class LLMClient:
         )
         return self._predict(
             sys_prompt=sys_prompt,
-            context_builder_method="build_sinusitis_context",
+            condition_type="sinusitis",
             condition_label="sinusitis",
             scores=scores, location_label=location_label, user_profile=user_profile,
             context=context, forecasts=forecasts, previous_forecasts=previous_forecasts,
@@ -525,7 +524,7 @@ class LLMClient:
         )
         return self._predict(
             sys_prompt=sys_prompt,
-            context_builder_method="build_hayfever_context",
+            condition_type="hayfever",
             condition_label="hay fever",
             scores=scores, location_label=location_label, user_profile=user_profile,
             context=context, forecasts=forecasts, previous_forecasts=previous_forecasts,

@@ -452,7 +452,8 @@ def run_scenario(scenario_num, base_url, model, high_token=False, context_only=F
     # Build context
     builder = LLMContextBuilder(high_token_budget=high_token)
 
-    migraine_ctx = builder.build_migraine_context(
+    migraine_ctx = builder.build_context(
+        "migraine",
         forecasts=forecasts,
         previous_forecasts=previous_forecasts,
         location=location,

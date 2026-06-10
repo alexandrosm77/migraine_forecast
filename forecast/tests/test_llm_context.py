@@ -54,7 +54,8 @@ class LLMContextBuilderTest(TestCase):
 
     def test_build_migraine_context_low_token(self):
         """Test building migraine context with low token budget"""
-        context = self.builder_low.build_migraine_context(
+        context = self.builder_low.build_context(
+            "migraine",
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,
@@ -70,7 +71,8 @@ class LLMContextBuilderTest(TestCase):
 
     def test_build_migraine_context_high_token(self):
         """Test building migraine context with high token budget"""
-        context = self.builder_high.build_migraine_context(
+        context = self.builder_high.build_context(
+            "migraine",
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,
@@ -84,7 +86,8 @@ class LLMContextBuilderTest(TestCase):
 
     def test_build_sinusitis_context_includes_seasonal_info(self):
         """Test that sinusitis context includes seasonal health information"""
-        context = self.builder_low.build_sinusitis_context(
+        context = self.builder_low.build_context(
+            "sinusitis",
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,
@@ -103,7 +106,8 @@ class LLMContextBuilderTest(TestCase):
         user_profile = {
             "sensitivity_preset": "HIGH",
         }
-        context = self.builder_low.build_migraine_context(
+        context = self.builder_low.build_context(
+            "migraine",
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,
@@ -115,7 +119,8 @@ class LLMContextBuilderTest(TestCase):
 
     def test_weather_changes_calculation(self):
         """Test that weather changes are calculated correctly"""
-        context = self.builder_low.build_migraine_context(
+        context = self.builder_low.build_context(
+            "migraine",
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,
@@ -128,7 +133,8 @@ class LLMContextBuilderTest(TestCase):
     def test_diurnal_context_for_latitude(self):
         """Test that diurnal context is appropriate for latitude"""
         # London is at ~51.5° latitude (mid-latitude)
-        context = self.builder_high.build_migraine_context(
+        context = self.builder_high.build_context(
+            "migraine",
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,
@@ -139,7 +145,8 @@ class LLMContextBuilderTest(TestCase):
 
     def test_weather_comparison_formatting(self):
         """Test that weather comparison (past 24h vs forecast) is formatted correctly"""
-        context = self.builder_low.build_migraine_context(
+        context = self.builder_low.build_context(
+            "migraine",
             forecasts=self.forecasts,
             previous_forecasts=self.previous_forecasts,
             location=self.location,

@@ -87,122 +87,42 @@ class LLMContextBuilder:
                              If False (default), use compact summaries.
         """
         self.high_token_budget = high_token_budget
-        self.outlook_forecasts: Optional[List[Any]] = None
-        self.air_quality_forecasts: Optional[List[Any]] = None
 
-    def build_migraine_context(
+    def build_context(
         self,
-        forecasts: List[Any],
-        previous_forecasts: List[Any],
-        location: Any,
-        air_quality_forecasts: Optional[List[Any]] = None,
-        user_profile: Optional[Dict[str, Any]] = None,
-        outlook_forecasts: Optional[List[Any]] = None,
-    ) -> str:
-        """
-        Build context string for migraine prediction.
-
-        Args:
-            forecasts: List of WeatherForecast objects for the prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
-            location: Location model instance
-            air_quality_forecasts: Optional list of AirQualityForecast objects for the same window
-            user_profile: Optional user health profile dict
-            outlook_forecasts: Optional list of WeatherForecast objects for the next 24 hours
-
-        Returns:
-            Formatted context string for LLM prompt
-        """
-        self.outlook_forecasts = outlook_forecasts
-        self.air_quality_forecasts = air_quality_forecasts or []
-        return self._build_context(
-            forecasts=forecasts,
-            previous_forecasts=previous_forecasts,
-            location=location,
-            user_profile=user_profile,
-            condition_type="migraine",
-        )
-
-    def build_sinusitis_context(
-        self,
-        forecasts: List[Any],
-        previous_forecasts: List[Any],
-        location: Any,
-        air_quality_forecasts: Optional[List[Any]] = None,
-        user_profile: Optional[Dict[str, Any]] = None,
-        outlook_forecasts: Optional[List[Any]] = None,
-    ) -> str:
-        """
-        Build context string for sinusitis prediction.
-
-        Args:
-            forecasts: List of WeatherForecast objects for the prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
-            location: Location model instance
-            air_quality_forecasts: Optional list of AirQualityForecast objects for the same window
-            user_profile: Optional user health profile dict
-            outlook_forecasts: Optional list of WeatherForecast objects for the next 24 hours
-
-        Returns:
-            Formatted context string for LLM prompt
-        """
-        self.outlook_forecasts = outlook_forecasts
-        self.air_quality_forecasts = air_quality_forecasts or []
-        return self._build_context(
-            forecasts=forecasts,
-            previous_forecasts=previous_forecasts,
-            location=location,
-            user_profile=user_profile,
-            condition_type="sinusitis",
-        )
-
-    def build_hayfever_context(
-        self,
-        forecasts: List[Any],
-        previous_forecasts: List[Any],
-        location: Any,
-        air_quality_forecasts: Optional[List[Any]] = None,
-        user_profile: Optional[Dict[str, Any]] = None,
-        outlook_forecasts: Optional[List[Any]] = None,
-    ) -> str:
-        """
-        Build context string for hay fever prediction.
-
-        Includes per-species pollen peaks/current counts, an air-quality summary
-        (PM2.5, PM10, ozone, NO2), wind, and seasonal species context.
-
-        Args:
-            forecasts: List of WeatherForecast objects for the prediction window
-            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
-            location: Location model instance
-            air_quality_forecasts: List of AirQualityForecast objects for the same window
-            user_profile: Optional user health profile dict
-            outlook_forecasts: Optional list of WeatherForecast objects for the next 24 hours
-
-        Returns:
-            Formatted context string for LLM prompt
-        """
-        self.outlook_forecasts = outlook_forecasts
-        self.air_quality_forecasts = air_quality_forecasts or []
-        return self._build_context(
-            forecasts=forecasts,
-            previous_forecasts=previous_forecasts,
-            location=location,
-            user_profile=user_profile,
-            condition_type="hayfever",
-        )
-
-    def _build_context(
-        self,
-        forecasts: List[Any],
-        previous_forecasts: List[Any],
-        location: Any,
-        user_profile: Optional[Dict[str, Any]],
         condition_type: str,
+        *,
+        forecasts: List[Any],
+        previous_forecasts: List[Any],
+        location: Any,
+        air_quality_forecasts: Optional[List[Any]] = None,
+        user_profile: Optional[Dict[str, Any]] = None,
+        outlook_forecasts: Optional[List[Any]] = None,
     ) -> str:
-        """Build the complete context string."""
+        """
+        Build the weather context string for an LLM prompt.
+
+        For hay fever this includes per-species pollen peaks/current counts, an
+        air-quality summary (PM2.5, PM10, ozone, NO2), wind, and seasonal species
+        context; for migraine/sinusitis it includes an air-quality summary when
+        air_quality_forecasts are supplied.
+
+        Args:
+            condition_type: Condition to build context for ("migraine", "sinusitis", or "hayfever")
+            forecasts: List of WeatherForecast objects for the prediction window
+            previous_forecasts: List of WeatherForecast objects from previous period (24h ago)
+            location: Location model instance
+            air_quality_forecasts: Optional list of AirQualityForecast objects for the same window
+            user_profile: Optional user health profile dict
+            outlook_forecasts: Optional list of WeatherForecast objects for the next 24 hours
+
+        Returns:
+            Formatted context string for LLM prompt
+        """
         if not forecasts:
             return "No forecast data available."
+
+        air_quality_forecasts = air_quality_forecasts or []
 
         parts = []
         now = timezone.now()
@@ -222,14 +142,14 @@ class LLMContextBuilder:
             parts.append(self._format_seasonal_health_context(latitude, now, forecasts))
 
         # Air-quality summary for conditions where AQ is a known trigger
-        if condition_type in ("migraine", "sinusitis") and self.air_quality_forecasts:
-            parts.append(self._format_air_quality(self.air_quality_forecasts))
+        if condition_type in ("migraine", "sinusitis") and air_quality_forecasts:
+            parts.append(self._format_air_quality(air_quality_forecasts))
 
         # Hay-fever-specific: species-season awareness, pollen counts, air-quality summary
         if condition_type == "hayfever":
             parts.append(self._format_hayfever_species_context(latitude, now))
-            parts.append(self._format_hayfever_pollen(self.air_quality_forecasts or []))
-            parts.append(self._format_air_quality(self.air_quality_forecasts or []))
+            parts.append(self._format_hayfever_pollen(air_quality_forecasts))
+            parts.append(self._format_air_quality(air_quality_forecasts))
             parts.append(self._format_hayfever_wind(forecasts))
 
         # Weather comparison: past 24h vs forecast window
@@ -243,8 +163,8 @@ class LLMContextBuilder:
         parts.append(self._format_window_stability(forecasts))
 
         # 24-hour outlook (if outlook forecasts provided)
-        if self.outlook_forecasts:
-            parts.append(self._format_24h_outlook(self.outlook_forecasts))
+        if outlook_forecasts:
+            parts.append(self._format_24h_outlook(outlook_forecasts))
 
         # User sensitivity profile
         if user_profile:
