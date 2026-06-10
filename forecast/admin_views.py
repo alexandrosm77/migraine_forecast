@@ -14,8 +14,6 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.template.loader import render_to_string
-from django.http import HttpResponse
 from django.urls import reverse
 from django.utils.html import escape
 

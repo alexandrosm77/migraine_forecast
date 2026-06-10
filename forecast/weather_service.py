@@ -77,7 +77,6 @@ class WeatherService:
         updated_count = len(objs) - created_count
         return created_count, updated_count
 
-
     def update_forecast_for_location(self, location):
         """
         Update weather forecast for a specific location.

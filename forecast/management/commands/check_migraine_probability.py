@@ -11,9 +11,7 @@ from forecast.models import (
     HayFeverPrediction,
 )
 from forecast.weather_service import WeatherService
-from forecast.prediction_service import MigrainePredictionService
-from forecast.prediction_service_sinusitis import SinusitisPredictionService
-from forecast.prediction_service_hayfever import HayFeverPredictionService
+from forecast.prediction_service import PredictionService
 from forecast.notification_service import NotificationService
 from forecast.management.commands.base import SilentStdoutCommand
 
@@ -63,9 +61,9 @@ class Command(SilentStdoutCommand):
 
         # Initialize services
         weather_service = WeatherService()
-        migraine_prediction_service = MigrainePredictionService()
-        sinusitis_prediction_service = SinusitisPredictionService()
-        hayfever_prediction_service = HayFeverPredictionService()
+        migraine_prediction_service = PredictionService.for_condition("migraine")
+        sinusitis_prediction_service = PredictionService.for_condition("sinusitis")
+        hayfever_prediction_service = PredictionService.for_condition("hayfever")
         notification_service = NotificationService()
 
         # Get all locations
@@ -113,7 +111,7 @@ class Command(SilentStdoutCommand):
                 # Generate migraine prediction if enabled
                 if migraine_enabled:
                     self.stdout.write(f"Generating migraine prediction for {location}...")
-                    probability, prediction = migraine_prediction_service.predict_migraine_probability(
+                    probability, prediction = migraine_prediction_service.predict(
                         location=location, user=user
                     )
                     migraine_predictions[location.id] = {"probability": probability, "prediction": prediction}
@@ -127,7 +125,7 @@ class Command(SilentStdoutCommand):
                 # Generate sinusitis prediction if enabled
                 if sinusitis_enabled:
                     self.stdout.write(f"Generating sinusitis prediction for {location}...")
-                    sin_probability, sin_prediction = sinusitis_prediction_service.predict_sinusitis_probability(
+                    sin_probability, sin_prediction = sinusitis_prediction_service.predict(
                         location=location, user=user
                     )
                     sinusitis_predictions[location.id] = {"probability": sin_probability, "prediction": sin_prediction}
@@ -141,7 +139,7 @@ class Command(SilentStdoutCommand):
                 # Generate hay fever prediction if enabled
                 if hayfever_enabled:
                     self.stdout.write(f"Generating hay fever prediction for {location}...")
-                    hf_probability, hf_prediction = hayfever_prediction_service.predict_hayfever_probability(
+                    hf_probability, hf_prediction = hayfever_prediction_service.predict(
                         location=location, user=user
                     )
                     hayfever_predictions[location.id] = {"probability": hf_probability, "prediction": hf_prediction}

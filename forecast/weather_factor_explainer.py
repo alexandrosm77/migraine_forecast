@@ -96,15 +96,15 @@ class WeatherFactorExplainer:
         """
         from .models import WeatherForecast, LLMResponse
 
+        from .prediction_service import CONDITIONS
+
         if prediction_type == "migraine":
-            from .prediction_service import MigrainePredictionService
-            thresholds = MigrainePredictionService.THRESHOLDS
-            weights = MigrainePredictionService.WEIGHTS
+            thresholds = CONDITIONS["migraine"].scoring.thresholds
+            weights = CONDITIONS["migraine"].scoring.weights
             cfg = self._MIGRAINE_FACTOR_CONFIG
         else:
-            from .prediction_service_sinusitis import SinusitisPredictionService
-            thresholds = SinusitisPredictionService.THRESHOLDS
-            weights = SinusitisPredictionService.WEIGHTS
+            thresholds = CONDITIONS["sinusitis"].scoring.thresholds
+            weights = CONDITIONS["sinusitis"].scoring.weights
             cfg = self._SINUSITIS_FACTOR_CONFIG
 
         wf = prediction.weather_factors or {}

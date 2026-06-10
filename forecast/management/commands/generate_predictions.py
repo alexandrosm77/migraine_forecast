@@ -11,9 +11,7 @@ from forecast.models import (
     LLMResponse,
     AirQualityForecast,
 )
-from forecast.prediction_service import MigrainePredictionService
-from forecast.prediction_service_sinusitis import SinusitisPredictionService
-from forecast.prediction_service_hayfever import HayFeverPredictionService
+from forecast.prediction_service import PredictionService
 from forecast.management.commands.base import SilentStdoutCommand
 
 import logging
@@ -76,9 +74,9 @@ class Command(SilentStdoutCommand):
             )
 
         # Initialize prediction services
-        migraine_service = MigrainePredictionService()
-        sinusitis_service = SinusitisPredictionService()
-        hayfever_service = HayFeverPredictionService()
+        migraine_service = PredictionService.for_condition("migraine")
+        sinusitis_service = PredictionService.for_condition("sinusitis")
+        hayfever_service = PredictionService.for_condition("hayfever")
 
         # Get locations to process
         if options.get("location_id"):
@@ -146,7 +144,7 @@ class Command(SilentStdoutCommand):
                 if migraine_enabled:
                     try:
                         sleep(5)  # Rate limit to 1 prediction per 5 seconds
-                        probability, prediction = migraine_service.predict_migraine_probability(
+                        probability, prediction = migraine_service.predict(
                             location=location, user=user
                         )
 
@@ -178,7 +176,7 @@ class Command(SilentStdoutCommand):
                 # Generate sinusitis prediction if enabled
                 if sinusitis_enabled:
                     try:
-                        probability, prediction = sinusitis_service.predict_sinusitis_probability(
+                        probability, prediction = sinusitis_service.predict(
                             location=location, user=user
                         )
 
@@ -210,7 +208,7 @@ class Command(SilentStdoutCommand):
                 # Generate hay fever prediction if enabled
                 if hayfever_enabled:
                     try:
-                        probability, prediction = hayfever_service.predict_hayfever_probability(
+                        probability, prediction = hayfever_service.predict(
                             location=location, user=user
                         )
 

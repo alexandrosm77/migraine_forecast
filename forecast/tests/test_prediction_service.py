@@ -11,9 +11,7 @@ from forecast.models import (
     WeatherForecast,
     UserHealthProfile,
 )
-from forecast.prediction_service import MigrainePredictionService
-from forecast.prediction_service_sinusitis import SinusitisPredictionService
-from forecast.prediction_service_hayfever import HayFeverPredictionService
+from forecast.prediction_service import PredictionService, CONDITIONS
 
 
 class MigrainePredictionServiceTest(TestCase):
@@ -64,8 +62,8 @@ class MigrainePredictionServiceTest(TestCase):
         mock_config.is_active = False
         mock_get_config.return_value = mock_config
 
-        service = MigrainePredictionService()
-        probability, prediction = service.predict_migraine_probability(self.location, self.user)
+        service = PredictionService.for_condition("migraine")
+        probability, prediction = service.predict(self.location, self.user)
 
         self.assertEqual(probability, "HIGH")
         self.assertIsNotNone(prediction)
@@ -88,7 +86,7 @@ class MigrainePredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
-        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+        with patch("forecast.prediction_service.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_probability.return_value = (
                 "HIGH",
@@ -104,8 +102,8 @@ class MigrainePredictionServiceTest(TestCase):
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            service = MigrainePredictionService()
-            probability, prediction = service.predict_migraine_probability(self.location, self.user)
+            service = PredictionService.for_condition("migraine")
+            probability, prediction = service.predict(self.location, self.user)
 
             self.assertEqual(probability, "HIGH")
             self.assertIsNotNone(prediction)
@@ -126,8 +124,8 @@ class MigrainePredictionServiceTest(TestCase):
             user=self.user, city="Test City", country="USA", latitude=40.0, longitude=-100.0
         )
 
-        service = MigrainePredictionService()
-        probability, prediction = service.predict_migraine_probability(new_location, self.user)
+        service = PredictionService.for_condition("migraine")
+        probability, prediction = service.predict(new_location, self.user)
 
         self.assertIsNone(probability)
         self.assertIsNone(prediction)
@@ -147,8 +145,8 @@ class MigrainePredictionServiceTest(TestCase):
             prediction_window_end_hours=8,
         )
 
-        service = MigrainePredictionService()
-        probability, prediction = service.predict_migraine_probability(self.location, self.user)
+        service = PredictionService.for_condition("migraine")
+        probability, prediction = service.predict(self.location, self.user)
 
         # Should use custom window from user profile
         self.assertIsNotNone(prediction)
@@ -166,8 +164,8 @@ class MigrainePredictionServiceTest(TestCase):
         mock_config.is_active = False
         mock_get_config.return_value = mock_config
 
-        service = MigrainePredictionService()
-        probability, prediction = service.predict_migraine_probability(
+        service = PredictionService.for_condition("migraine")
+        probability, prediction = service.predict(
             self.location, self.user, window_start_hours=1, window_end_hours=4
         )
 
@@ -202,8 +200,8 @@ class MigrainePredictionServiceTest(TestCase):
 
         self._create_window_aq_rows(pm2_5=60.0)  # well above 25.0 µg/m³ threshold
 
-        service = MigrainePredictionService()
-        _, prediction = service.predict_migraine_probability(self.location, self.user)
+        service = PredictionService.for_condition("migraine")
+        _, prediction = service.predict(self.location, self.user)
 
         self.assertIsNotNone(prediction)
         factors = prediction.weather_factors or {}
@@ -219,8 +217,8 @@ class MigrainePredictionServiceTest(TestCase):
         mock_config.is_active = False
         mock_get_config.return_value = mock_config
 
-        service = MigrainePredictionService()
-        _, prediction = service.predict_migraine_probability(self.location, self.user)
+        service = PredictionService.for_condition("migraine")
+        _, prediction = service.predict(self.location, self.user)
 
         self.assertIsNotNone(prediction)
         factors = prediction.weather_factors or {}
@@ -242,7 +240,7 @@ class MigrainePredictionServiceTest(TestCase):
 
         window_fcs = self._create_window_aq_rows(pm2_5=40.0)
 
-        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+        with patch("forecast.prediction_service.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_probability.return_value = (
                 "HIGH",
@@ -250,8 +248,8 @@ class MigrainePredictionServiceTest(TestCase):
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            service = MigrainePredictionService()
-            service.predict_migraine_probability(self.location, self.user)
+            service = PredictionService.for_condition("migraine")
+            service.predict(self.location, self.user)
 
             call_kwargs = mock_llm_instance.predict_probability.call_args.kwargs
             self.assertIn("air_quality_forecasts", call_kwargs)
@@ -308,8 +306,8 @@ class SinusitisPredictionServiceTest(TestCase):
         mock_config.is_active = False
         mock_get_config.return_value = mock_config
 
-        service = SinusitisPredictionService()
-        probability, prediction = service.predict_sinusitis_probability(self.location, self.user)
+        service = PredictionService.for_condition("sinusitis")
+        probability, prediction = service.predict(self.location, self.user)
 
         self.assertIn(probability, ["LOW", "MEDIUM", "HIGH"])
         self.assertIsNotNone(prediction)
@@ -331,7 +329,7 @@ class SinusitisPredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         # Mock LLM client response
-        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+        with patch("forecast.prediction_service.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_sinusitis_probability.return_value = (
                 "MEDIUM",
@@ -347,8 +345,8 @@ class SinusitisPredictionServiceTest(TestCase):
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            service = SinusitisPredictionService()
-            probability, prediction = service.predict_sinusitis_probability(self.location, self.user)
+            service = PredictionService.for_condition("sinusitis")
+            probability, prediction = service.predict(self.location, self.user)
 
             self.assertEqual(probability, "MEDIUM")
             self.assertIsNotNone(prediction)
@@ -369,8 +367,8 @@ class SinusitisPredictionServiceTest(TestCase):
             user=self.user, city="Test City", country="USA", latitude=40.0, longitude=-100.0
         )
 
-        service = SinusitisPredictionService()
-        probability, prediction = service.predict_sinusitis_probability(new_location, self.user)
+        service = PredictionService.for_condition("sinusitis")
+        probability, prediction = service.predict(new_location, self.user)
 
         self.assertIsNone(probability)
         self.assertIsNone(prediction)
@@ -390,8 +388,8 @@ class SinusitisPredictionServiceTest(TestCase):
             prediction_window_end_hours=10,
         )
 
-        service = SinusitisPredictionService()
-        probability, prediction = service.predict_sinusitis_probability(self.location, self.user)
+        service = PredictionService.for_condition("sinusitis")
+        probability, prediction = service.predict(self.location, self.user)
 
         # Should use custom window from user profile
         self.assertIsNotNone(prediction)
@@ -415,8 +413,8 @@ class SinusitisPredictionServiceTest(TestCase):
             )
 
     def test_weights_sum_to_one(self):
-        self.assertAlmostEqual(sum(SinusitisPredictionService.WEIGHTS.values()), 1.0, places=6)
-        self.assertIn("air_quality", SinusitisPredictionService.WEIGHTS)
+        self.assertAlmostEqual(sum(CONDITIONS["sinusitis"].scoring.weights.values()), 1.0, places=6)
+        self.assertIn("air_quality", CONDITIONS["sinusitis"].scoring.weights)
 
     @patch("forecast.models.LLMConfiguration.get_config")
     def test_air_quality_score_zero_without_aq_data(self, mock_get_config):
@@ -425,8 +423,8 @@ class SinusitisPredictionServiceTest(TestCase):
         mock_config.is_active = False
         mock_get_config.return_value = mock_config
 
-        service = SinusitisPredictionService()
-        _, prediction = service.predict_sinusitis_probability(self.location, self.user)
+        service = PredictionService.for_condition("sinusitis")
+        _, prediction = service.predict(self.location, self.user)
         self.assertIsNotNone(prediction)
         self.assertEqual(prediction.weather_factors.get("air_quality"), 0.0)
 
@@ -437,14 +435,14 @@ class SinusitisPredictionServiceTest(TestCase):
         mock_config.is_active = False
         mock_get_config.return_value = mock_config
 
-        service = SinusitisPredictionService()
-        _, baseline = service.predict_sinusitis_probability(self.location, self.user)
+        service = PredictionService.for_condition("sinusitis")
+        _, baseline = service.predict(self.location, self.user)
         baseline_total = baseline.weather_factors["total_score"]
         self.assertEqual(baseline.weather_factors.get("air_quality"), 0.0)
 
         # Add AQ rows well above thresholds (PM10=100 > 50, dust=200 > 100 → both cap at 1.0)
         self._create_aq_rows(pm10=100.0, dust=200.0)
-        _, enhanced = service.predict_sinusitis_probability(self.location, self.user)
+        _, enhanced = service.predict(self.location, self.user)
         self.assertAlmostEqual(enhanced.weather_factors.get("air_quality"), 1.0, places=2)
         self.assertGreater(enhanced.weather_factors["total_score"], baseline_total)
 
@@ -464,7 +462,7 @@ class SinusitisPredictionServiceTest(TestCase):
 
         self._create_aq_rows(pm10=40.0, dust=50.0)
 
-        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+        with patch("forecast.prediction_service.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_sinusitis_probability.return_value = (
                 "MEDIUM",
@@ -472,8 +470,8 @@ class SinusitisPredictionServiceTest(TestCase):
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            service = SinusitisPredictionService()
-            service.predict_sinusitis_probability(self.location, self.user)
+            service = PredictionService.for_condition("sinusitis")
+            service.predict(self.location, self.user)
 
             call_kwargs = mock_llm_instance.predict_sinusitis_probability.call_args.kwargs
             self.assertIn("air_quality_forecasts", call_kwargs)
@@ -537,8 +535,8 @@ class HayFeverPredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         self._create_aq_rows(with_pollen=True)
-        service = HayFeverPredictionService()
-        probability, prediction = service.predict_hayfever_probability(self.location, self.user)
+        service = PredictionService.for_condition("hayfever")
+        probability, prediction = service.predict(self.location, self.user)
 
         self.assertEqual(probability, "HIGH")
         self.assertIsNotNone(prediction)
@@ -554,8 +552,8 @@ class HayFeverPredictionServiceTest(TestCase):
         mock_get_config.return_value = mock_config
 
         self._create_aq_rows(with_pollen=False)
-        service = HayFeverPredictionService()
-        probability, prediction = service.predict_hayfever_probability(self.location, self.user)
+        service = PredictionService.for_condition("hayfever")
+        probability, prediction = service.predict(self.location, self.user)
 
         self.assertIn(probability, ["LOW", "MEDIUM", "HIGH"])
         self.assertIsNotNone(prediction)
@@ -578,7 +576,7 @@ class HayFeverPredictionServiceTest(TestCase):
 
         self._create_aq_rows(with_pollen=True)
 
-        with patch("forecast.prediction_service_base.LLMClient") as mock_llm_class:
+        with patch("forecast.prediction_service.LLMClient") as mock_llm_class:
             mock_llm_instance = MagicMock()
             mock_llm_instance.predict_hayfever_probability.return_value = (
                 "MEDIUM",
@@ -597,8 +595,8 @@ class HayFeverPredictionServiceTest(TestCase):
             )
             mock_llm_class.return_value = mock_llm_instance
 
-            service = HayFeverPredictionService()
-            probability, prediction = service.predict_hayfever_probability(self.location, self.user)
+            service = PredictionService.for_condition("hayfever")
+            probability, prediction = service.predict(self.location, self.user)
 
             self.assertEqual(probability, "MEDIUM")
             mock_llm_instance.predict_hayfever_probability.assert_called_once()
@@ -621,8 +619,8 @@ class HayFeverPredictionServiceTest(TestCase):
         other = Location.objects.create(
             user=self.user, city="Nowhere", country="X", latitude=0.0, longitude=0.0
         )
-        service = HayFeverPredictionService()
-        probability, prediction = service.predict_hayfever_probability(other, self.user)
+        service = PredictionService.for_condition("hayfever")
+        probability, prediction = service.predict(other, self.user)
         self.assertIsNone(probability)
         self.assertIsNone(prediction)
 
@@ -668,7 +666,7 @@ class DigestPredictionWindowTest(TestCase):
                 cloud_cover=30.0,
             )
 
-        with patch("forecast.prediction_service.MigrainePredictionService.predict_migraine_probability") as mock_predict:  # noqa
+        with patch("forecast.prediction_service.PredictionService.predict") as mock_predict:  # noqa
             mock_prediction = MagicMock()
             mock_prediction.id = 1
             mock_predict.return_value = ("LOW", mock_prediction)
@@ -699,7 +697,7 @@ class DigestPredictionWindowTest(TestCase):
             prediction_window_end_hours=2,
         )
 
-        with patch("forecast.prediction_service_sinusitis.SinusitisPredictionService.predict_sinusitis_probability") as mock_predict:  # noqa
+        with patch("forecast.prediction_service.PredictionService.predict") as mock_predict:  # noqa
             mock_prediction = MagicMock()
             mock_prediction.id = 1
             mock_predict.return_value = ("LOW", mock_prediction)
@@ -751,7 +749,7 @@ class DigestPredictionWindowTest(TestCase):
         cmd.style.WARNING = lambda x: x
         cmd.style.ERROR = lambda x: x
 
-        with patch.object(MigrainePredictionService, "predict_migraine_probability") as mock_predict:
+        with patch.object(PredictionService, "predict") as mock_predict:
             cmd.handle(skip_cleanup=True, location_id=None, cleanup_days=7)
 
             # Should NOT have been called because user is in DIGEST mode

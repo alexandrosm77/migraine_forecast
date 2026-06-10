@@ -7,9 +7,7 @@ from django.utils.html import strip_tags
 from datetime import time
 import logging
 from forecast.models import NotificationLog
-from forecast.prediction_service import MigrainePredictionService
-from forecast.prediction_service_sinusitis import SinusitisPredictionService
-from forecast.prediction_service_hayfever import HayFeverPredictionService
+from forecast.prediction_service import PredictionService
 from forecast.management.commands.base import SilentStdoutCommand
 
 logger = logging.getLogger(__name__)
@@ -102,9 +100,9 @@ class Command(SilentStdoutCommand):
 
                 # Generate predictions for the next 24 hours (fixed window,
                 # ignoring user's custom prediction_window settings).
-                migraine_service = MigrainePredictionService()
-                sinusitis_service = SinusitisPredictionService()
-                hayfever_service = HayFeverPredictionService()
+                migraine_service = PredictionService.for_condition("migraine")
+                sinusitis_service = PredictionService.for_condition("sinusitis")
+                hayfever_service = PredictionService.for_condition("hayfever")
 
                 migraine_preds = []
                 sinusitis_preds = []
@@ -113,7 +111,7 @@ class Command(SilentStdoutCommand):
                 for location in user.locations.all():
                     if profile.migraine_predictions_enabled:
                         try:
-                            prob, pred = migraine_service.predict_migraine_probability(
+                            prob, pred = migraine_service.predict(
                                 location=location,
                                 user=user,
                                 store_prediction=True,
@@ -136,7 +134,7 @@ class Command(SilentStdoutCommand):
 
                     if profile.sinusitis_predictions_enabled:
                         try:
-                            prob, pred = sinusitis_service.predict_sinusitis_probability(
+                            prob, pred = sinusitis_service.predict(
                                 location=location,
                                 user=user,
                                 store_prediction=True,
@@ -159,7 +157,7 @@ class Command(SilentStdoutCommand):
 
                     if profile.hay_fever_predictions_enabled:
                         try:
-                            prob, pred = hayfever_service.predict_hayfever_probability(
+                            prob, pred = hayfever_service.predict(
                                 location=location,
                                 user=user,
                                 store_prediction=True,

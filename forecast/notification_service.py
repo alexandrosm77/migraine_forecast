@@ -9,9 +9,7 @@ from .models import (
     HayFeverPrediction,
     Location,
 )
-from .prediction_service import MigrainePredictionService
-from .prediction_service_sinusitis import SinusitisPredictionService
-from .prediction_service_hayfever import HayFeverPredictionService
+from .prediction_service import PredictionService
 from .weather_service import WeatherService
 
 # Re-export for backward compatibility
@@ -37,9 +35,9 @@ class NotificationService:
     """
 
     def __init__(self):
-        self.prediction_service = MigrainePredictionService()
-        self.sinusitis_prediction_service = SinusitisPredictionService()
-        self.hayfever_prediction_service = HayFeverPredictionService()
+        self.prediction_service = PredictionService.for_condition("migraine")
+        self.sinusitis_prediction_service = PredictionService.for_condition("sinusitis")
+        self.hayfever_prediction_service = PredictionService.for_condition("hayfever")
         self.weather_service = WeatherService()
 
         self._prefs = NotificationPreferences()

@@ -417,9 +417,7 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     """
     from django.contrib.auth.models import User
     from forecast.models import Location
-    from forecast.prediction_service import MigrainePredictionService
-    from forecast.prediction_service_sinusitis import SinusitisPredictionService
-    from forecast.prediction_service_hayfever import HayFeverPredictionService
+    from forecast.prediction_service import PredictionService
 
     # Log retry attempts
     retry_count = self.request.retries
@@ -432,34 +430,14 @@ def generate_prediction(self, user_id, location_id, prediction_type):
     location = Location.objects.get(id=location_id)
 
     # Generate prediction for next 2-hour window (0-2 hours ahead)
-    # The services use window_start_hours and window_end_hours parameters
-    if prediction_type == "migraine":
-        service = MigrainePredictionService()
-        probability_level, prediction = service.predict_migraine_probability(
-            location=location,
-            user=user,
-            store_prediction=True,
-            window_start_hours=0,
-            window_end_hours=2
-        )
-    elif prediction_type == "sinusitis":
-        service = SinusitisPredictionService()
-        probability_level, prediction = service.predict_sinusitis_probability(
-            location=location,
-            user=user,
-            store_prediction=True,
-            window_start_hours=0,
-            window_end_hours=2
-        )
-    else:
-        service = HayFeverPredictionService()
-        probability_level, prediction = service.predict_hayfever_probability(
-            location=location,
-            user=user,
-            store_prediction=True,
-            window_start_hours=0,
-            window_end_hours=2
-        )
+    service = PredictionService.for_condition(prediction_type)
+    probability_level, prediction = service.predict(
+        location=location,
+        user=user,
+        store_prediction=True,
+        window_start_hours=0,
+        window_end_hours=2
+    )
 
     # Queue notification check (on default queue)
     if prediction:
@@ -489,9 +467,7 @@ def _generate_digest_predictions_impl(user_id, location_id, prediction_type):
     """
     from django.contrib.auth.models import User
     from forecast.models import Location
-    from forecast.prediction_service import MigrainePredictionService
-    from forecast.prediction_service_sinusitis import SinusitisPredictionService
-    from forecast.prediction_service_hayfever import HayFeverPredictionService
+    from forecast.prediction_service import PredictionService
 
     logger.info(f"Generating {prediction_type} digest prediction for user {user_id}, location {location_id}")
 
@@ -504,35 +480,14 @@ def _generate_digest_predictions_impl(user_id, location_id, prediction_type):
     window_end_hours = 24
 
     # Generate prediction for the next 24 hours
-    prediction = None
-    probability_level = None
-    if prediction_type == "migraine":
-        service = MigrainePredictionService()
-        probability_level, prediction = service.predict_migraine_probability(
-            location=location,
-            user=user,
-            store_prediction=True,
-            window_start_hours=window_start_hours,
-            window_end_hours=window_end_hours
-        )
-    elif prediction_type == "sinusitis":
-        service = SinusitisPredictionService()
-        probability_level, prediction = service.predict_sinusitis_probability(
-            location=location,
-            user=user,
-            store_prediction=True,
-            window_start_hours=window_start_hours,
-            window_end_hours=window_end_hours
-        )
-    else:
-        service = HayFeverPredictionService()
-        probability_level, prediction = service.predict_hayfever_probability(
-            location=location,
-            user=user,
-            store_prediction=True,
-            window_start_hours=window_start_hours,
-            window_end_hours=window_end_hours
-        )
+    service = PredictionService.for_condition(prediction_type)
+    probability_level, prediction = service.predict(
+        location=location,
+        user=user,
+        store_prediction=True,
+        window_start_hours=window_start_hours,
+        window_end_hours=window_end_hours
+    )
 
     return {
         "status": "completed",
