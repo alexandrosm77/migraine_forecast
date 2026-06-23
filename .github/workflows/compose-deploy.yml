@@ -134,13 +134,27 @@ jobs:
           $COMPOSE build
 
           echo "Running database migrations..."
-          $COMPOSE run --rm web python manage.py migrate --noinput
+          # docker compose run keeps stdin open by default. Because this script is
+          # delivered over an SSH heredoc, the one-off migration container must not
+          # read from stdin or it can consume the remaining deployment commands.
+          $COMPOSE run --rm -T web python manage.py migrate --noinput < /dev/null
 
           echo "Starting application services..."
           $COMPOSE up -d --remove-orphans
 
           echo "Current service status:"
           $COMPOSE ps
+
+          echo "Verifying expected services are running..."
+          RUNNING_SERVICES="$($COMPOSE ps --status running --services)"
+          for service in web worker-default worker-llm celery-beat; do
+            if ! printf '%s\n' "$RUNNING_SERVICES" | grep -qx "$service"; then
+              echo "Error: $service is not running after deployment"
+              $COMPOSE ps -a
+              $COMPOSE logs --tail=50 "$service" || true
+              exit 1
+            fi
+          done
 
           echo "Recent web logs:"
           $COMPOSE logs --tail=30 web
