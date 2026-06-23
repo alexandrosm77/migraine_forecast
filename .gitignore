@@ -131,6 +131,8 @@ celerybeat.pid
 # Environments
 .env
 .env.dev
+.env.production
+.env.*.local
 .venv
 env/
 venv/

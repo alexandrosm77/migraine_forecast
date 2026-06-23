@@ -1,0 +1,155 @@
+name: CI / Docker Compose Deployment
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: migraine-forecast
+  REMOTE_APP_DIR: ~/migraine_forecast
+
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build test image locally
+        run: |
+          docker build --tag "$IMAGE_NAME:ci-${GITHUB_SHA}" .
+
+      - name: Run linting checks
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            "$IMAGE_NAME:ci-${GITHUB_SHA}" \
+            sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
+
+      - name: Run unit tests
+        run: |
+          docker run --rm \
+            "$IMAGE_NAME:ci-${GITHUB_SHA}" \
+            python manage.py test forecast.tests --verbosity=2
+
+      - name: Run integration tests
+        run: |
+          docker run --rm \
+            "$IMAGE_NAME:ci-${GITHUB_SHA}" \
+            python manage.py test forecast.integration_tests --verbosity=2
+
+      - name: Clean up CI image
+        if: always()
+        continue-on-error: true
+        run: |
+          docker rmi "$IMAGE_NAME:ci-${GITHUB_SHA}" 2>/dev/null || true
+          docker image prune -f
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: self-hosted
+    environment: latest
+    concurrency:
+      group: compose-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Configure SSH key
+        run: |
+          set -eu
+          install -m 700 -d ~/.ssh
+          cat > ~/.ssh/deploy_key <<'KEY'
+          ${{ secrets.SSH_PRIVATE_KEY }}
+          KEY
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Create production env file from GitHub secrets and variables
+        run: |
+          set -eu
+          umask 077
+          cat > .env.production <<'ENV'
+          DJANGO_DEBUG=False
+          DJANGO_SETTINGS_MODULE=migraine_project.settings
+          LOG_FORMAT=json
+          LOG_TO_FILE=false
+          LOG_LEVEL=INFO
+          DB_ENGINE=${{ vars.DB_ENGINE }}
+          DB_NAME=${{ vars.DB_NAME }}
+          DB_USER=${{ vars.DB_USER }}
+          DB_HOST=${{ vars.DB_HOST }}
+          DB_PORT=${{ vars.DB_PORT }}
+          DB_CONN_MAX_AGE=${{ vars.DB_CONN_MAX_AGE }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}
+          CELERY_RESULT_BACKEND=${{ secrets.CELERY_RESULT_BACKEND }}
+          SENTRY_ENABLED=${{ vars.SENTRY_ENABLED }}
+          SENTRY_ENVIRONMENT=${{ vars.SENTRY_ENVIRONMENT }}
+          SENTRY_TRACES_SAMPLE_RATE=${{ vars.SENTRY_TRACES_SAMPLE_RATE }}
+          SENTRY_PROFILES_SAMPLE_RATE=${{ vars.SENTRY_PROFILES_SAMPLE_RATE }}
+          ENV
+
+      - name: Sync source and env file to Raspberry Pi
+        run: |
+          set -eu
+          SSH_TARGET="${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}"
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+          ssh $SSH_OPTS "$SSH_TARGET" "rm -rf $REMOTE_APP_DIR/app && mkdir -p $REMOTE_APP_DIR/app"
+
+          tar \
+            --exclude='.git' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='db.sqlite3' \
+            --exclude='staticfiles' \
+            -czf - . | ssh $SSH_OPTS "$SSH_TARGET" "tar -xzf - -C $REMOTE_APP_DIR/app"
+
+          scp $SSH_OPTS .env.production "$SSH_TARGET:$REMOTE_APP_DIR/app/.env.production"
+
+      - name: Build and run with Docker Compose on Raspberry Pi
+        run: |
+          set -eu
+          SSH_TARGET="${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}"
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+          ssh $SSH_OPTS "$SSH_TARGET" <<'REMOTE'
+          set -eu
+          cd ~/migraine_forecast/app
+
+          COMPOSE="docker compose --project-name migraine_forecast -f docker-compose.prod.yml --env-file .env.production"
+
+          echo "Validating Docker Compose configuration..."
+          $COMPOSE config --quiet
+
+          echo "Building application image on the Raspberry Pi..."
+          $COMPOSE build
+
+          echo "Running database migrations..."
+          $COMPOSE run --rm web python manage.py migrate --noinput
+
+          echo "Starting application services..."
+          $COMPOSE up -d --remove-orphans
+
+          echo "Current service status:"
+          $COMPOSE ps
+
+          echo "Recent web logs:"
+          $COMPOSE logs --tail=30 web
+
+          echo "Cleaning up dangling Docker images..."
+          docker image prune -f
+          REMOTE
+
+      - name: Clean up deployment files on runner
+        if: always()
+        run: |
+          rm -f .env.production ~/.ssh/deploy_key
