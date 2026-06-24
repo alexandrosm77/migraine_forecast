@@ -291,6 +291,22 @@ class HayFeverViewsSmokeTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Athens")
 
+    def test_v2_predictions_menu_links_to_hayfever_predictions(self):
+        self.client.login(username="hfuser", password="testpassword")
+        response = self.client.get("/predictions/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "/hayfever-predictions/")
+        self.assertContains(response, "Hay Fever Predictions")
+
+    def test_v1_predictions_menu_links_to_hayfever_predictions(self):
+        self.profile.ui_version = "v1"
+        self.profile.save()
+        self.client.login(username="hfuser", password="testpassword")
+        response = self.client.get("/predictions/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "/hayfever-predictions/")
+        self.assertContains(response, "Hay Fever Predictions")
+
     def test_hayfever_detail_view_renders(self):
         self.client.login(username="hfuser", password="testpassword")
         response = self.client.get(f"/hayfever-predictions/{self.prediction.id}/")

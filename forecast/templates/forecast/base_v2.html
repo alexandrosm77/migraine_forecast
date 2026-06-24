@@ -106,7 +106,7 @@
                     </div>
                     
                     <!-- Desktop Navigation -->
-                    <div class="hidden md:ml-8 md:flex md:space-x-1">
+                    <div class="hidden md:ml-8 md:flex md:items-center md:space-x-1">
                         <a href="{% url 'forecast:index' %}" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition">
                             {% trans "Home" %}
                         </a>
@@ -119,8 +119,8 @@
                         </a>
 
                         <!-- Predictions Dropdown -->
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" @click.away="open = false" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition">
+                        <div class="relative flex items-center" x-data="{ open: false }">
+                            <button type="button" @click="open = !open" @click.away="open = false" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-lg transition">
                                 {% trans "Predictions" %}
                                 <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -133,6 +133,9 @@
                                     </a>
                                     <a href="{% url 'forecast:sinusitis_prediction_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 hover:text-teal-600 dark:hover:text-teal-400">
                                         {% trans "Sinusitis Predictions" %}
+                                    </a>
+                                    <a href="{% url 'forecast:hayfever_prediction_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-gray-700 hover:text-teal-600 dark:hover:text-teal-400">
+                                        {% trans "Hay Fever Predictions" %}
                                     </a>
                                 </div>
                             </div>
@@ -259,6 +262,9 @@
                 </a>
                 <a href="{% url 'forecast:sinusitis_prediction_list' %}" class="block px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-300 hover:text-teal-600 hover:bg-teal-50">
                     {% trans "Sinusitis Predictions" %}
+                </a>
+                <a href="{% url 'forecast:hayfever_prediction_list' %}" class="block px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-300 hover:text-teal-600 hover:bg-teal-50">
+                    {% trans "Hay Fever Predictions" %}
                 </a>
                 <a href="{% url 'forecast:profile' %}" class="block px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-300 hover:text-teal-600 hover:bg-teal-50">
                     {% trans "Profile" %}
