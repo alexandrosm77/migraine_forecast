@@ -4,13 +4,13 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils import timezone, translation
 from django.utils.html import strip_tags
 from sentry_sdk import capture_exception, capture_message
 
+from . import email_sender
 from .email_sender import EmailSender
 from .models import HayFeverPrediction, MigrainePrediction, NotificationLog, SinusitisPrediction
 from .notification_preferences import NotificationPreferences
@@ -142,7 +142,7 @@ class NotificationEmailAdapter:
         finally:
             translation.deactivate()
 
-        send_mail(
+        email_sender.send_mail(
             subject=subject,
             message=plain_message,
             from_email=settings.DEFAULT_FROM_EMAIL,

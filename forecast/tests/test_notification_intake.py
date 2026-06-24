@@ -70,7 +70,7 @@ class NotificationIntakeTest(TestCase):
             notification_sent=sent,
         )
 
-    @patch("forecast.notification_intake.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_immediate_dry_run_returns_send_plan_without_writes(self, mock_send_mail):
         prediction = self.make_migraine()
 
@@ -83,7 +83,7 @@ class NotificationIntakeTest(TestCase):
         self.assertFalse(prediction.notification_sent)
         mock_send_mail.assert_not_called()
 
-    @patch("forecast.notification_intake.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_immediate_send_logs_metadata_and_marks_predictions(self, mock_send_mail):
         migraine = self.make_migraine()
         hayfever = self.make_hayfever()
@@ -107,7 +107,7 @@ class NotificationIntakeTest(TestCase):
         self.assertIsNone(self.profile.last_sinusitis_notification_sent_at)
         self.assertIsNotNone(self.profile.last_hay_fever_notification_sent_at)
 
-    @patch("forecast.notification_intake.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_limits_read_from_notification_log_metadata(self, mock_send_mail):
         self.profile.daily_migraine_notification_limit = 1
         self.profile.save()
@@ -127,7 +127,7 @@ class NotificationIntakeTest(TestCase):
         self.assertIn("migraine daily notification limit", plan.items[0].reason)
         mock_send_mail.assert_not_called()
 
-    @patch("forecast.notification_intake.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_replay_respects_limits_but_override_limits_bypasses_them(self, mock_send_mail):
         self.profile.daily_notification_limit = 1
         self.profile.save()
@@ -149,7 +149,7 @@ class NotificationIntakeTest(TestCase):
         self.assertEqual(override_plan.items[0].verdict, "send")
         mock_send_mail.assert_not_called()
 
-    @patch("forecast.notification_intake.send_mail")
+    @patch("forecast.email_sender.send_mail")
     def test_digest_send_uses_intake_without_generating_predictions(self, mock_send_mail):
         self.profile.notification_mode = "DIGEST"
         self.profile.save()
@@ -179,6 +179,24 @@ class ProcessNotificationsAdapterTest(TestCase):
 
         mock_intake_cls.return_value.run_immediate.assert_called_once_with(
             dry_run=True,
+            run_mode="normal",
+            lookback_hours=None,
+        )
+
+    @patch("forecast.management.commands.process_notifications.NotificationIntake")
+    def test_process_notifications_direct_handle_defaults_new_options(self, mock_intake_cls):
+        from forecast.management.commands.process_notifications import Command
+
+        mock_plan = mock_intake_cls.return_value.run_immediate.return_value
+        mock_plan.items = []
+        mock_plan.summary = {"by_condition": {}, "sent": 0, "send": 0, "skipped": 0, "failed": 0, "users_considered": 0}
+        mock_plan.dry_run = False
+        mock_plan.run_mode = "normal"
+
+        Command().handle(dry_run=False, force=False)
+
+        mock_intake_cls.return_value.run_immediate.assert_called_once_with(
+            dry_run=False,
             run_mode="normal",
             lookback_hours=None,
         )

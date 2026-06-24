@@ -46,13 +46,13 @@ class Command(SilentStdoutCommand):
             set_tag("task", "notification_processing")
 
             start_time = timezone.now()
-            dry_run = options["dry_run"]
+            dry_run = options.get("dry_run", False)
             run_mode = self._run_mode(options)
             self.stdout.write(self.style.SUCCESS(f"[{start_time}] Starting notification processing..."))
             if dry_run:
                 self.stdout.write(self.style.WARNING("DRY RUN MODE - No notifications will be sent"))
                 set_tag("dry_run", True)
-            if options["force"]:
+            if options.get("force", False):
                 self.stdout.write(self.style.WARNING("--force is deprecated; using replay mode"))
 
             add_breadcrumb(
@@ -91,9 +91,9 @@ class Command(SilentStdoutCommand):
                 )
 
     def _run_mode(self, options):
-        if options["override_limits"]:
+        if options.get("override_limits", False):
             return RUN_OVERRIDE_LIMITS
-        if options["replay"] or options["force"]:
+        if options.get("replay", False) or options.get("force", False):
             return RUN_REPLAY
         return RUN_NORMAL
 
