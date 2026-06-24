@@ -151,11 +151,11 @@ class EmailSender:
             if factor_count > 0:
                 factor_word = "Factor" if factor_count == 1 else "Factors"
                 subject = (
-                    f"{probability_level} {cfg['condition_display']} Alert for {location.city} - "
+                    f"{probability_level} {cfg['condition_display']} Alert for {location.display_name} - "
                     f"{factor_count} Weather {factor_word}"
                 )
             else:
-                subject = f"{probability_level} {cfg['condition_display']} Alert for {location.city}"
+                subject = f"{probability_level} {cfg['condition_display']} Alert for {location.display_name}"
 
             html_message = render_to_string(cfg["template"], context)
             plain_message = strip_tags(html_message)

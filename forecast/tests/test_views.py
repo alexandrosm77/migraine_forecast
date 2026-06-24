@@ -1,7 +1,9 @@
 import logging
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.urls import reverse
 
 from forecast.models import UserHealthProfile
 from forecast.forms import UserHealthProfileForm
@@ -105,7 +107,6 @@ class LanguageSwitchingTest(TestCase):
         # Test form submission with language change
         form_data = {
             "language": "el",
-            "ui_version": "v2",
             "theme": "light",
             "age": 30,
             "email_notifications_enabled": True,
@@ -151,7 +152,6 @@ class LanguageSwitchingTest(TestCase):
             "/accounts/profile/",
             {
                 "language": "el",
-                "ui_version": "v2",
                 "theme": "light",
                 "age": 35,
                 "email_notifications_enabled": True,
@@ -223,6 +223,36 @@ class LanguageSwitchingTest(TestCase):
         self.assertEqual(system_message["role"], "system")
         self.assertIn("Greek", system_message["content"])
         self.assertIn("Ελληνικά", system_message["content"])
+
+
+class LocationGeocodingViewsTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="geo", email="geo@example.com", password="testpassword")
+        UserHealthProfile.objects.create(user=self.user)
+
+    def test_geocode_requires_login(self):
+        response = self.client.get(reverse("forecast:location_geocode"), {"q": "Athens"})
+        self.assertEqual(response.status_code, 302)
+
+    def test_geocode_validates_query_length(self):
+        self.client.login(username="geo", password="testpassword")
+        response = self.client.get(reverse("forecast:location_geocode"), {"q": "At"})
+        self.assertEqual(response.status_code, 400)
+
+    @patch("forecast.views.search_locations")
+    def test_geocode_returns_normalized_results(self, mock_search):
+        self.client.login(username="geo", password="testpassword")
+        mock_search.return_value = [{"label": "Athens", "latitude": 37.98, "longitude": 23.72}]
+        response = self.client.get(reverse("forecast:location_geocode"), {"q": "Athens"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"][0]["label"], "Athens")
+
+    @patch("forecast.views.reverse_geocode")
+    def test_reverse_geocode_validates_coordinates(self, mock_reverse):
+        self.client.login(username="geo", password="testpassword")
+        response = self.client.get(reverse("forecast:location_reverse_geocode"), {"lat": "91", "lon": "23"})
+        self.assertEqual(response.status_code, 400)
+        mock_reverse.assert_not_called()
 
 
 class HayFeverViewsSmokeTest(TestCase):
@@ -298,15 +328,6 @@ class HayFeverViewsSmokeTest(TestCase):
         self.assertContains(response, "/hayfever-predictions/")
         self.assertContains(response, "Hay Fever Predictions")
 
-    def test_v1_predictions_menu_links_to_hayfever_predictions(self):
-        self.profile.ui_version = "v1"
-        self.profile.save()
-        self.client.login(username="hfuser", password="testpassword")
-        response = self.client.get("/predictions/")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "/hayfever-predictions/")
-        self.assertContains(response, "Hay Fever Predictions")
-
     def test_hayfever_detail_view_renders(self):
         self.client.login(username="hfuser", password="testpassword")
         response = self.client.get(f"/hayfever-predictions/{self.prediction.id}/")
@@ -331,7 +352,6 @@ class ProfileEmailEditTests(TestCase):
         """Minimal valid POST body for the profile form; override fields as needed."""
         data = {
             "language": "en",
-            "ui_version": "v2",
             "theme": "light",
             "age": 35,
             "email_notifications_enabled": True,

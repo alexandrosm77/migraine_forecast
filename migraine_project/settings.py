@@ -199,6 +199,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login/"
 LOGOUT_REDIRECT_URL = "/"
 
+# Geocoding settings for tracked-location search/map selection.
+GEOCODING_USER_AGENT = os.getenv("GEOCODING_USER_AGENT", f"MigraineForecast/{APP_VERSION}")
+GEOCODING_TIMEOUT_SECONDS = int(os.getenv("GEOCODING_TIMEOUT_SECONDS", "5"))
+GEOCODING_SEARCH_LIMIT = int(os.getenv("GEOCODING_SEARCH_LIMIT", "5"))
+GEOCODING_SEARCH_CACHE_SECONDS = int(os.getenv("GEOCODING_SEARCH_CACHE_SECONDS", "86400"))
+
 # Import email settings
 try:
     from .email_settings import *

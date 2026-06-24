@@ -26,7 +26,7 @@ services:
       bash -c "
         python manage.py migrate --noinput &&
         python manage.py seed_data &&
-        python manage.py compilemessages 2>/dev/null || true &&
+        python manage.py compilemessages --ignore venv --ignore .venv --ignore env --verbosity 0 || true &&
         python manage.py collectstatic --noinput &&
         exec gunicorn migraine_project.wsgi:application -c gunicorn.conf.py
       "

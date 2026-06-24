@@ -123,18 +123,6 @@ class UserHealthProfile(models.Model):
         help_text="Preferred language for the user interface and notifications",
     )
 
-    # UI Version preference
-    UI_VERSION_CHOICES = [
-        ("v1", "Classic UI"),
-        ("v2", "Modern UI"),
-    ]
-    ui_version = models.CharField(
-        max_length=10,
-        choices=UI_VERSION_CHOICES,
-        default="v2",
-        help_text="User interface version preference",
-    )
-
     THEME_CHOICES = [
         ("light", "Light Mode"),
         ("dark", "Dark Mode"),
@@ -202,8 +190,9 @@ class UserHealthProfile(models.Model):
 
 class Location(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="locations")
-    city = models.CharField(max_length=100)
-    country = models.CharField(max_length=100)
+    label = models.CharField(max_length=100, default="")
+    city = models.CharField(max_length=100, blank=True, default="")
+    country = models.CharField(max_length=100, blank=True, default="")
     latitude = models.FloatField()
     longitude = models.FloatField()
     timezone = models.CharField(
@@ -214,8 +203,34 @@ class Location(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def display_name(self):
+        """User-facing primary name for this tracked location."""
+        if self.label:
+            return self.label
+        if self.city:
+            return self.city
+        if self.place_name:
+            return self.place_name
+        return f"{self.latitude:.4f}, {self.longitude:.4f}"
+
+    @property
+    def place_name(self):
+        """Best-effort city/country metadata for this tracked location."""
+        parts = [part for part in [self.city, self.country] if part]
+        return ", ".join(parts)
+
+    @property
+    def full_display_name(self):
+        """Display name with place metadata when it adds useful context."""
+        display_name = self.display_name
+        place_name = self.place_name
+        if place_name and place_name != display_name:
+            return f"{display_name} ({place_name})"
+        return display_name
+
     def __str__(self):
-        return f"{self.city}, {self.country}"
+        return self.full_display_name
 
 
 class LocationNotificationPreference(models.Model):

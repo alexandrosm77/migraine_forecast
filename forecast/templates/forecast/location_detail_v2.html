@@ -1,15 +1,19 @@
 {% extends 'forecast/base_v2.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Location Details" %} - {{ location.city }} - {% trans "Migraine Forecast" %}{% endblock %}
+{% block title %}{% trans "Location Details" %} - {{ location.display_name }} - {% trans "Migraine Forecast" %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Page Header -->
     <div class="flex justify-between items-start mb-8">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ location.city }}, {{ location.country }}</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">{% trans "Location details and forecasts" %}</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ location.display_name }}</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{% if location.place_name %}{{ location.place_name }} · {% endif %}{% trans "Location details and forecasts" %}</p>
         </div>
         <div class="flex gap-3">
             <a href="{% url 'forecast:location_list' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg transition">
@@ -49,12 +53,12 @@
                 <div class="p-6">
                     <dl class="space-y-4">
                         <div>
-                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "City" %}</dt>
-                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.city }}</dd>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Name" %}</dt>
+                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.display_name }}</dd>
                         </div>
                         <div>
-                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Country" %}</dt>
-                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.country }}</dd>
+                            <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Place" %}</dt>
+                            <dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.place_name|default:"—" }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider">{% trans "Latitude" %}</dt>
@@ -73,6 +77,10 @@
                             <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ location.created_at|date:"F j, Y" }}</dd>
                         </div>
                     </dl>
+                </div>
+                <div class="border-t border-gray-200 dark:border-gray-700">
+                    <div id="location-detail-map" class="h-64 w-full"></div>
+                    <p class="p-3 text-xs text-gray-500 dark:text-gray-400">{% trans "Map data" %} © <a class="underline" href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a></p>
                 </div>
             </div>
         </div>
@@ -183,4 +191,19 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof L === 'undefined') return;
+    const lat = {{ location.latitude }};
+    const lon = {{ location.longitude }};
+    const map = L.map('location-detail-map', {scrollWheelZoom: false}).setView([lat, lon], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
+    L.marker([lat, lon]).addTo(map).bindPopup('{{ location.display_name|escapejs }}');
+    setTimeout(function() { map.invalidateSize(); }, 100);
+});
+</script>
 {% endblock %}

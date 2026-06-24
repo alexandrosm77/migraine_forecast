@@ -254,9 +254,9 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "UI Preferences",
+            "Display Preferences",
             {
-                "fields": ("ui_version", "theme"),
+                "fields": ("theme",),
             },
         ),
         (

@@ -2,6 +2,12 @@
 
 This file records project vocabulary that should guide architecture reviews and refactors.
 
+## Location domain
+
+### Tracked Location
+
+A user-saved place used for weather-based health forecasts. Coordinates identify the forecast target; the user-facing label helps the user recognize the place. City and country are optional place metadata, not the identity of the Tracked Location.
+
 ## Notification domain
 
 ### Notification intake

@@ -24,8 +24,8 @@
             <div class="p-8">
                 <div class="mb-6">
                     <p class="text-lg text-gray-900 dark:text-gray-100 mb-4">
-                        {% blocktrans with city=location.city country=location.country %}
-                        Are you sure you want to delete the location <strong class="text-red-600">{{ city }}, {{ country }}</strong>?
+                        {% blocktrans with name=location.display_name %}
+                        Are you sure you want to delete the location <strong class="text-red-600">{{ name }}</strong>?
                         {% endblocktrans %}
                     </p>
                     
@@ -57,12 +57,12 @@
                     <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{% trans "Location Details" %}</h3>
                     <dl class="grid grid-cols-2 gap-4">
                         <div>
-                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "City" %}</dt>
-                            <dd class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.city }}</dd>
+                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "Name" %}</dt>
+                            <dd class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.display_name }}</dd>
                         </div>
                         <div>
-                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "Country" %}</dt>
-                            <dd class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.country }}</dd>
+                            <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "Place" %}</dt>
+                            <dd class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ location.place_name|default:"—" }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs text-gray-500 dark:text-gray-500">{% trans "Latitude" %}</dt>

@@ -8,3 +8,4 @@ from forecast.tests.test_tools import *  # noqa: F401, F403
 from forecast.tests.test_notification_service import *  # noqa: F401, F403
 from forecast.tests.test_views import *  # noqa: F401, F403
 from forecast.tests.test_llm_context import *  # noqa: F401, F403
+from forecast.tests.test_geocoding_service import *  # noqa: F401, F403

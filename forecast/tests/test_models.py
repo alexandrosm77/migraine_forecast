@@ -18,8 +18,9 @@ class LocationModelTest(TestCase):
 
     def test_location_creation(self):
         location = Location.objects.create(
-            user=self.user, city="New York", country="USA", latitude=40.7128, longitude=-74.0060
+            user=self.user, label="Home", city="New York", country="USA", latitude=40.7128, longitude=-74.0060
         )
+        self.assertEqual(location.label, "Home")
         self.assertEqual(location.city, "New York")
         self.assertEqual(location.country, "USA")
         self.assertEqual(location.latitude, 40.7128)
@@ -28,9 +29,17 @@ class LocationModelTest(TestCase):
 
     def test_location_string_representation(self):
         location = Location.objects.create(
-            user=self.user, city="New York", country="USA", latitude=40.7128, longitude=-74.0060
+            user=self.user, label="Home", city="New York", country="USA", latitude=40.7128, longitude=-74.0060
         )
-        self.assertEqual(str(location), "New York, USA")
+        self.assertEqual(location.display_name, "Home")
+        self.assertEqual(location.place_name, "New York, USA")
+        self.assertEqual(location.full_display_name, "Home (New York, USA)")
+        self.assertEqual(str(location), "Home (New York, USA)")
+
+    def test_location_display_falls_back_to_coordinates(self):
+        location = Location.objects.create(user=self.user, latitude=40.7128, longitude=-74.0060)
+        self.assertEqual(location.display_name, "40.7128, -74.0060")
+        self.assertEqual(location.place_name, "")
 
 
 class WeatherForecastModelTest(TestCase):

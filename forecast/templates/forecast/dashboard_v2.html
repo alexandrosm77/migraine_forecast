@@ -55,7 +55,7 @@
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
                                 <div class="font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ item.prediction.location.city }}, {{ item.prediction.location.country }}
+                                    {{ item.prediction.location.display_name }}
                                 </div>
                                 <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                     {{ item.prediction.target_time_start|date:"F j, g:i a" }} - {{ item.prediction.target_time_end|date:"g:i a" }}
@@ -115,7 +115,7 @@
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
                                 <div class="font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ item.prediction.location.city }}, {{ item.prediction.location.country }}
+                                    {{ item.prediction.location.display_name }}
                                 </div>
                                 <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                     {{ item.prediction.target_time_start|date:"F j, g:i a" }} - {{ item.prediction.target_time_end|date:"g:i a" }}
@@ -175,7 +175,7 @@
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
                                 <div class="font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ item.prediction.location.city }}, {{ item.prediction.location.country }}
+                                    {{ item.prediction.location.display_name }}
                                 </div>
                                 <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                     {{ item.prediction.target_time_start|date:"F j, g:i a" }} - {{ item.prediction.target_time_end|date:"g:i a" }}
@@ -243,8 +243,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ item.location.city }}</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">{{ item.location.country }}</p>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ item.location.display_name }}</h3>
+                                {% if item.location.place_name %}<p class="text-sm text-gray-600 dark:text-gray-400">{{ item.location.place_name }}</p>{% endif %}
                             </div>
                         </div>
                         <a href="{% url 'forecast:location_detail' item.location.id %}" class="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300">
@@ -425,7 +425,7 @@
                         {% for prediction in recent_predictions %}
                         <tr class="hover:bg-gray-50 dark:bg-gray-700 transition">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {{ prediction.location.city }}
+                                {{ prediction.location.display_name }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                                 {{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}
@@ -490,7 +490,7 @@
                         {% for prediction in recent_sinusitis_predictions %}
                         <tr class="hover:bg-gray-50 dark:bg-gray-700 transition">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {{ prediction.location.city }}
+                                {{ prediction.location.display_name }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                                 {{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}
@@ -555,7 +555,7 @@
                         {% for prediction in recent_hayfever_predictions %}
                         <tr class="hover:bg-gray-50 dark:bg-gray-700 transition">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {{ prediction.location.city }}
+                                {{ prediction.location.display_name }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                                 {{ prediction.target_time_start|date:"M d, H:i" }} - {{ prediction.target_time_end|date:"H:i" }}

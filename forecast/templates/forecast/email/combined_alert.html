@@ -93,7 +93,7 @@
         <p>Hello {{ user.first_name|default:user.username }},</p>
 
         {% if location_count == 1 %}
-        <p>Our system has detected weather conditions that may affect your health in <strong>{{ locations.0.location.city }}, {{ locations.0.location.country }}</strong> during the time window:
+        <p>Our system has detected weather conditions that may affect your health in <strong>{{ locations.0.location.display_name }}</strong> during the time window:
         <span class="time-window">{{ locations.0.start_time|date:"F j, Y, g:i a" }} to {{ locations.0.end_time|date:"F j, Y, g:i a" }}</span>.</p>
         {% else %}
         <p>Our system has detected weather conditions that may affect your health across <strong>{{ location_count }} locations</strong>:</p>
@@ -102,7 +102,7 @@
         {% for loc in locations %}
         {% if location_count > 1 %}
         <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 8px; border: 2px solid #dee2e6;">
-            <h3 style="margin: 0 0 10px 0; color: #495057;">📍 {{ loc.location.city }}, {{ loc.location.country }}</h3>
+            <h3 style="margin: 0 0 10px 0; color: #495057;">📍 {{ loc.location.display_name }}</h3>
             <p style="margin: 0; font-size: 14px; color: #666;">
                 <span class="time-window">{{ loc.start_time|date:"F j, Y, g:i a" }} to {{ loc.end_time|date:"F j, Y, g:i a" }}</span>
             </p>

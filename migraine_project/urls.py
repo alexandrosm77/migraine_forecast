@@ -5,6 +5,6 @@ from forecast.admin import admin_site
 urlpatterns = [
     path("admin/", admin_site.urls),
     path("", include("forecast.urls")),
-    path("login/", auth_views.LoginView.as_view(template_name="forecast/login.html"), name="login"),
+    path("login/", auth_views.LoginView.as_view(template_name="forecast/login_v2.html"), name="login"),
     path("logout/", auth_views.LogoutView.as_view(next_page="forecast:index"), name="logout"),
 ]

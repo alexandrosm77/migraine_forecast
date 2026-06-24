@@ -8,7 +8,6 @@ class UserHealthProfileForm(forms.ModelForm):
         model = UserHealthProfile
         fields = [
             "language",
-            "ui_version",
             "theme",
             "age",
             "prior_conditions",

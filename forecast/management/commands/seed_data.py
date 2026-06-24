@@ -53,7 +53,6 @@ class Command(BaseCommand):
                 "sinusitis_predictions_enabled": True,
                 "notification_mode": "IMMEDIATE",
                 "language": "en",
-                "ui_version": "v2",
                 "theme": "light",
             },
         )

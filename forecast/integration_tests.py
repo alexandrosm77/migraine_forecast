@@ -118,14 +118,35 @@ class ViewsIntegrationTest(TestCase):
 
             response = self.client.post(
                 reverse("forecast:location_add"),
-                {"city": "Boston", "country": "USA", "latitude": "42.3601", "longitude": "-71.0589"},
+                {
+                    "label": "Home",
+                    "city": "Boston",
+                    "country": "USA",
+                    "latitude": "42.3601",
+                    "longitude": "-71.0589",
+                    "timezone": "America/New_York",
+                },
             )
 
-            # Should redirect to location list
+            # Should redirect to location detail
             self.assertEqual(response.status_code, 302)
 
             # Check if location was created
-            self.assertTrue(Location.objects.filter(city="Boston").exists())
+            location = Location.objects.get(label="Home")
+            self.assertEqual(response.url, reverse("forecast:location_detail", args=[location.id]))
+
+    def test_location_add_keeps_location_when_initial_forecast_fails(self):
+        self.client.login(username="testuser", password="testpassword")
+
+        with patch("forecast.views.WeatherService.update_forecast_for_location_upsert", side_effect=Exception("boom")):
+            response = self.client.post(
+                reverse("forecast:location_add"),
+                {"label": "Cabin", "latitude": "38.0", "longitude": "23.0", "timezone": "Europe/Athens"},
+            )
+
+        location = Location.objects.get(label="Cabin")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("forecast:location_detail", args=[location.id]))
 
     def test_location_delete_view(self):
         # Login
@@ -405,7 +426,6 @@ class EndToEndWorkflowTest(TestCase):
         profile_data = {
             "email": "e2e_test@example.com",
             "language": "en",
-            "ui_version": "v2",
             "theme": "light",
             "age": 35,
             "prior_conditions": "Occasional migraines, sensitive to weather changes",

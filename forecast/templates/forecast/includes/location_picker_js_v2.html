@@ -1,0 +1,166 @@
+{% load i18n %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const endpoints = {
+        geocode: "{% url 'forecast:location_geocode' %}",
+        reverse: "{% url 'forecast:location_reverse_geocode' %}"
+    };
+    const els = {
+        search: document.getElementById('location-search'),
+        searchButton: document.getElementById('location-search-button'),
+        status: document.getElementById('location-search-status'),
+        results: document.getElementById('location-search-results'),
+        current: document.getElementById('use-current-location'),
+        label: document.getElementById('label'),
+        city: document.getElementById('city'),
+        country: document.getElementById('country'),
+        latitude: document.getElementById('latitude'),
+        longitude: document.getElementById('longitude'),
+        timezone: document.getElementById('timezone'),
+        summaryName: document.getElementById('summary-name'),
+        summaryPlace: document.getElementById('summary-place'),
+        summaryCoordinates: document.getElementById('summary-coordinates'),
+        summaryTimezone: document.getElementById('summary-timezone')
+    };
+    let labelTouched = {% if picker_mode == 'edit' %}true{% else %}false{% endif %};
+    let marker = null;
+    let searchTimer = null;
+
+    els.label.addEventListener('input', function() { labelTouched = true; updateSummary(); });
+
+    if (typeof L === 'undefined') {
+        els.status.textContent = "{% trans 'Map could not load. You can still enter coordinates manually.' %}";
+        return;
+    }
+
+    const initialLat = parseFloat(els.latitude.value);
+    const initialLon = parseFloat(els.longitude.value);
+    const hasInitialPin = Number.isFinite(initialLat) && Number.isFinite(initialLon);
+    const map = L.map('location-map').setView(hasInitialPin ? [initialLat, initialLon] : [37.9838, 23.7275], hasInitialPin ? 12 : 3);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    if (hasInitialPin) setPin(initialLat, initialLon, false);
+    setTimeout(function() { map.invalidateSize(); }, 100);
+
+    map.on('click', function(event) {
+        setPin(event.latlng.lat, event.latlng.lng, true);
+    });
+
+    els.searchButton.addEventListener('click', runSearch);
+    els.search.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') { event.preventDefault(); runSearch(); }
+    });
+    els.search.addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        if (els.search.value.trim().length >= 3) searchTimer = setTimeout(runSearch, 400);
+    });
+    [els.latitude, els.longitude].forEach(function(input) {
+        input.addEventListener('change', syncManualCoordinates);
+        input.addEventListener('blur', syncManualCoordinates);
+    });
+    els.current.addEventListener('click', useCurrentLocation);
+
+    function runSearch() {
+        const query = els.search.value.trim();
+        if (query.length < 3) { els.status.textContent = "{% trans 'Type at least 3 characters.' %}"; return; }
+        els.status.textContent = "{% trans 'Searching...' %}";
+        els.results.innerHTML = '';
+        fetch(endpoints.geocode + '?q=' + encodeURIComponent(query), {headers: {'Accept': 'application/json'}})
+            .then(handleJson)
+            .then(function(data) { renderResults(data.results || []); })
+            .catch(function(error) { els.status.textContent = error.message || "{% trans 'Location search is unavailable.' %}"; });
+    }
+
+    function renderResults(results) {
+        if (!results.length) { els.status.textContent = "{% trans 'No locations found.' %}"; return; }
+        els.status.textContent = "";
+        els.results.innerHTML = results.map(function(result, index) {
+            return '<button type="button" data-index="' + index + '" class="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition">'
+                + '<span class="block font-medium text-gray-900 dark:text-gray-100">' + escapeHtml(result.label || result.display_name) + '</span>'
+                + '<span class="block text-sm text-gray-500 dark:text-gray-400">' + escapeHtml(result.display_name || '') + '</span></button>';
+        }).join('');
+        els.results.querySelectorAll('button').forEach(function(button) {
+            button.addEventListener('click', function() { applyCandidate(results[parseInt(button.dataset.index, 10)], true); });
+        });
+    }
+
+    function applyCandidate(candidate, zoom) {
+        els.city.value = candidate.city || '';
+        els.country.value = candidate.country || '';
+        els.timezone.value = candidate.timezone || 'UTC';
+        if (!labelTouched && candidate.label) els.label.value = candidate.label;
+        setPin(candidate.latitude, candidate.longitude, false);
+        if (zoom) map.setView([candidate.latitude, candidate.longitude], 12);
+        els.results.innerHTML = '';
+        els.status.textContent = "{% trans 'Location selected. You can adjust the pin if needed.' %}";
+        updateSummary();
+    }
+
+    function setPin(lat, lon, shouldReverse) {
+        lat = Number.parseFloat(lat); lon = Number.parseFloat(lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        els.latitude.value = lat.toFixed(6);
+        els.longitude.value = lon.toFixed(6);
+        if (!marker) {
+            marker = L.marker([lat, lon], {draggable: true}).addTo(map);
+            marker.on('dragend', function(event) {
+                const pos = event.target.getLatLng();
+                setPin(pos.lat, pos.lng, true);
+            });
+        } else {
+            marker.setLatLng([lat, lon]);
+        }
+        updateSummary();
+        if (shouldReverse) reverseLookup(lat, lon);
+    }
+
+    function reverseLookup(lat, lon) {
+        els.status.textContent = "{% trans 'Looking up place details...' %}";
+        fetch(endpoints.reverse + '?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon), {headers: {'Accept': 'application/json'}})
+            .then(handleJson)
+            .then(function(data) { if (data.result) applyCandidate(data.result, false); })
+            .catch(function() { els.status.textContent = "{% trans 'Place details unavailable. Coordinates are still valid.' %}"; });
+    }
+
+    function syncManualCoordinates() {
+        const lat = parseFloat(els.latitude.value);
+        const lon = parseFloat(els.longitude.value);
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+            setPin(lat, lon, true);
+            map.setView([lat, lon], Math.max(map.getZoom(), 10));
+        }
+    }
+
+    function useCurrentLocation() {
+        if (!navigator.geolocation) { els.status.textContent = "{% trans 'Current location is not available in this browser.' %}"; return; }
+        els.status.textContent = "{% trans 'Requesting current location...' %}";
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            if (!labelTouched && !els.label.value) els.label.value = "{% trans 'Current location' %}";
+            setPin(lat, lon, true);
+            map.setView([lat, lon], 13);
+        }, function() {
+            els.status.textContent = "{% trans 'Could not access current location. Search or enter coordinates instead.' %}";
+        }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
+    }
+
+    function updateSummary() {
+        const place = [els.city.value, els.country.value].filter(Boolean).join(', ');
+        els.summaryName.textContent = els.label.value || "{% trans 'No name yet' %}";
+        els.summaryPlace.textContent = place;
+        els.summaryCoordinates.textContent = (els.latitude.value && els.longitude.value) ? (Number.parseFloat(els.latitude.value).toFixed(4) + ', ' + Number.parseFloat(els.longitude.value).toFixed(4)) : "{% trans 'No pin selected yet' %}";
+        els.summaryTimezone.textContent = els.timezone.value || 'UTC';
+    }
+
+    function handleJson(response) {
+        return response.json().then(function(data) { if (!response.ok) throw new Error(data.error || response.statusText); return data; });
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>'"]/g, function(ch) { return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]; });
+    }
+});
+</script>

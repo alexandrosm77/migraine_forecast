@@ -10,7 +10,6 @@ class UserHealthProfileFormTest(TestCase):
         """Test form with valid data"""
         form_data = {
             "language": "en",
-            "ui_version": "v2",
             "theme": "light",
             "age": 30,
             "prior_conditions": "Aura, hypertension",
@@ -32,7 +31,6 @@ class UserHealthProfileFormTest(TestCase):
         """Test that form accepts sensitivity preset values"""
         form_data = {
             "language": "en",
-            "ui_version": "v2",
             "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
@@ -55,7 +53,6 @@ class UserHealthProfileFormTest(TestCase):
         """Test that optional fields can be omitted"""
         form_data = {
             "language": "en",
-            "ui_version": "v2",
             "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
@@ -77,7 +74,6 @@ class UserHealthProfileFormTest(TestCase):
         # This test is now obsolete but we keep it to verify the field is not required
         form_data = {
             "language": "en",
-            "ui_version": "v2",
             "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",
@@ -99,7 +95,6 @@ class UserHealthProfileFormTest(TestCase):
         # This test is now obsolete but we keep it to verify the fields are not required
         form_data = {
             "language": "en",
-            "ui_version": "v2",
             "theme": "light",
             "email_notifications_enabled": True,
             "notification_mode": "IMMEDIATE",

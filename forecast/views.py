@@ -6,6 +6,7 @@ from datetime import timedelta
 import numpy as np
 from django.db.models import Max, Subquery, OuterRef
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
@@ -20,6 +21,7 @@ from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPred
 from .weather_service import WeatherService
 from .weather_factor_explainer import WeatherFactorExplainer
 from .forms import UserHealthProfileForm, UserEmailForm
+from .geocoding_service import GeocodingProviderError, detect_timezone, reverse_geocode, search_locations
 
 logger = logging.getLogger(__name__)
 
@@ -190,31 +192,43 @@ def _compute_weather_factor_values(prediction):
     return weather_factor_values
 
 
-def get_template_name(request, base_name):
-    """
-    Get the appropriate template name based on user's UI version preference.
+def _parse_coordinate(value, minimum, maximum, field_name):
+    try:
+        coordinate = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{field_name} must be a valid number.")
 
-    Args:
-        request: The HTTP request object
-        base_name: The base template name (e.g., 'dashboard.html')
+    if coordinate < minimum or coordinate > maximum:
+        raise ValueError(f"{field_name} must be between {minimum} and {maximum}.")
+    return coordinate
 
-    Returns:
-        The full template path (e.g., 'forecast/dashboard_v2.html' or 'forecast/dashboard.html')
-    """
-    ui_version = "v2"
 
-    if request.user.is_authenticated:
-        try:
-            ui_version = request.user.health_profile.ui_version
-        except Exception:
-            pass  # No health profile yet, use default UI version
+def _location_post_data(request):
+    label = (request.POST.get("label") or request.POST.get("city") or "").strip()
+    city = (request.POST.get("city") or "").strip()
+    country = (request.POST.get("country") or "").strip()
+    latitude = _parse_coordinate(request.POST.get("latitude"), -90, 90, "Latitude")
+    longitude = _parse_coordinate(request.POST.get("longitude"), -180, 180, "Longitude")
+    tz_name = (request.POST.get("timezone") or "").strip() or detect_timezone(latitude, longitude)
 
-    if ui_version == "v2":
-        name_without_ext = base_name.rsplit('.', 1)[0]
-        ext = base_name.rsplit('.', 1)[1] if '.' in base_name else 'html'
-        return f"forecast/{name_without_ext}_v2.{ext}"
-    else:
-        return f"forecast/{base_name}"
+    if not label:
+        raise ValueError("Please name this location.")
+
+    return {
+        "label": label,
+        "city": city,
+        "country": country,
+        "latitude": latitude,
+        "longitude": longitude,
+        "timezone": tz_name or "UTC",
+    }
+
+
+def get_template_name(_request, base_name):
+    """Return the v2 template path for the given base template name."""
+    name_without_ext = base_name.rsplit('.', 1)[0]
+    ext = base_name.rsplit('.', 1)[1] if '.' in base_name else 'html'
+    return f"forecast/{name_without_ext}_v2.{ext}"
 
 
 def index(request):
@@ -417,33 +431,58 @@ def location_list(request):
 
 
 @login_required
+@require_http_methods(["GET"])
+def location_geocode(request):
+    """JSON endpoint for tracked-location search candidates."""
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < 3:
+        return JsonResponse({"error": "Search query must be at least 3 characters."}, status=400)
+
+    try:
+        return JsonResponse({"results": search_locations(query)})
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    except GeocodingProviderError:
+        return JsonResponse({"error": "Location search is temporarily unavailable."}, status=503)
+
+
+@login_required
+@require_http_methods(["GET"])
+def location_reverse_geocode(request):
+    """JSON endpoint for best-effort place metadata from selected coordinates."""
+    try:
+        latitude = _parse_coordinate(request.GET.get("lat"), -90, 90, "Latitude")
+        longitude = _parse_coordinate(request.GET.get("lon"), -180, 180, "Longitude")
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    try:
+        return JsonResponse({"result": reverse_geocode(latitude, longitude)})
+    except GeocodingProviderError:
+        return JsonResponse({"error": "Location lookup is temporarily unavailable."}, status=503)
+
+
+@login_required
 def location_add(request):
     """View for adding a new location."""
     if request.method == "POST":
-        city = request.POST.get("city")
-        country = request.POST.get("country")
-        latitude = request.POST.get("latitude")
-        longitude = request.POST.get("longitude")
-
-        if city and country and latitude and longitude:
-            try:
-                location = Location.objects.create(
-                    user=request.user,
-                    city=city,
-                    country=country,
-                    latitude=float(latitude),
-                    longitude=float(longitude),
-                )
-
-                # Fetch initial forecast for the new location (using upsert to prevent duplicates)
-                WeatherService().update_forecast_for_location_upsert(location)
-
-                messages.success(request, f"Location {city}, {country} added successfully!")
-                return redirect("forecast:location_list")
-            except Exception as e:
-                messages.error(request, f"Error adding location: {str(e)}")
+        try:
+            data = _location_post_data(request)
+            location = Location.objects.create(user=request.user, **data)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        except Exception as exc:
+            logger.exception("Error adding tracked location")
+            messages.error(request, f"Error adding location: {str(exc)}")
         else:
-            messages.error(request, "Please fill all required fields.")
+            messages.success(request, f'Tracked Location "{location.display_name}" added.')
+            try:
+                WeatherService().update_forecast_for_location_upsert(location)
+                messages.success(request, "Initial forecast loaded.")
+            except Exception:
+                logger.exception("Initial forecast fetch failed for location %s", location.id)
+                messages.warning(request, "Tracked Location saved, but initial forecast could not be loaded yet.")
+            return redirect("forecast:location_detail", location_id=location.id)
 
     return render(request, get_template_name(request, "location_add.html"))
 
@@ -491,28 +530,19 @@ def location_edit(request, location_id):
     location = get_object_or_404(Location, id=location_id, user=request.user)
 
     if request.method == "POST":
-        city = request.POST.get("city")
-        country = request.POST.get("country")
-        latitude = request.POST.get("latitude")
-        longitude = request.POST.get("longitude")
-        tz_name = request.POST.get("timezone")
-
-        if city and country and latitude and longitude:
-            try:
-                location.city = city
-                location.country = country
-                location.latitude = float(latitude)
-                location.longitude = float(longitude)
-                if tz_name:
-                    location.timezone = tz_name
-                location.save()
-
-                messages.success(request, f"Location {city}, {country} updated successfully!")
-                return redirect("forecast:location_detail", location_id=location.id)
-            except Exception as e:
-                messages.error(request, f"Error updating location: {str(e)}")
+        try:
+            data = _location_post_data(request)
+            for field, value in data.items():
+                setattr(location, field, value)
+            location.save()
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        except Exception as exc:
+            logger.exception("Error updating tracked location %s", location.id)
+            messages.error(request, f"Error updating location: {str(exc)}")
         else:
-            messages.error(request, "Please fill all required fields.")
+            messages.success(request, f'Tracked Location "{location.display_name}" updated successfully!')
+            return redirect("forecast:location_detail", location_id=location.id)
 
     context = {
         "location": location,
@@ -527,8 +557,9 @@ def location_delete(request, location_id):
     location = get_object_or_404(Location, id=location_id, user=request.user)
 
     if request.method == "POST":
+        display_name = location.display_name
         location.delete()
-        messages.success(request, f"Location {location.city}, {location.country} deleted successfully!")
+        messages.success(request, f'Tracked Location "{display_name}" deleted successfully!')
         return redirect("forecast:location_list")
 
     context = {

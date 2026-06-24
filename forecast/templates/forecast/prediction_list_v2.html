@@ -62,8 +62,8 @@
                                     </svg>
                                 </div>
                                 <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ prediction.location.city }}</div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-500">{{ prediction.location.country }}</div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ prediction.location.display_name }}</div>
+                                    {% if prediction.location.place_name %}<div class="text-sm text-gray-500 dark:text-gray-500">{{ prediction.location.place_name }}</div>{% endif %}
                                 </div>
                             </div>
                         </td>
