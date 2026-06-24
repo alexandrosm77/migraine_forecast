@@ -1,14 +1,11 @@
 from django.contrib.auth.models import User
 from django.utils import timezone
-from django.core.mail import send_mail
-from django.conf import settings
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 from datetime import time
 import logging
 from forecast.models import NotificationLog
 from forecast.prediction_service import PredictionService
 from forecast.management.commands.base import SilentStdoutCommand
+from forecast.notification_intake import NotificationIntake
 
 logger = logging.getLogger(__name__)
 
@@ -123,13 +120,15 @@ class Command(SilentStdoutCommand):
                         except Exception as e:
                             self.stdout.write(
                                 self.style.ERROR(
-                                    f"Error generating migraine prediction for "
-                                    f"{user.username}/{location}: {e}"
+                                    f"Error generating migraine prediction for " f"{user.username}/{location}: {e}"
                                 )
                             )
                             logger.error(
                                 "Digest migraine prediction error for %s/%s: %s",
-                                user.username, location, e, exc_info=True,
+                                user.username,
+                                location,
+                                e,
+                                exc_info=True,
                             )
 
                     if profile.sinusitis_predictions_enabled:
@@ -146,13 +145,15 @@ class Command(SilentStdoutCommand):
                         except Exception as e:
                             self.stdout.write(
                                 self.style.ERROR(
-                                    f"Error generating sinusitis prediction for "
-                                    f"{user.username}/{location}: {e}"
+                                    f"Error generating sinusitis prediction for " f"{user.username}/{location}: {e}"
                                 )
                             )
                             logger.error(
                                 "Digest sinusitis prediction error for %s/%s: %s",
-                                user.username, location, e, exc_info=True,
+                                user.username,
+                                location,
+                                e,
+                                exc_info=True,
                             )
 
                     if profile.hay_fever_predictions_enabled:
@@ -169,13 +170,15 @@ class Command(SilentStdoutCommand):
                         except Exception as e:
                             self.stdout.write(
                                 self.style.ERROR(
-                                    f"Error generating hay fever prediction for "
-                                    f"{user.username}/{location}: {e}"
+                                    f"Error generating hay fever prediction for " f"{user.username}/{location}: {e}"
                                 )
                             )
                             logger.error(
                                 "Digest hay fever prediction error for %s/%s: %s",
-                                user.username, location, e, exc_info=True,
+                                user.username,
+                                location,
+                                e,
+                                exc_info=True,
                             )
 
                 # Apply severity threshold
@@ -191,17 +194,6 @@ class Command(SilentStdoutCommand):
 
                 # Send digest email
                 if self.send_digest_email(user, migraine_preds, sinusitis_preds, hayfever_preds):
-                    # Mark predictions as sent
-                    for pred in migraine_preds:
-                        pred.notification_sent = True
-                        pred.save()
-                    for pred in sinusitis_preds:
-                        pred.notification_sent = True
-                        pred.save()
-                    for pred in hayfever_preds:
-                        pred.notification_sent = True
-                        pred.save()
-
                     digests_sent += 1
                     self.stdout.write(
                         self.style.SUCCESS(
@@ -221,78 +213,16 @@ class Command(SilentStdoutCommand):
         logger.info("Digest notification process complete: sent=%d, total_users=%d", digests_sent, len(users))
 
     def send_digest_email(self, user, migraine_preds, sinusitis_preds, hayfever_preds=None):
-        """Send a daily digest email to a user."""
-        from forecast.notification_preferences import NotificationPreferences
-
-        hayfever_preds = hayfever_preds or []
-        prefs = NotificationPreferences()
-
-        # Create notification log
-        notification_log = prefs.create_notification_log(
-            user, "digest",
-            migraine_preds=migraine_preds,
-            sinusitis_preds=sinusitis_preds,
-            hayfever_preds=hayfever_preds,
+        """Send a daily digest email through NotificationIntake."""
+        plan = NotificationIntake().send_digest(
+            user,
+            migraine_predictions=migraine_preds,
+            sinusitis_predictions=sinusitis_preds,
+            hayfever_predictions=hayfever_preds or [],
         )
-
-        if not user.email:
-            notification_log.mark_skipped("No email address")
-            return False
-
-        # Group predictions by location
-        from collections import defaultdict
-
-        location_data = defaultdict(lambda: {"migraine": [], "sinusitis": [], "hayfever": []})
-
-        for pred in migraine_preds:
-            location_data[pred.location.id]["location"] = pred.location
-            location_data[pred.location.id]["migraine"].append(pred)
-
-        for pred in sinusitis_preds:
-            location_data[pred.location.id]["location"] = pred.location
-            location_data[pred.location.id]["sinusitis"].append(pred)
-
-        for pred in hayfever_preds:
-            location_data[pred.location.id]["location"] = pred.location
-            location_data[pred.location.id]["hayfever"].append(pred)
-
-        # Prepare context for email template
-        context = {
-            "user": user,
-            "location_data": list(location_data.values()),
-            "migraine_count": len(migraine_preds),
-            "sinusitis_count": len(sinusitis_preds),
-            "hayfever_count": len(hayfever_preds),
-            "total_count": len(migraine_preds) + len(sinusitis_preds) + len(hayfever_preds),
-            "digest_date": timezone.now().date(),
-        }
-
-        subject = f"Daily Health Digest - {len(location_data)} Location(s)"
-
-        # Render email (you'll need to create this template)
-        html_message = render_to_string("forecast/email/daily_digest.html", context)
-        plain_message = strip_tags(html_message)
-
-        notification_log.subject = subject
-        notification_log.save()
-
-        try:
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-
-            notification_log.mark_sent()
-            prefs.update_last_notification_timestamp(user, "combined")
-
-            logger.info(f"Sent daily digest to {user.email}")
+        if plan.summary.get("sent", 0) == 1:
+            logger.info("Sent daily digest to %s", user.email)
             return True
-
-        except Exception as e:
-            notification_log.mark_failed(str(e))
-            logger.error(f"Failed to send daily digest to {user.email}: {e}")
-            return False
+        reason = plan.items[0].reason if plan.items else "No digest notification planned"
+        logger.info("Skipped daily digest for %s: %s", user.email, reason)
+        return False

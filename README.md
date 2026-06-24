@@ -1,11 +1,11 @@
 # Migraine Forecast Django Application
 
-A Django application that predicts migraine probability based on weather forecast data for specified locations, sends email alerts for high probability, and compares forecasted data with actual data over time.
+A Django application that predicts migraine, sinusitis, and hay fever risk based on weather forecast data for specified locations, sends email alerts for high-risk predictions, and compares forecasted data with actual data over time.
 
 ## Features
 
-- Weather-based migraine prediction for the next 3-6 hours
-- Email notifications for high migraine probability
+- Weather-based migraine, sinusitis, and hay fever prediction for the next 3-6 hours
+- Email notifications for high health-risk predictions
 - Location management for multiple tracking locations
 - Comparison between forecasted and actual weather data
 - User dashboard with prediction history and visualization
@@ -68,9 +68,9 @@ For development/testing, the console backend is used by default when DEBUG=True.
 ## Usage
 
 1. Register a new account or log in with an existing account
-2. Add locations you want to monitor for migraine probability
+2. Add locations you want to monitor for health-risk predictions
 3. View the dashboard to see recent predictions and high-risk alerts
-4. Set up email notifications to receive alerts for high migraine probability
+4. Set up email notifications to receive alerts for high health-risk predictions
 5. Check the comparison reports to see how accurate the weather forecasts have been
 
 ## Scheduled Tasks
@@ -97,7 +97,7 @@ python manage.py generate_predictions
 
 This command:
 - Reads existing weather forecasts from the database
-- Generates migraine and sinusitis predictions (with optional LLM inference)
+- Generates migraine, sinusitis, and hay fever predictions (with optional LLM inference)
 - Stores predictions in the database
 - Cleans up old predictions (older than 7 days by default)
 
@@ -112,13 +112,41 @@ python manage.py process_notifications
 ```
 
 This command:
-- Finds unsent HIGH/MEDIUM risk predictions
-- Checks user notification limits and preferences
-- Sends combined notifications (migraine + sinusitis in one email)
-- Marks notifications as sent
+- Finds recent HIGH/MEDIUM migraine, sinusitis, and hay fever predictions
+- Builds a `NotificationIntake` send plan from the database
+- Checks user preferences, quiet hours, severity threshold, daily limits, per-condition limits, frequency limits, and idempotency
+- Sends one combined notification per user per run when eligible
+- Records `NotificationLog` entries and marks prediction rows as sent after successful delivery
+
+Useful options:
+```bash
+python manage.py process_notifications --dry-run
+python manage.py process_notifications --replay
+python manage.py process_notifications --override-limits
+python manage.py process_notifications --lookback-hours 12
+```
+
+- `--dry-run` performs full discovery and verdict planning without creating logs, sending email, or marking predictions.
+- `--replay` bypasses idempotency only; user preferences and rate limits still apply.
+- `--override-limits` bypasses idempotency and rate limits, but still respects hard email safety checks.
+- `--lookback-hours` overrides the default immediate notification lookback window.
+- `--force` is still accepted as a deprecated alias for `--replay`.
 
 **Recommended schedule:** Every 2 hours (offset by 1 hour from predictions)
 **Cron:** `0 1-23/2 * * *`
+
+### Daily Digest Notifications
+```bash
+python manage.py send_digest_notifications
+```
+
+This command keeps digest scheduling and digest-window prediction generation outside `NotificationIntake`. Once digest predictions exist, digest sending, notification verdicts, logging, and sent marking go through `NotificationIntake`.
+
+Useful options:
+```bash
+python manage.py send_digest_notifications --force
+python manage.py send_digest_notifications --user alice
+```
 
 ### Alternative Schedules
 

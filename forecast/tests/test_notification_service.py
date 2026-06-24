@@ -341,16 +341,12 @@ class NotificationServiceTest(TestCase):
         )
 
         # Without is_digest, should be blocked
-        result_blocked = EmailSender().send_combined_alert(
-            migraine_predictions=[prediction], is_digest=False
-        )
+        result_blocked = EmailSender().send_combined_alert(migraine_predictions=[prediction], is_digest=False)
         self.assertFalse(result_blocked)
         mock_send_mail.assert_not_called()
 
         # With is_digest=True, should send
-        result_sent = EmailSender().send_combined_alert(
-            migraine_predictions=[prediction], is_digest=True
-        )
+        result_sent = EmailSender().send_combined_alert(migraine_predictions=[prediction], is_digest=True)
         self.assertTrue(result_sent)
         mock_send_mail.assert_called_once()
 
@@ -467,12 +463,10 @@ class NotificationServiceTest(TestCase):
 
 
 class ProcessNotificationsCommandHayFeverTest(TestCase):
-    """Ensure process_notifications collects and passes hay fever predictions through."""
+    """Ensure process_notifications delegates collection to NotificationIntake."""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="pnhfuser", email="pnhf@example.com", password="testpassword"
-        )
+        self.user = User.objects.create_user(username="pnhfuser", email="pnhf@example.com", password="testpassword")
         self.location = Location.objects.create(
             user=self.user, city="Athens", country="GR", latitude=37.9838, longitude=23.7275
         )
@@ -499,19 +493,26 @@ class ProcessNotificationsCommandHayFeverTest(TestCase):
             notification_sent=False,
         )
 
-    @patch("forecast.management.commands.process_notifications.NotificationService")
-    def test_process_notifications_passes_hayfever_predictions(self, mock_service_cls):
-        """process_notifications should pick up unsent HIGH/MEDIUM hay fever predictions
-        and pass them as the third argument to check_and_send_combined_notifications."""
-        mock_service = mock_service_cls.return_value
-        mock_service.check_and_send_combined_notifications.return_value = 1
+    @patch("forecast.management.commands.process_notifications.NotificationIntake")
+    def test_process_notifications_uses_notification_intake(self, mock_intake_cls):
+        """process_notifications should use NotificationIntake instead of condition dict plumbing."""
+        mock_plan = mock_intake_cls.return_value.run_immediate.return_value
+        mock_plan.items = []
+        mock_plan.summary = {
+            "by_condition": {"migraine": 0, "sinusitis": 0, "hayfever": 1},
+            "sent": 0,
+            "send": 0,
+            "skipped": 0,
+            "failed": 0,
+            "users_considered": 0,
+        }
+        mock_plan.dry_run = False
+        mock_plan.run_mode = "normal"
 
         call_command("process_notifications", stdout=StringIO(), stderr=StringIO())
 
-        self.assertTrue(mock_service.check_and_send_combined_notifications.called)
-        args, _ = mock_service.check_and_send_combined_notifications.call_args
-        self.assertEqual(len(args), 3, "Expected migraine, sinusitis, and hayfever dicts")
-        migraine_predictions, sinusitis_predictions, hayfever_predictions = args
-        self.assertIn(self.location.id, hayfever_predictions)
-        self.assertEqual(hayfever_predictions[self.location.id]["probability"], "HIGH")
-        self.assertEqual(hayfever_predictions[self.location.id]["prediction"], self.hf_prediction)
+        mock_intake_cls.return_value.run_immediate.assert_called_once_with(
+            dry_run=False,
+            run_mode="normal",
+            lookback_hours=None,
+        )

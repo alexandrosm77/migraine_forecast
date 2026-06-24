@@ -1,314 +1,141 @@
-from django.utils import timezone
-from datetime import timedelta
-
-from forecast.models import Location, MigrainePrediction, SinusitisPrediction, HayFeverPrediction
-from forecast.notification_service import NotificationService
-from forecast.management.commands.base import SilentStdoutCommand
-
 import logging
-from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, start_transaction, set_tag
+
+from django.utils import timezone
+from sentry_sdk import add_breadcrumb, capture_exception, capture_message, set_context, set_tag, start_transaction
+
+from forecast.management.commands.base import SilentStdoutCommand
+from forecast.notification_intake import RUN_NORMAL, RUN_OVERRIDE_LIMITS, RUN_REPLAY, NotificationIntake
 
 logger = logging.getLogger(__name__)
 
 
 class Command(SilentStdoutCommand):
-    help = "Process and send pending notifications for high/medium risk predictions (Task 3 of decoupled pipeline)"
+    help = "Process pending immediate notifications through NotificationIntake"
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--dry-run",
             action="store_true",
-            help="Show what would be sent without actually sending notifications",
+            help="Build a full send plan without creating logs, sending email, or marking predictions",
+        )
+        parser.add_argument(
+            "--replay",
+            action="store_true",
+            help="Bypass notification idempotency while still respecting preferences and rate limits",
+        )
+        parser.add_argument(
+            "--override-limits",
+            action="store_true",
+            help="Bypass idempotency and rate limits while respecting hard email safety checks",
         )
         parser.add_argument(
             "--force",
             action="store_true",
-            help="Force send notifications even if already sent (for testing)",
+            help="Deprecated alias for --replay",
+        )
+        parser.add_argument(
+            "--lookback-hours",
+            type=int,
+            default=None,
+            help="Override NotificationIntake's immediate discovery lookback window",
         )
 
     def handle(self, *args, **options):
-        """
-        Process and send pending notifications.
-
-        This command:
-        1. Finds unsent HIGH/MEDIUM predictions
-        2. Checks user notification limits and preferences
-        3. Sends combined notifications (migraine + sinusitis in one email)
-        4. Marks notifications as sent
-
-        This is Task 3 of the decoupled pipeline architecture.
-        Recommended schedule: Every 30 minutes (or more frequently)
-        """
-        # Start transaction for cron job monitoring
         with start_transaction(op="cron.job", name="process_notifications"):
             set_tag("cron_job", "process_notifications")
             set_tag("task", "notification_processing")
 
             start_time = timezone.now()
+            dry_run = options["dry_run"]
+            run_mode = self._run_mode(options)
             self.stdout.write(self.style.SUCCESS(f"[{start_time}] Starting notification processing..."))
-            logger.info("Starting notification processing")
+            if dry_run:
+                self.stdout.write(self.style.WARNING("DRY RUN MODE - No notifications will be sent"))
+                set_tag("dry_run", True)
+            if options["force"]:
+                self.stdout.write(self.style.WARNING("--force is deprecated; using replay mode"))
 
             add_breadcrumb(
                 category="cron",
                 message="Notification processing started",
                 level="info",
-                data={"start_time": str(start_time), "dry_run": options["dry_run"]},
+                data={"start_time": str(start_time), "dry_run": dry_run, "run_mode": run_mode},
             )
 
-            if options["dry_run"]:
-                self.stdout.write(self.style.WARNING("DRY RUN MODE - No notifications will be sent"))
-                set_tag("dry_run", True)
-
-            # Initialize notification service
-            notification_service = NotificationService()
-
-            # Get all locations
-            locations = Location.objects.all()
-            if not locations:
-                self.stdout.write(self.style.WARNING("No locations found in database"))
-                logger.warning("No locations found for notification processing")
-                capture_message("No locations found for notification processing", level="warning")
+            try:
+                plan = NotificationIntake().run_immediate(
+                    dry_run=dry_run,
+                    run_mode=run_mode,
+                    lookback_hours=options.get("lookback_hours"),
+                )
+            except Exception as exc:
+                self.stdout.write(self.style.ERROR(f"\n✗ Error processing notifications: {exc}"))
+                logger.error("Error processing notifications: %s", exc, exc_info=True)
+                set_context("notification_processing_error", {"dry_run": dry_run, "run_mode": run_mode})
+                capture_exception(exc)
                 return
 
-            # Build predictions dictionary grouped by location
-            migraine_predictions = {}
-            sinusitis_predictions = {}
-            hayfever_predictions = {}
-
-            # Find unsent predictions for each location
-            for location in locations:
-                # Get recent unsent migraine predictions (last 6 hours)
-                recent_time = timezone.now() - timedelta(hours=6)
-
-                if options["force"]:
-                    # For testing: get recent predictions regardless of sent status
-                    migraine_pred = (
-                        MigrainePrediction.objects.filter(
-                            location=location, prediction_time__gte=recent_time, probability__in=["HIGH", "MEDIUM"]
-                        )
-                        .order_by("-prediction_time")
-                        .first()
-                    )
-
-                    sinusitis_pred = (
-                        SinusitisPrediction.objects.filter(
-                            location=location, prediction_time__gte=recent_time, probability__in=["HIGH", "MEDIUM"]
-                        )
-                        .order_by("-prediction_time")
-                        .first()
-                    )
-
-                    hayfever_pred = (
-                        HayFeverPrediction.objects.filter(
-                            location=location, prediction_time__gte=recent_time, probability__in=["HIGH", "MEDIUM"]
-                        )
-                        .order_by("-prediction_time")
-                        .first()
-                    )
-                else:
-                    # Normal mode: only unsent predictions
-                    migraine_pred = (
-                        MigrainePrediction.objects.filter(
-                            location=location,
-                            prediction_time__gte=recent_time,
-                            probability__in=["HIGH", "MEDIUM"],
-                            notification_sent=False,
-                        )
-                        .order_by("-prediction_time")
-                        .first()
-                    )
-
-                    sinusitis_pred = (
-                        SinusitisPrediction.objects.filter(
-                            location=location,
-                            prediction_time__gte=recent_time,
-                            probability__in=["HIGH", "MEDIUM"],
-                            notification_sent=False,
-                        )
-                        .order_by("-prediction_time")
-                        .first()
-                    )
-
-                    hayfever_pred = (
-                        HayFeverPrediction.objects.filter(
-                            location=location,
-                            prediction_time__gte=recent_time,
-                            probability__in=["HIGH", "MEDIUM"],
-                            notification_sent=False,
-                        )
-                        .order_by("-prediction_time")
-                        .first()
-                    )
-
-                # Add to dictionaries if found
-                if migraine_pred:
-                    migraine_predictions[location.id] = {
-                        "probability": migraine_pred.probability,
-                        "prediction": migraine_pred,
-                    }
-
-                if sinusitis_pred:
-                    sinusitis_predictions[location.id] = {
-                        "probability": sinusitis_pred.probability,
-                        "prediction": sinusitis_pred,
-                    }
-
-                if hayfever_pred:
-                    hayfever_predictions[location.id] = {
-                        "probability": hayfever_pred.probability,
-                        "prediction": hayfever_pred,
-                    }
-
-            # Count pending notifications
-            total_pending = len(set(
-                list(migraine_predictions.keys())
-                + list(sinusitis_predictions.keys())
-                + list(hayfever_predictions.keys())
-            ))
-
-            self.stdout.write(f"Found {len(migraine_predictions)} pending migraine notification(s)")
-            self.stdout.write(f"Found {len(sinusitis_predictions)} pending sinusitis notification(s)")
-            self.stdout.write(f"Found {len(hayfever_predictions)} pending hay fever notification(s)")
-            self.stdout.write(f"Total unique locations with pending notifications: {total_pending}")
-            logger.info(
-                "Found pending notifications: migraine=%d, sinusitis=%d, hayfever=%d, total_locations=%d",
-                len(migraine_predictions),
-                len(sinusitis_predictions),
-                len(hayfever_predictions),
-                total_pending,
-            )
+            self._write_plan(plan)
+            self._write_summary(plan, start_time)
 
             add_breadcrumb(
                 category="cron",
-                message="Pending notifications counted",
+                message="Notification processing completed",
                 level="info",
-                data={
-                    "migraine_count": len(migraine_predictions),
-                    "sinusitis_count": len(sinusitis_predictions),
-                    "hayfever_count": len(hayfever_predictions),
-                    "total_pending": total_pending,
-                },
+                data=plan.summary,
             )
-
-            if total_pending == 0:
-                self.stdout.write(self.style.SUCCESS("No pending notifications to send"))
-                logger.info("No pending notifications to send")
-                capture_message("No pending notifications to send", level="info")
-                return
-
-            # Display pending notifications
-            self.stdout.write("\n" + "=" * 60)
-            self.stdout.write("PENDING NOTIFICATIONS:")
-            self.stdout.write("=" * 60)
-
-            all_location_ids = set(
-                list(migraine_predictions.keys())
-                + list(sinusitis_predictions.keys())
-                + list(hayfever_predictions.keys())
-            )
-            for location_id in all_location_ids:
-                location = Location.objects.get(id=location_id)
-                user = location.user
-
-                migraine_info = migraine_predictions.get(location_id)
-                sinusitis_info = sinusitis_predictions.get(location_id)
-                hayfever_info = hayfever_predictions.get(location_id)
-
-                self.stdout.write(f"\n{user.username} ({user.email}) - {location}:")
-
-                if migraine_info:
-                    self.stdout.write(f"  • Migraine: {migraine_info['probability']} risk")
-
-                if sinusitis_info:
-                    self.stdout.write(f"  • Sinusitis: {sinusitis_info['probability']} risk")
-
-                if hayfever_info:
-                    self.stdout.write(f"  • Hay fever: {hayfever_info['probability']} risk")
-
-            # Send notifications
-            if not options["dry_run"]:
-                self.stdout.write("\n" + "=" * 60)
-                self.stdout.write("Sending notifications...")
-                self.stdout.write("=" * 60)
-
-                try:
-                    notifications_sent = notification_service.check_and_send_combined_notifications(
-                        migraine_predictions, sinusitis_predictions, hayfever_predictions
-                    )
-
-                    self.stdout.write(self.style.SUCCESS(f"\n✓ Successfully sent {notifications_sent} notification(s)"))
-
-                    add_breadcrumb(
-                        category="cron",
-                        message="Notifications sent",
-                        level="info",
-                        data={"notifications_sent": notifications_sent},
-                    )
-
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f"\n✗ Error sending notifications: {e}"))
-                    logger.error(f"Error sending notifications: {e}", exc_info=True)
-
-                    set_context(
-                        "notification_send_error",
-                        {
-                            "migraine_count": len(migraine_predictions),
-                            "sinusitis_count": len(sinusitis_predictions),
-                            "hayfever_count": len(hayfever_predictions),
-                            "total_pending": total_pending,
-                        },
-                    )
-                    capture_exception(e)
-                    notifications_sent = 0
-            else:
-                self.stdout.write("\n" + "=" * 60)
-                self.stdout.write(self.style.WARNING("DRY RUN - Notifications not sent"))
-                self.stdout.write("=" * 60)
-                notifications_sent = 0
-
-            # Summary
-            end_time = timezone.now()
-            duration = (end_time - start_time).total_seconds()
-
-            self.stdout.write("\n" + "=" * 60)
-            self.stdout.write(self.style.SUCCESS("NOTIFICATION PROCESSING SUMMARY"))
-            self.stdout.write("=" * 60)
-            self.stdout.write(f"Pending migraine notifications: {len(migraine_predictions)}")
-            self.stdout.write(f"Pending sinusitis notifications: {len(sinusitis_predictions)}")
-            self.stdout.write(f"Pending hay fever notifications: {len(hayfever_predictions)}")
-            self.stdout.write(f"Notifications sent: {notifications_sent}")
-            self.stdout.write(f"Duration: {duration:.2f} seconds")
-            self.stdout.write(f"Completed at: {end_time}")
-
-            # Send summary to Sentry
-            summary_data = {
-                "pending_migraine": len(migraine_predictions),
-                "pending_sinusitis": len(sinusitis_predictions),
-                "pending_hayfever": len(hayfever_predictions),
-                "notifications_sent": notifications_sent,
-                "duration_seconds": duration,
-                "completed_at": str(end_time),
-                "dry_run": options["dry_run"],
-            }
-
-            add_breadcrumb(
-                category="cron", message="Notification processing completed", level="info", data=summary_data
-            )
-
-            # Log summary for Promtail/Loki
-            logger.info(
-                "Notification processing completed: pending_migraine=%d, pending_sinusitis=%d, pending_hayfever=%d, sent=%d, duration=%.2fs, dry_run=%s",  # noqa: E501
-                len(migraine_predictions),
-                len(sinusitis_predictions),
-                len(hayfever_predictions),
-                notifications_sent,
-                duration,
-                options["dry_run"],
-            )
-
-            if not options["dry_run"]:
+            if not dry_run:
                 capture_message(
-                    f"Notification processing completed: {notifications_sent} notification(s) sent", level="info"
+                    f"Notification processing completed: {plan.summary.get('sent', 0)} notification(s) sent",
+                    level="info",
                 )
 
-            self.stdout.write("=" * 60)
+    def _run_mode(self, options):
+        if options["override_limits"]:
+            return RUN_OVERRIDE_LIMITS
+        if options["replay"] or options["force"]:
+            return RUN_REPLAY
+        return RUN_NORMAL
+
+    def _write_plan(self, plan):
+        self.stdout.write("\n" + "=" * 60)
+        self.stdout.write("NOTIFICATION SEND PLAN")
+        self.stdout.write("=" * 60)
+        if not plan.items:
+            self.stdout.write(self.style.SUCCESS("No pending notifications to send"))
+            return
+
+        for item in plan.items:
+            conditions = ", ".join(item.included_conditions)
+            self.stdout.write(
+                f"{item.user.username} ({item.user.email}) - {item.verdict.upper()} "
+                f"[{conditions}] {item.predictions_count} prediction(s), {item.locations_count} location(s)"
+            )
+            if item.reason:
+                self.stdout.write(f"  Reason: {item.reason}")
+
+    def _write_summary(self, plan, start_time):
+        end_time = timezone.now()
+        duration = (end_time - start_time).total_seconds()
+        by_condition = plan.summary.get("by_condition", {})
+        self.stdout.write("\n" + "=" * 60)
+        self.stdout.write(self.style.SUCCESS("NOTIFICATION PROCESSING SUMMARY"))
+        self.stdout.write("=" * 60)
+        self.stdout.write(f"Pending migraine predictions: {by_condition.get('migraine', 0)}")
+        self.stdout.write(f"Pending sinusitis predictions: {by_condition.get('sinusitis', 0)}")
+        self.stdout.write(f"Pending hay fever predictions: {by_condition.get('hayfever', 0)}")
+        self.stdout.write(f"Users considered: {plan.summary.get('users_considered', 0)}")
+        self.stdout.write(f"Would send: {plan.summary.get('send', 0)}")
+        self.stdout.write(f"Notifications sent: {plan.summary.get('sent', 0)}")
+        self.stdout.write(f"Skipped: {plan.summary.get('skipped', 0)}")
+        self.stdout.write(f"Failed: {plan.summary.get('failed', 0)}")
+        self.stdout.write(f"Duration: {duration:.2f} seconds")
+        self.stdout.write(f"Completed at: {end_time}")
+        self.stdout.write("=" * 60)
+        logger.info(
+            "Notification processing completed: summary=%s duration=%.2fs dry_run=%s run_mode=%s",
+            plan.summary,
+            duration,
+            plan.dry_run,
+            plan.run_mode,
+        )
