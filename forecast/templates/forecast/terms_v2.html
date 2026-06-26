@@ -1,0 +1,188 @@
+{% extends 'forecast/base_v2.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Terms & Conditions" %} - {% trans "Kalliro" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100">{% trans "Terms &amp; Conditions" %}</h1>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{% trans "Last updated" %}: {% now "F j, Y" %}</p>
+    </div>
+
+    <!-- Prominent Medical Disclaimer -->
+    <div class="mb-10 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 rounded-lg p-6">
+        <h2 class="text-lg font-bold text-red-900 dark:text-red-200 mb-2">⚠️ {% trans "Important Medical Disclaimer" %}</h2>
+        <p class="text-sm text-red-800 dark:text-red-200">
+            Kalliro is an informational and educational tool only. It does <strong>not</strong> provide medical
+            advice, diagnosis, or treatment, and it is <strong>not</strong> a medical device. The forecasts,
+            risk levels, and suggestions it produces are automated estimates based on weather data and may be
+            inaccurate, incomplete, or out of date. <strong>Never disregard professional medical advice or delay
+            seeking it because of something you have read on or received from Kalliro.</strong> Always consult a
+            qualified healthcare professional regarding any medical condition or before making any health-related
+            decision. <strong>In an emergency, call your local emergency number immediately.</strong>
+        </p>
+    </div>
+
+    <!-- Body -->
+    <div class="space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">1. {% trans "Acceptance of Terms" %}</h2>
+            <p>
+                These Terms &amp; Conditions ("Terms") govern your access to and use of the Kalliro website,
+                application, and related services (collectively, the "Service"), operated by
+                [OPERATOR / COMPANY NAME] ("we", "us", or "our"). By creating an account, accessing, or using the
+                Service in any way, you confirm that you have read, understood, and agree to be bound by these
+                Terms and by our Privacy Policy. If you do not agree, you must not use the Service.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">2. {% trans "Eligibility" %}</h2>
+            <p>
+                You must be at least 18 years old (or the age of legal majority in your jurisdiction) and capable
+                of forming a binding contract to use the Service. By using the Service you represent and warrant
+                that you meet these requirements and that all information you provide is accurate.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">3. {% trans "Description of the Service" %}</h2>
+            <p>
+                The Service uses third-party weather data and automated models (including artificial intelligence)
+                to generate informational estimates of the likelihood of weather-associated conditions such as
+                migraine, sinusitis, and hay fever episodes for locations you select, and may send you optional
+                notifications. The Service is provided for general informational and educational purposes only and
+                is intended to support, not replace, your own judgment and the advice of qualified professionals.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">4. {% trans "Not Medical Advice; No Professional Relationship" %}</h2>
+            <p>
+                Nothing in the Service constitutes medical, clinical, diagnostic, or other professional advice, and
+                no doctor-patient, clinician-patient, or other professional relationship is created by your use of
+                the Service. The Service does not monitor your health, will not detect or warn you of any medical
+                condition, and must not be relied upon for any medical, safety, or life-critical purpose. You are
+                solely responsible for any decision or action you take based on the Service.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">5. {% trans "Emergencies" %}</h2>
+            <p>
+                The Service is not designed or intended for emergencies. It does not transmit information to
+                emergency services and cannot summon help. If you believe you are experiencing a medical emergency,
+                call your local emergency number or seek immediate in-person medical attention. Do not rely on the
+                Service in any situation where inaccurate, delayed, or unavailable information could lead to injury,
+                death, or damage to property or the environment.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">6. {% trans "Accuracy and Third-Party Data" %}</h2>
+            <p>
+                Forecasts and risk estimates depend on third-party data sources (including, without limitation,
+                weather and air-quality providers such as Open-Meteo) and on automated models that are inherently
+                probabilistic and may produce errors. We do not guarantee the accuracy, completeness, timeliness,
+                reliability, or availability of any data, prediction, score, or notification. Third-party data and
+                services are governed by their own terms, and we are not responsible for them.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">7. {% trans "Disclaimer of Warranties" %}</h2>
+            <p class="uppercase text-sm tracking-wide">
+                To the maximum extent permitted by applicable law, the Service is provided on an "AS IS" and
+                "AS AVAILABLE" basis, with all faults and without warranties of any kind, whether express,
+                implied, statutory, or otherwise, including without limitation any implied warranties of
+                merchantability, fitness for a particular purpose, accuracy, title, and non-infringement. We do
+                not warrant that the Service will be uninterrupted, secure, error-free, or that any defects will
+                be corrected.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">8. {% trans "Assumption of Risk" %}</h2>
+            <p>
+                You acknowledge that any reliance on the Service is at your sole risk and that you assume full
+                responsibility for all decisions and actions taken, or not taken, in connection with the Service.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">9. {% trans "Limitation of Liability" %}</h2>
+            <p class="uppercase text-sm tracking-wide">
+                To the maximum extent permitted by applicable law, in no event will we, our affiliates, or our
+                respective officers, directors, employees, agents, suppliers, or licensors be liable for any
+                indirect, incidental, special, consequential, exemplary, or punitive damages, or for any loss of
+                profits, revenue, data, goodwill, or other intangible losses, or for any personal injury, illness,
+                death, or property damage, arising out of or relating to your access to or use of (or inability to
+                use) the Service, any data or prediction it provides, or any reliance placed on it, whether based
+                on warranty, contract, tort (including negligence), statute, or any other legal theory, and whether
+                or not we have been advised of the possibility of such damages.
+            </p>
+            <p class="mt-3 uppercase text-sm tracking-wide">
+                To the maximum extent permitted by applicable law, our total aggregate liability for all claims
+                relating to the Service will not exceed the greater of (a) the total amounts you paid to us for the
+                Service in the twelve (12) months preceding the event giving rise to the claim, or (b) one hundred
+                euros (€100).
+            </p>
+            <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                Some jurisdictions do not allow the exclusion or limitation of certain warranties or liabilities,
+                so some of the above limitations may not apply to you. In such cases, our liability is limited to
+                the smallest amount permitted by law.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">10. {% trans "Indemnification" %}</h2>
+            <p>
+                You agree to indemnify, defend, and hold harmless us, our affiliates, and our respective officers,
+                directors, employees, and agents from and against any and all claims, liabilities, damages, losses,
+                and expenses (including reasonable legal fees) arising out of or in any way connected with your use
+                of the Service, your violation of these Terms, or your violation of any rights of a third party.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">11. {% trans "Your Responsibilities" %}</h2>
+            <p>
+                You agree to use the Service only for lawful purposes, to keep your account credentials secure, and
+                to consult qualified professionals for any medical, health, or safety decision. You are responsible
+                for all activity that occurs under your account.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">12. {% trans "Changes to the Service and Terms" %}</h2>
+            <p>
+                We may modify, suspend, or discontinue the Service (in whole or in part) at any time without notice
+                or liability. We may also update these Terms from time to time; the updated Terms take effect when
+                posted, and your continued use of the Service constitutes acceptance of the revised Terms.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">13. {% trans "Governing Law and Severability" %}</h2>
+            <p>
+                These Terms are governed by the laws of [GOVERNING JURISDICTION], without regard to its conflict of
+                law principles, and the courts of [GOVERNING JURISDICTION] will have exclusive jurisdiction. If any
+                provision of these Terms is held to be invalid or unenforceable, that provision will be limited or
+                eliminated to the minimum extent necessary, and the remaining provisions will remain in full force
+                and effect.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">14. {% trans "Contact" %}</h2>
+            <p>
+                Questions about these Terms may be sent to [CONTACT EMAIL].
+            </p>
+        </section>
+
+    </div>
+</div>
+{% endblock %}

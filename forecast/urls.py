@@ -5,6 +5,7 @@ app_name = "forecast"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("legal/terms/", views.terms, name="terms"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("locations/", views.location_list, name="location_list"),
     path("locations/geocode/", views.location_geocode, name="location_geocode"),

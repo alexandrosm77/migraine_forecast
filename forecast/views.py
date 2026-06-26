@@ -8,7 +8,6 @@ from django.db.models import Max, Subquery, OuterRef
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.contrib.auth import login
 from django.contrib import messages
@@ -20,7 +19,7 @@ from django.core.exceptions import PermissionDenied
 from .models import Location, WeatherForecast, MigrainePrediction, SinusitisPrediction, HayFeverPrediction
 from .weather_service import WeatherService
 from .weather_factor_explainer import WeatherFactorExplainer
-from .forms import UserHealthProfileForm, UserEmailForm
+from .forms import UserHealthProfileForm, UserEmailForm, KalliroUserCreationForm
 from .geocoding_service import GeocodingProviderError, detect_timezone, reverse_geocode, search_locations
 
 logger = logging.getLogger(__name__)
@@ -234,6 +233,11 @@ def get_template_name(_request, base_name):
 def index(request):
     """Home page view."""
     return render(request, get_template_name(request, "index.html"))
+
+
+def terms(request):
+    """Terms & Conditions / legal disclaimer page."""
+    return render(request, get_template_name(request, "terms.html"))
 
 
 @login_required
@@ -749,14 +753,14 @@ def hayfever_prediction_detail(request, prediction_id):
 def register(request):
     """User registration view."""
     if request.method == "POST":
-        form = UserCreationForm(request.POST)
+        form = KalliroUserCreationForm(request.POST)
         if form.is_valid():
             form.save()
             username = form.cleaned_data.get("username")
             messages.success(request, f"Account created for {username}! You can now log in.")
             return redirect("login")
     else:
-        form = UserCreationForm()
+        form = KalliroUserCreationForm()
 
     return render(request, get_template_name(request, "register.html"), {"form": form})
 

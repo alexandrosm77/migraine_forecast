@@ -399,6 +399,7 @@ class EndToEndWorkflowTest(TestCase):
             "username": "e2e_testuser",
             "password1": "SecureTestPass123!",
             "password2": "SecureTestPass123!",
+            "accept_terms": "on",
         }
 
         response = self.client.post(reverse("forecast:register"), registration_data)

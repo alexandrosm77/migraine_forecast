@@ -1,6 +1,20 @@
 from django import forms
 from django.contrib.auth.models import User
+from django.contrib.auth.forms import UserCreationForm
+from django.utils.translation import gettext_lazy as _
 from .models import UserHealthProfile
+
+
+class KalliroUserCreationForm(UserCreationForm):
+    """Registration form that requires explicit acceptance of the Terms & Conditions."""
+
+    accept_terms = forms.BooleanField(
+        required=True,
+        label=_("I have read and agree to the Terms & Conditions and Medical Disclaimer"),
+        error_messages={
+            "required": _("You must accept the Terms & Conditions to create an account."),
+        },
+    )
 
 
 class UserHealthProfileForm(forms.ModelForm):
