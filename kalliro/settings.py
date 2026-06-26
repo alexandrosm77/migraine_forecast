@@ -35,7 +35,6 @@ ALLOWED_HOSTS = ["*"]
 
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = [
-    "https://8329-ic19w01kgqm2zowmagk08-51be25fc.manus.computer",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
