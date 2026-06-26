@@ -321,7 +321,9 @@ class CheckMigraineProbabilityAdapterTest(TestCase):
     @patch("forecast.management.commands.check_migraine_probability.NotificationIntake")
     @patch("forecast.management.commands.check_migraine_probability.PredictionService")
     @patch("forecast.management.commands.check_migraine_probability.WeatherService")
-    def test_check_command_uses_notification_intake_discovery(self, mock_weather_cls, mock_prediction_cls, mock_intake_cls):
+    def test_check_command_uses_notification_intake_discovery(
+        self, mock_weather_cls, mock_prediction_cls, mock_intake_cls
+    ):
         from forecast.management.commands.check_migraine_probability import Command
 
         mock_weather_cls.return_value.update_forecast_for_location.return_value = []
