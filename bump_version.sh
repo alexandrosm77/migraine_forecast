@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version bumping script for Migraine Forecast
+# Version bumping script for Kalliro
 #
 # Usage:
 #   ./bump_version.sh patch   # Bump patch version (0.1.0 -> 0.1.1)

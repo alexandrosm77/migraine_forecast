@@ -606,9 +606,9 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
 
 # Custom Admin Site with additional views
 class MigraineAdminSite(admin.AdminSite):
-    site_header = "Migraine Forecast Administration"
-    site_title = "Migraine Forecast Admin"
-    index_title = "Welcome to Migraine Forecast Administration"
+    site_header = "Kalliro Administration"
+    site_title = "Kalliro Admin"
+    index_title = "Welcome to Kalliro Administration"
     index_template = "admin/custom_index.html"
 
     def get_urls(self):

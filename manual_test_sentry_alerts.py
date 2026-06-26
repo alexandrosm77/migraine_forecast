@@ -14,7 +14,7 @@ import django
 
 # Setup Django
 os.environ.setdefault("SENTRY_ENABLED", "true")
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kalliro.settings")
 django.setup()
 
 import sentry_sdk  # noqa: E402

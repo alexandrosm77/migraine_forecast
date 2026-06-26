@@ -481,9 +481,9 @@ class EmailSender:
         Returns:
             bool: True if email was sent successfully, False otherwise
         """
-        subject = "Test Email from Migraine Forecast App"
+        subject = "Test Email from Kalliro App"
         message = (
-            "This is a test email from the Migraine Forecast application. "
+            "This is a test email from the Kalliro application. "
             "If you received this, email notifications are working correctly."
         )
 

@@ -1,4 +1,4 @@
-# Migraine Forecast Django Application
+# Kalliro Django Application
 
 A Django application that predicts migraine, sinusitis, and hay fever risk based on weather forecast data for specified locations, sends email alerts for high-risk predictions, and compares forecasted data with actual data over time.
 
@@ -51,7 +51,7 @@ python manage.py runserver
 
 ### Email Settings
 
-To enable email notifications, update the email settings in `migraine_project/email_settings.py`:
+To enable email notifications, update the email settings in `kalliro/email_settings.py`:
 
 ```python
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -60,7 +60,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'your-email@example.com'
 EMAIL_HOST_PASSWORD = 'your-app-password'
-DEFAULT_FROM_EMAIL = 'Migraine Forecast <your-email@example.com>'
+DEFAULT_FROM_EMAIL = 'Kalliro <your-email@example.com>'
 ```
 
 For development/testing, the console backend is used by default when DEBUG=True.

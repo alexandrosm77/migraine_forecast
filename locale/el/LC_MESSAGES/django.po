@@ -1,6 +1,6 @@
-# Greek translations for Migraine Forecast
+# Greek translations for Kalliro
 # Copyright (C) 2025
-# This file is distributed under the same license as the Migraine Forecast package.
+# This file is distributed under the same license as the Kalliro package.
 #
 msgid ""
 msgstr ""
@@ -44,8 +44,8 @@ msgstr ""
 #: forecast/templates/forecast/sinusitis_prediction_list_v2.html:4
 #: forecast/templates/forecast/user_list.html:4
 #: forecast/templates/forecast/user_list_v2.html:4
-msgid "Migraine Forecast"
-msgstr "Πρόβλεψη Ημικρανίας"
+msgid "Kalliro"
+msgstr "Kalliro"
 
 # Navigation and common terms
 #: forecast/templates/forecast/base.html:50
@@ -822,18 +822,18 @@ msgid "Stay well,"
 msgstr "Να είστε καλά,"
 
 #: forecast/templates/forecast/email/migraine_alert.html:166
-msgid "The Migraine Forecast Team"
-msgstr "Η Ομάδα Πρόβλεψης Ημικρανίας"
+msgid "The Kalliro Team"
+msgstr "Η Ομάδα Kalliro"
 
 #: forecast/templates/forecast/email/migraine_alert.html:169
 msgid ""
-"This is an automated message from the Migraine Forecast application. The "
+"This is an automated message from the Kalliro application. The "
 "predictions are based on weather data and statistical models, and should not "
 "be considered medical advice."
 msgstr ""
-"Αυτό είναι ένα αυτοματοποιημένο μήνυμα από την εφαρμογή Πρόβλεψης "
-"Ημικρανίας. Οι προβλέψεις βασίζονται σε δεδομένα καιρού και στατιστικά "
-"μοντέλα, και δεν πρέπει να θεωρούνται ιατρική συμβουλή."
+"Αυτό είναι ένα αυτοματοποιημένο μήνυμα από την εφαρμογή Kalliro. Οι "
+"προβλέψεις βασίζονται σε δεδομένα καιρού και στατιστικά μοντέλα, και δεν "
+"πρέπει να θεωρούνται ιατρική συμβουλή."
 
 # Dashboard
 #: forecast/templates/forecast/hayfever_prediction_detail.html:4
@@ -1233,8 +1233,8 @@ msgstr ""
 
 #: forecast/templates/forecast/index_v2.html:34
 msgid ""
-"Get personalized migraine and sinusitis forecasts based on weather patterns. "
-"Stay ahead of your health."
+"Get personalized migraine, sinusitis, and hay fever forecasts based on weather "
+"patterns. Stay ahead of your health."
 msgstr ""
 
 #: forecast/templates/forecast/index_v2.html:48
@@ -1263,7 +1263,7 @@ msgstr "Ανάλυση Μοντέλου"
 #: forecast/templates/forecast/index_v2.html:85
 msgid ""
 "Our AI analyzes temperature, pressure, humidity, and other weather factors "
-"to predict migraine and sinusitis risk."
+"to predict migraine, sinusitis, and hay fever risk."
 msgstr ""
 
 #: forecast/templates/forecast/index_v2.html:97

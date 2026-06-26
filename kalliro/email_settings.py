@@ -7,7 +7,7 @@ EMAIL_HOST = os.getenv("EMAIL_HOST", "192.168.0.5")
 EMAIL_PORT = os.getenv("EMAIL_PORT", 25)
 EMAIL_USE_TLS = False
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "alexandrosm77@gmail.com")
-DEFAULT_FROM_EMAIL = "Migraine Forecast <alexandrosm77@gmail.com>"
+DEFAULT_FROM_EMAIL = "Kalliro <alexandrosm77@gmail.com>"
 
 # For development/testing, you can use the console backend
 # if settings.DEBUG:

@@ -51,7 +51,7 @@ def search_locations(query, limit=None):
         response = requests.get(
             NOMINATIM_SEARCH_URL,
             params={"q": normalized_query, "format": "jsonv2", "addressdetails": 1, "limit": limit},
-            headers={"User-Agent": getattr(settings, "GEOCODING_USER_AGENT", "MigraineForecast")},
+            headers={"User-Agent": getattr(settings, "GEOCODING_USER_AGENT", "Kalliro")},
             timeout=getattr(settings, "GEOCODING_TIMEOUT_SECONDS", 5),
         )
         response.raise_for_status()
@@ -71,7 +71,7 @@ def reverse_geocode(latitude, longitude):
         response = requests.get(
             NOMINATIM_REVERSE_URL,
             params={"lat": latitude, "lon": longitude, "format": "jsonv2", "addressdetails": 1},
-            headers={"User-Agent": getattr(settings, "GEOCODING_USER_AGENT", "MigraineForecast")},
+            headers={"User-Agent": getattr(settings, "GEOCODING_USER_AGENT", "Kalliro")},
             timeout=getattr(settings, "GEOCODING_TIMEOUT_SECONDS", 5),
         )
         response.raise_for_status()

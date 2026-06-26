@@ -1,4 +1,4 @@
-# Migraine Forecast Django App - Todo List
+# Kalliro Django App - Todo List
 
 ## Project Setup
 - [x] Install required packages (Django, requests)

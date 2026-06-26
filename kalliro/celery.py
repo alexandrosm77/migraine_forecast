@@ -1,5 +1,5 @@
 """
-Celery configuration for migraine_forecast project.
+Celery configuration for kalliro project.
 """
 import os
 from celery import Celery
@@ -7,9 +7,9 @@ from celery.schedules import crontab
 from celery.signals import setup_logging
 
 # Set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'migraine_project.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'kalliro.settings')
 
-app = Celery('migraine_forecast')
+app = Celery('kalliro')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.

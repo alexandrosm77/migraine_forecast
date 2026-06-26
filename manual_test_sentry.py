@@ -13,7 +13,7 @@ import django
 
 # Setup Django
 os.environ.setdefault("SENTRY_ENABLED", "true")
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kalliro.settings")
 django.setup()
 
 import logging  # noqa: E402
@@ -25,14 +25,14 @@ logger = logging.getLogger(__name__)
 def test_basic_message():
     """Test basic message capture"""
     print("1. Testing basic message capture...")
-    capture_message("Test message from migraine_forecast app", level="info")
+    capture_message("Test message from kalliro app", level="info")
     print("   ✓ Message sent to Sentry/GlitchTip")
 
 
 def test_error_logging():
     """Test error logging integration"""
     print("\n2. Testing error logging...")
-    logger.error("Test error log from migraine_forecast")
+    logger.error("Test error log from kalliro")
     print("   ✓ Error log sent to Sentry/GlitchTip")
 
 
@@ -58,7 +58,7 @@ def test_with_context():
     # Add context
     set_context(
         "test_info",
-        {"test_name": "Sentry Integration Test", "app": "migraine_forecast", "purpose": "Verify GlitchTip connection"},
+        {"test_name": "Sentry Integration Test", "app": "kalliro", "purpose": "Verify GlitchTip connection"},
     )
 
     capture_message("Test message with context and tags", level="info")

@@ -93,7 +93,7 @@ jobs:
           IMAGE="${{ github.ref == 'refs/heads/main' && format('alexandrosm77/migraine_forecast@{0}', needs.build.outputs.image-digest) || needs.build.outputs.image-tag }}"
           docker run --rm \
             $IMAGE \
-            sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
+            sh -c "pip install flake8 && flake8 forecast/ kalliro/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
 
   test-unittest:
     needs: build
@@ -174,7 +174,7 @@ jobs:
               --from-literal=DOCKERHUB_USERNAME="${{ vars.DOCKERHUB_USERNAME }}" \
               --from-literal=LOG_FORMAT="json" \
               --from-literal=LOG_TO_FILE="false" \
-              --from-literal=DJANGO_SETTINGS_MODULE="migraine_project.settings" \
+              --from-literal=DJANGO_SETTINGS_MODULE="kalliro.settings" \
               --from-literal=LOG_LEVEL="INFO" \
               --from-literal=DB_ENGINE="${{ vars.DB_ENGINE }}" \
               --from-literal=DB_NAME="${{ vars.DB_NAME }}" \

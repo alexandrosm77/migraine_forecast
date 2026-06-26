@@ -36,7 +36,7 @@ spec:
         args:
           - |
             echo "Starting gunicorn web server..."
-            exec gunicorn migraine_project.wsgi:application -c gunicorn.conf.py
+            exec gunicorn kalliro.wsgi:application -c gunicorn.conf.py
 
         ports:
         - containerPort: 8889
@@ -150,7 +150,7 @@ spec:
         args:
           - |
             echo "Starting Celery worker for default queue..."
-            exec python -u -m celery -A migraine_project worker \
+            exec python -u -m celery -A kalliro worker \
               --loglevel=info \
               --queues=default \
               --concurrency=2 \
@@ -249,7 +249,7 @@ spec:
         args:
           - |
             echo "Starting Celery worker for LLM queue (concurrency=1)..."
-            exec python -u -m celery -A migraine_project worker \
+            exec python -u -m celery -A kalliro worker \
               --loglevel=info \
               --queues=llm \
               --concurrency=1 \
@@ -348,7 +348,7 @@ spec:
         args:
           - |
             echo "Starting Celery Beat scheduler..."
-            exec python -u -m celery -A migraine_project beat \
+            exec python -u -m celery -A kalliro beat \
               --loglevel=info
 
         envFrom:

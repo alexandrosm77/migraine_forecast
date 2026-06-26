@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE_NAME: migraine-forecast
+  IMAGE_NAME: kalliro
   REMOTE_APP_DIR: ~/migraine_forecast
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
         run: |
           docker run --rm \
             "$IMAGE_NAME:ci-${GITHUB_SHA}" \
-            sh -c "pip install flake8 && flake8 forecast/ migraine_project/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
+            sh -c "pip install flake8 && flake8 forecast/ kalliro/ --exclude=migrations,__pycache__ --max-line-length=120 --statistics"
 
       - name: Run unit tests
         run: |
@@ -78,7 +78,7 @@ jobs:
           umask 077
           cat > .env.production <<'ENV'
           DJANGO_DEBUG=False
-          DJANGO_SETTINGS_MODULE=migraine_project.settings
+          DJANGO_SETTINGS_MODULE=kalliro.settings
           LOG_FORMAT=json
           LOG_TO_FILE=false
           LOG_LEVEL=INFO

@@ -24,7 +24,7 @@ import logging
 import math
 
 # Setup Django first
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kalliro.settings")
 
 import django  # noqa: E402
 django.setup()

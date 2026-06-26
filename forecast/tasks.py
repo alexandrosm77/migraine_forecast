@@ -1,5 +1,5 @@
 """
-Celery tasks for migraine forecast application.
+Celery tasks for Kalliro application.
 """
 
 import logging

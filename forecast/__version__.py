@@ -1,5 +1,5 @@
 """
-Version information for Migraine Forecast application.
+Version information for Kalliro application.
 
 This file serves as the single source of truth for version information.
 Version follows Semantic Versioning (SemVer): MAJOR.MINOR.PATCH

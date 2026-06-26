@@ -55,7 +55,7 @@ cron\n\
 \n\
 # Start gunicorn in the foreground\n\
 echo "Starting gunicorn..."\n\
-exec gunicorn migraine_project.wsgi:application -c gunicorn.conf.py\n\
+exec gunicorn kalliro.wsgi:application -c gunicorn.conf.py\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose port

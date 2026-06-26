@@ -35,7 +35,7 @@ from pathlib import Path
 
 # Setup Django BEFORE importing forecast modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kalliro.settings")
 django.setup()
 
 # Import forecast modules AFTER Django setup

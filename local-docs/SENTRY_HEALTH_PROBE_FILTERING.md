@@ -113,7 +113,7 @@ After deploying these changes:
 
 ## Configuration
 
-All filtering is configured in `migraine_project/settings.py`:
+All filtering is configured in `kalliro/settings.py`:
 - `HealthProbeLogFilter` class (lines 177-191)
 - `LOGGING` configuration with filters (lines 194-252)
 - `sentry_traces_sampler()` function

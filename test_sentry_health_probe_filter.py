@@ -10,10 +10,10 @@ import os
 import django
 
 # Setup Django
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "migraine_project.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "kalliro.settings")
 django.setup()
 
-from migraine_project.settings import (  # noqa
+from kalliro.settings import (  # noqa
     sentry_traces_sampler,
     sentry_before_send,
     sentry_before_breadcrumb,

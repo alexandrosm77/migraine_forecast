@@ -3,7 +3,7 @@
 # secrets and variables before running this file.
 
 x-app: &app
-  image: migraine-forecast:production
+  image: kalliro:production
   build:
     context: .
     dockerfile: Dockerfile
@@ -15,14 +15,14 @@ x-app: &app
 services:
   web:
     <<: *app
-    command: gunicorn migraine_project.wsgi:application -c gunicorn.conf.py
+    command: gunicorn kalliro.wsgi:application -c gunicorn.conf.py
     ports:
       - "8889:8889"
 
   worker-default:
     <<: *app
     command: >
-      python -u -m celery -A migraine_project worker
+      python -u -m celery -A kalliro worker
       --loglevel=info
       --queues=default
       --concurrency=2
@@ -33,7 +33,7 @@ services:
   worker-llm:
     <<: *app
     command: >
-      python -u -m celery -A migraine_project worker
+      python -u -m celery -A kalliro worker
       --loglevel=info
       --queues=llm
       --concurrency=1
@@ -44,6 +44,6 @@ services:
 
   celery-beat:
     <<: *app
-    command: python -u -m celery -A migraine_project beat --loglevel=info
+    command: python -u -m celery -A kalliro beat --loglevel=info
     depends_on:
       - web
