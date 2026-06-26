@@ -171,6 +171,17 @@ class NotificationIntake:
         predictions_by_user = self._discover_immediate_predictions(lookback_hours, run_mode)
         return self._run_plan(predictions_by_user, "combined", dry_run, run_mode, is_digest=False)
 
+    def run_immediate_for_predictions(self, predictions, dry_run=False, run_mode=RUN_NORMAL):
+        """Run Immediate notification intake for exact persisted predictions.
+
+        This is a narrow operator/test adapter seam. It bypasses database
+        discovery only; candidate filtering, idempotency, Notification verdicts,
+        Notification ledger writes, sending, and finalization still belong to
+        NotificationIntake.
+        """
+        predictions_by_user = self._group_explicit_immediate_predictions(predictions, run_mode)
+        return self._run_plan(predictions_by_user, "combined", dry_run, run_mode, is_digest=False)
+
     def send_digest(
         self,
         user,
@@ -217,6 +228,28 @@ class NotificationIntake:
                 continue
             seen_location_ids.add(prediction.location_id)
             yield prediction
+
+    def _group_explicit_immediate_predictions(self, predictions, run_mode):
+        by_user = defaultdict(lambda: {condition: [] for condition in CONDITIONS})
+        for prediction in predictions or []:
+            condition = self._condition_for_prediction(prediction)
+            if condition is None:
+                continue
+            if prediction.probability not in ["HIGH", "MEDIUM"]:
+                continue
+            if run_mode == RUN_NORMAL and self._prediction_already_sent(prediction):
+                continue
+            by_user[prediction.user][condition].append(prediction)
+        return {user: preds for user, preds in by_user.items() if self._prediction_count(preds)}
+
+    def _condition_for_prediction(self, prediction):
+        for condition, config in CONDITIONS.items():
+            if isinstance(prediction, config["model"]):
+                return condition
+        return None
+
+    def _prediction_already_sent(self, prediction):
+        return prediction.notification_sent or prediction.notification_logs.filter(status="sent").exists()
 
     def _run_plan(self, predictions_by_user, notification_type, dry_run, run_mode, is_digest):
         plan = NotificationSendPlan(dry_run=dry_run, run_mode=run_mode)

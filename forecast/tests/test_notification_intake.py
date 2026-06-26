@@ -12,6 +12,7 @@ from forecast.models import (
     Location,
     MigrainePrediction,
     NotificationLog,
+    SinusitisPrediction,
     UserHealthProfile,
     WeatherForecast,
 )
@@ -67,6 +68,18 @@ class NotificationIntakeTest(TestCase):
             target_time_end=timezone.now() + timedelta(hours=6),
             probability=probability,
             weather_factors={"pollen_available": True, "tree_pollen": 4.0},
+            notification_sent=sent,
+        )
+
+    def make_sinusitis(self, probability="HIGH", sent=False):
+        return SinusitisPrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=self.forecast,
+            target_time_start=timezone.now() + timedelta(hours=3),
+            target_time_end=timezone.now() + timedelta(hours=6),
+            probability=probability,
+            weather_factors={"pressure_score": 0.8, "total_score": 0.8},
             notification_sent=sent,
         )
 
@@ -165,6 +178,80 @@ class NotificationIntakeTest(TestCase):
         prediction.refresh_from_db()
         self.assertTrue(prediction.notification_sent)
 
+    @patch("forecast.email_sender.send_mail")
+    def test_explicit_immediate_predictions_group_by_user_and_condition(self, mock_send_mail):
+        migraine = self.make_migraine()
+        sinusitis = self.make_sinusitis(probability="MEDIUM")
+        hayfever = self.make_hayfever()
+
+        plan = NotificationIntake().run_immediate_for_predictions([migraine, sinusitis, hayfever])
+
+        self.assertEqual(plan.summary["sent"], 1)
+        self.assertEqual(plan.summary["by_condition"], {"migraine": 1, "sinusitis": 1, "hayfever": 1})
+        log = NotificationLog.objects.get(user=self.user, notification_type="combined")
+        self.assertCountEqual(log.metadata["included_conditions"], ["migraine", "sinusitis", "hayfever"])
+        self.assertEqual(log.migraine_predictions.get(), migraine)
+        self.assertEqual(log.sinusitis_predictions.get(), sinusitis)
+        self.assertEqual(log.hayfever_predictions.get(), hayfever)
+        mock_send_mail.assert_called_once()
+
+    @patch("forecast.email_sender.send_mail")
+    def test_explicit_immediate_predictions_filter_low_candidates(self, mock_send_mail):
+        low_prediction = self.make_migraine(probability="LOW")
+
+        plan = NotificationIntake().run_immediate_for_predictions([low_prediction])
+
+        self.assertEqual(plan.summary["users_considered"], 0)
+        self.assertEqual(NotificationLog.objects.count(), 0)
+        low_prediction.refresh_from_db()
+        self.assertFalse(low_prediction.notification_sent)
+        mock_send_mail.assert_not_called()
+
+    @patch("forecast.email_sender.send_mail")
+    def test_explicit_immediate_predictions_preserve_normal_idempotency(self, mock_send_mail):
+        prediction = self.make_migraine(sent=True)
+        sent_log = NotificationLog.objects.create(
+            user=self.user,
+            notification_type="combined",
+            status="sent",
+            recipient=self.user.email,
+            metadata={"included_conditions": ["migraine"], "limit_consumption": {"overall": 1, "migraine": 1}},
+        )
+        sent_log.migraine_predictions.set([prediction])
+        sent_log.mark_sent()
+
+        plan = NotificationIntake().run_immediate_for_predictions([prediction])
+
+        self.assertEqual(plan.summary["users_considered"], 0)
+        self.assertEqual(NotificationLog.objects.count(), 1)
+        mock_send_mail.assert_not_called()
+
+    @patch("forecast.email_sender.send_mail")
+    def test_explicit_replay_respects_limits_and_override_bypasses_them(self, mock_send_mail):
+        self.profile.daily_notification_limit = 1
+        self.profile.save()
+        prediction = self.make_migraine(sent=True)
+        sent_log = NotificationLog.objects.create(
+            user=self.user,
+            notification_type="combined",
+            status="sent",
+            recipient=self.user.email,
+            metadata={"included_conditions": ["migraine"], "limit_consumption": {"overall": 1, "migraine": 1}},
+        )
+        sent_log.migraine_predictions.set([prediction])
+        sent_log.mark_sent()
+
+        replay_plan = NotificationIntake().run_immediate_for_predictions(
+            [prediction], dry_run=True, run_mode=RUN_REPLAY
+        )
+        override_plan = NotificationIntake().run_immediate_for_predictions(
+            [prediction], dry_run=True, run_mode=RUN_OVERRIDE_LIMITS
+        )
+
+        self.assertEqual(replay_plan.items[0].verdict, "skip")
+        self.assertEqual(override_plan.items[0].verdict, "send")
+        mock_send_mail.assert_not_called()
+
 
 class ProcessNotificationsAdapterTest(TestCase):
     @patch("forecast.management.commands.process_notifications.NotificationIntake")
@@ -221,3 +308,64 @@ class SendDigestNotificationsAdapterTest(TestCase):
             sinusitis_predictions=[],
             hayfever_predictions=[],
         )
+
+
+class CheckMigraineProbabilityAdapterTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="cmd", email="cmd@example.com", password="pw")
+        UserHealthProfile.objects.create(user=self.user)
+        self.location = Location.objects.create(
+            user=self.user, city="Athens", country="GR", latitude=37.9838, longitude=23.7275
+        )
+
+    @patch("forecast.management.commands.check_migraine_probability.NotificationIntake")
+    @patch("forecast.management.commands.check_migraine_probability.PredictionService")
+    @patch("forecast.management.commands.check_migraine_probability.WeatherService")
+    def test_check_command_uses_notification_intake_discovery(self, mock_weather_cls, mock_prediction_cls, mock_intake_cls):
+        from forecast.management.commands.check_migraine_probability import Command
+
+        mock_weather_cls.return_value.update_forecast_for_location.return_value = []
+        mock_prediction_cls.for_condition.return_value.predict.return_value = ("LOW", None)
+        mock_intake_cls.return_value.run_immediate.return_value.sent_count = 0
+
+        Command().handle(notify_only=False, test_notification=None, test_type="all")
+
+        mock_intake_cls.return_value.run_immediate.assert_called_once_with()
+
+    @patch("forecast.management.commands.check_migraine_probability.NotificationIntake")
+    @patch("forecast.management.commands.check_migraine_probability.PredictionService")
+    @patch("forecast.management.commands.check_migraine_probability.WeatherService")
+    def test_notify_only_runs_immediate_intake_only(self, mock_weather_cls, mock_prediction_cls, mock_intake_cls):
+        from forecast.management.commands.check_migraine_probability import Command
+
+        mock_intake_cls.return_value.run_immediate.return_value.sent_count = 0
+
+        Command().handle(notify_only=True, test_notification=None, test_type="all")
+
+        mock_weather_cls.return_value.update_forecast_for_location.assert_not_called()
+        mock_prediction_cls.for_condition.return_value.predict.assert_not_called()
+        mock_intake_cls.return_value.run_immediate.assert_called_once_with()
+
+    @patch("forecast.management.commands.check_migraine_probability.NotificationIntake")
+    def test_test_notification_uses_explicit_prediction_intake(self, mock_intake_cls):
+        from forecast.management.commands.check_migraine_probability import Command
+
+        mock_intake_cls.return_value.run_immediate_for_predictions.return_value.sent_count = 1
+
+        Command().handle(notify_only=False, test_notification="high", test_type="migraine")
+
+        explicit_predictions = mock_intake_cls.return_value.run_immediate_for_predictions.call_args.args[0]
+        self.assertEqual(len(explicit_predictions), 1)
+        self.assertIsInstance(explicit_predictions[0], MigrainePrediction)
+
+    @patch("forecast.management.commands.check_migraine_probability.NotificationIntake")
+    def test_low_test_notification_still_enters_explicit_intake(self, mock_intake_cls):
+        from forecast.management.commands.check_migraine_probability import Command
+
+        mock_intake_cls.return_value.run_immediate_for_predictions.return_value.sent_count = 0
+
+        Command().handle(notify_only=False, test_notification="low", test_type="migraine")
+
+        explicit_predictions = mock_intake_cls.return_value.run_immediate_for_predictions.call_args.args[0]
+        self.assertEqual(len(explicit_predictions), 1)
+        self.assertEqual(explicit_predictions[0].probability, "LOW")

@@ -12,7 +12,7 @@ from forecast.models import (
 )
 from forecast.weather_service import WeatherService
 from forecast.prediction_service import PredictionService
-from forecast.notification_service import NotificationService
+from forecast.notification_intake import NotificationIntake
 from forecast.management.commands.base import SilentStdoutCommand
 
 logger = logging.getLogger(__name__)
@@ -64,15 +64,10 @@ class Command(SilentStdoutCommand):
         migraine_prediction_service = PredictionService.for_condition("migraine")
         sinusitis_prediction_service = PredictionService.for_condition("sinusitis")
         hayfever_prediction_service = PredictionService.for_condition("hayfever")
-        notification_service = NotificationService()
 
         # Get all locations
         locations = Location.objects.all()
         self.stdout.write(f"Found {len(locations)} locations to check")
-
-        migraine_predictions = {}
-        sinusitis_predictions = {}
-        hayfever_predictions = {}
 
         if not options["notify_only"]:
             # Update forecasts for all locations
@@ -114,7 +109,6 @@ class Command(SilentStdoutCommand):
                     probability, prediction = migraine_prediction_service.predict(
                         location=location, user=user
                     )
-                    migraine_predictions[location.id] = {"probability": probability, "prediction": prediction}
                     if prediction:
                         self.stdout.write(f"Migraine Prediction: {probability} probability for {location}")
                     else:
@@ -128,7 +122,6 @@ class Command(SilentStdoutCommand):
                     sin_probability, sin_prediction = sinusitis_prediction_service.predict(
                         location=location, user=user
                     )
-                    sinusitis_predictions[location.id] = {"probability": sin_probability, "prediction": sin_prediction}
                     if sin_prediction:
                         self.stdout.write(f"Sinusitis Prediction: {sin_probability} probability for {location}")
                     else:
@@ -142,7 +135,6 @@ class Command(SilentStdoutCommand):
                     hf_probability, hf_prediction = hayfever_prediction_service.predict(
                         location=location, user=user
                     )
-                    hayfever_predictions[location.id] = {"probability": hf_probability, "prediction": hf_prediction}
                     if hf_prediction:
                         self.stdout.write(f"Hay Fever Prediction: {hf_probability} probability for {location}")
                     else:
@@ -152,9 +144,8 @@ class Command(SilentStdoutCommand):
 
         # Send combined notifications (single email for users with any predictions)
         self.stdout.write("Checking and sending combined notifications...")
-        notifications_sent = notification_service.check_and_send_combined_notifications(
-            migraine_predictions, sinusitis_predictions, hayfever_predictions
-        )
+        plan = NotificationIntake().run_immediate()
+        notifications_sent = plan.sent_count
         self.stdout.write(
             self.style.SUCCESS(f"[{timezone.now()}] Check completed. Total notifications sent: {notifications_sent}")
         )
@@ -185,13 +176,10 @@ class Command(SilentStdoutCommand):
             self.stdout.write(self.style.ERROR("No locations found. Please create at least one location first."))
             return
 
-        notification_service = NotificationService()
         now = timezone.now()
 
-        # Create test predictions grouped by location
-        migraine_predictions = {}
-        sinusitis_predictions = {}
-        hayfever_predictions = {}
+        # Create exact persisted test predictions for NotificationIntake.
+        test_predictions = []
 
         for location in locations:
             user = location.user
@@ -242,10 +230,7 @@ class Command(SilentStdoutCommand):
                     weather_factors=weather_factors,
                     notification_sent=False,
                 )
-                migraine_predictions[location.id] = {
-                    "probability": test_level,
-                    "prediction": migraine_prediction,
-                }
+                test_predictions.append(migraine_prediction)
                 self.stdout.write(f"  Created test MIGRAINE {test_level} prediction")
 
             # Create sinusitis test prediction if requested
@@ -260,10 +245,7 @@ class Command(SilentStdoutCommand):
                     weather_factors=weather_factors,
                     notification_sent=False,
                 )
-                sinusitis_predictions[location.id] = {
-                    "probability": test_level,
-                    "prediction": sinusitis_prediction,
-                }
+                test_predictions.append(sinusitis_prediction)
                 self.stdout.write(f"  Created test SINUSITIS {test_level} prediction")
 
             # Create hay fever test prediction if requested
@@ -278,19 +260,15 @@ class Command(SilentStdoutCommand):
                     weather_factors=weather_factors,
                     notification_sent=False,
                 )
-                hayfever_predictions[location.id] = {
-                    "probability": test_level,
-                    "prediction": hayfever_prediction,
-                }
+                test_predictions.append(hayfever_prediction)
                 self.stdout.write(f"  Created test HAY FEVER {test_level} prediction")
 
         # Send combined notifications using the production notification system
         # This respects user-level daily notification limits
         if test_level != "NONE":
             self.stdout.write("\nSending combined test notifications...")
-            notifications_sent = notification_service.check_and_send_combined_notifications(
-                migraine_predictions, sinusitis_predictions, hayfever_predictions
-            )
+            plan = NotificationIntake().run_immediate_for_predictions(test_predictions)
+            notifications_sent = plan.sent_count
 
             if notifications_sent > 0:
                 self.stdout.write(
