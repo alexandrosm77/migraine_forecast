@@ -157,3 +157,61 @@ class LLMContextBuilderTest(TestCase):
         # Should contain temperature and pressure data
         self.assertIn("°C", context)
         self.assertIn("hPa", context)
+
+    def test_pollen_bands_are_species_specific(self):
+        """Same count must band differently per species (weeds are potent at low counts)"""
+        self.assertEqual(self.builder_low._pollen_band("ragweed", 25.0), "high")
+        self.assertEqual(self.builder_low._pollen_band("birch", 25.0), "low")
+        self.assertEqual(self.builder_low._pollen_band("grass", 0.0), "none")
+        self.assertEqual(self.builder_low._pollen_band("grass", 40.0), "moderate")
+        self.assertEqual(self.builder_low._pollen_band("grass", 200.0), "very high")
+
+    def test_hayfever_pollen_reports_band_not_peak(self):
+        """Pollen summary must label the band and avoid calling the window max a 'peak'"""
+        aq = [self._aq_row(grass_pollen=3.0, birch_pollen=1.0)]
+        summary = self.builder_low._format_hayfever_pollen(aq)
+        self.assertIn("Highest pollen band in this window: low", summary)
+        self.assertIn("grass low (max 3", summary)
+        self.assertNotIn("peak", summary)
+
+    def test_hayfever_pollen_unavailable_outside_eu(self):
+        """All-null pollen must be reported as unavailable rather than banded as none"""
+        summary = self.builder_low._format_hayfever_pollen([self._aq_row()])
+        self.assertIn("unavailable", summary)
+
+    def test_hayfever_rain_line_states_washout(self):
+        """Rain gets its own line so the wash-out signal is not buried"""
+        line = self.builder_low._format_hayfever_rain(self.forecasts)
+        self.assertIn("0.0 mm", line)
+        self.assertIn("no rain", line)
+
+        for forecast in self.forecasts:
+            forecast.precipitation = 1.0
+        line = self.builder_low._format_hayfever_rain(self.forecasts)
+        self.assertIn("6.0 mm", line)
+        self.assertIn("washes pollen out", line)
+
+    def test_hayfever_species_context_is_labelled_as_calendar(self):
+        """The seasonal calendar must not be presented as current pollen intensity"""
+        from django.utils import timezone as tz
+
+        context = self.builder_low._format_hayfever_species_context(51.5, tz.now())
+        self.assertIn("calendar", context.lower())
+        self.assertNotIn("peak", context.lower())
+
+    def _aq_row(self, **pollen):
+        """Build an unsaved AirQualityForecast carrying only the given pollen fields."""
+        from forecast.models import AirQualityForecast
+
+        now = timezone.now()
+        return AirQualityForecast(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            pm2_5=6.0,
+            pm10=12.0,
+            ozone=55.0,
+            nitrogen_dioxide=20.0,
+            european_aqi=50.0,
+            **pollen,
+        )

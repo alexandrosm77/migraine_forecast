@@ -67,6 +67,21 @@ class LLMContextBuilder:
         },
     }
 
+    # Per-species severity bands in grains/m³, as (moderate_from, high_from, very_high_from).
+    # Counts below moderate_from are "low"; exactly 0 is reported as "none".
+    # Species differ by an order of magnitude, so a single shared cut-off would
+    # mislabel weed pollen as harmless and tree pollen as severe.
+    POLLEN_BANDS = {
+        "alder": (30.0, 80.0, 200.0),
+        "birch": (30.0, 80.0, 200.0),
+        "grass": (30.0, 50.0, 150.0),
+        "olive": (30.0, 80.0, 200.0),
+        "mugwort": (10.0, 30.0, 70.0),
+        "ragweed": (5.0, 20.0, 50.0),
+    }
+
+    POLLEN_BAND_ORDER = ("none", "low", "moderate", "high", "very high")
+
     # Pollen species seasonal context (Northern hemisphere peaks)
     # Values describe when each species is active; map to condition-type annotations in prompt
     POLLEN_SPECIES_SEASONS = {
@@ -151,6 +166,7 @@ class LLMContextBuilder:
             parts.append(self._format_hayfever_pollen(air_quality_forecasts))
             parts.append(self._format_air_quality(air_quality_forecasts))
             parts.append(self._format_hayfever_wind(forecasts))
+            parts.append(self._format_hayfever_rain(forecasts))
 
         # Weather comparison: past 24h vs forecast window
         if previous_forecasts:
@@ -285,25 +301,47 @@ class LLMContextBuilder:
                 active_species.append(species)
 
         if self.high_token_budget:
-            lines = ["## Pollen Season Context"]
+            lines = ["## Pollen Calendar Context"]
             lines.append(f"Hemisphere: {hemisphere} | Month: {now.strftime('%B')}")
+            lines.append(
+                "This section is the calendar only. It says which species can be airborne "
+                "this month, not how much is airborne now — use the measured counts for that."
+            )
             if active_species:
                 lines.append(
-                    "Species currently in/near peak: " + ", ".join(active_species)
+                    "Species whose season covers this month: " + ", ".join(active_species)
                 )
             else:
-                lines.append("No major species in peak this month (baseline exposure possible)")
+                lines.append("No major species in season this month")
             # Include full species calendar for LLM reference
             for key, desc in self.POLLEN_SPECIES_SEASONS.items():
                 marker = " ←" if key in active_species else ""
                 lines.append(f"- {key}: {desc}{marker}")
             return "\n".join(lines)
 
-        active_str = ", ".join(active_species) if active_species else "none in peak"
-        return f"Pollen season ({hemisphere[:1].upper()}H, {now.strftime('%b')}): {active_str}"
+        active_str = ", ".join(active_species) if active_species else "none"
+        return (
+            f"Pollen calendar ({hemisphere[:1].upper()}H, {now.strftime('%b')}), "
+            f"species in season: {active_str} (calendar only, not current intensity)"
+        )
+
+    def _pollen_band(self, species: str, value: float) -> str:
+        """Map a species count in grains/m³ onto its severity band."""
+        if value <= 0:
+            return "none"
+        moderate_from, high_from, very_high_from = self.POLLEN_BANDS.get(
+            species, (30.0, 50.0, 150.0)
+        )
+        if value >= very_high_from:
+            return "very high"
+        if value >= high_from:
+            return "high"
+        if value >= moderate_from:
+            return "moderate"
+        return "low"
 
     def _format_hayfever_pollen(self, air_quality_forecasts: List[Any]) -> str:
-        """Format per-species pollen peaks and current counts.
+        """Format per-species pollen maxima, current counts and severity bands.
 
         Returns a table in high-token mode and a compact summary in low-token mode.
         When all pollen fields are null (non-EU), returns a message indicating that.
@@ -311,7 +349,7 @@ class LLMContextBuilder:
         if not air_quality_forecasts:
             return "Pollen data: unavailable (no air-quality forecasts)"
 
-        # Compute per-species peak and average
+        # Compute per-species window maximum and average
         per_species = {}
         any_value = False
         for label, field in self.POLLEN_FIELDS:
@@ -319,10 +357,12 @@ class LLMContextBuilder:
             values = [v for v in values if v is not None]
             if values:
                 any_value = True
+                window_max = float(max(values))
                 per_species[label] = {
-                    "peak": float(max(values)),
+                    "max": window_max,
                     "avg": float(np.mean(values)),
                     "current": float(values[0]),
+                    "band": self._pollen_band(label, window_max),
                 }
             else:
                 per_species[label] = None
@@ -330,26 +370,34 @@ class LLMContextBuilder:
         if not any_value:
             return "Pollen data: unavailable for this location (outside EU coverage)"
 
+        available = [(k, v) for k, v in per_species.items() if v is not None]
+        available.sort(key=lambda x: self.POLLEN_BAND_ORDER.index(x[1]["band"]), reverse=True)
+        worst_species, worst_stats = available[0]
+        headline = (
+            f"Highest pollen band in this window: {worst_stats['band']} ({worst_species})"
+        )
+
         if self.high_token_budget:
-            lines = ["## Pollen (grains/m³)"]
-            lines.append("Species  | Current | Avg  | Peak")
-            lines.append("---------|---------|------|------")
+            lines = ["## Pollen (grains/m³, max/avg/current over the forecast window)"]
+            lines.append(headline)
+            lines.append("Species  | Current | Avg  | Max  | Band")
+            lines.append("---------|---------|------|------|----------")
             for label, stats in per_species.items():
                 if stats is None:
-                    lines.append(f"{label:<8} | n/a     | n/a  | n/a")
+                    lines.append(f"{label:<8} | n/a     | n/a  | n/a  | no data")
                 else:
                     lines.append(
                         f"{label:<8} | {stats['current']:>7.1f} | "
-                        f"{stats['avg']:>4.1f} | {stats['peak']:>4.1f}"
+                        f"{stats['avg']:>4.1f} | {stats['max']:>4.1f} | {stats['band']}"
                     )
             return "\n".join(lines)
 
-        # Compact: top-2 species by peak
-        available = [(k, v) for k, v in per_species.items() if v is not None]
-        available.sort(key=lambda x: x[1]["peak"], reverse=True)
-        top = available[:2]
-        parts = [f"{k} peak {v['peak']:.0f} (now {v['current']:.0f})" for k, v in top]
-        return "Pollen: " + ", ".join(parts) if parts else "Pollen: low across all species"
+        # Compact: the two worst-banded species
+        parts = [
+            f"{k} {v['band']} (max {v['max']:.0f}, now {v['current']:.0f})"
+            for k, v in available[:2]
+        ]
+        return f"{headline}\nPollen grains/m³: " + ", ".join(parts)
 
     def _format_air_quality(self, air_quality_forecasts: List[Any]) -> str:
         """Format air-quality summary (PM2.5, PM10, ozone, NO2)."""
@@ -401,6 +449,24 @@ class LLMContextBuilder:
                 f"(higher wind disperses pollen further)"
             )
         return f"Wind: avg {avg_wind:.1f} m/s, max {max_wind:.1f} m/s"
+
+    def _format_hayfever_rain(self, forecasts: List[Any]) -> str:
+        """Format rainfall in the window (pollen wash-out driver)."""
+        if not forecasts:
+            return ""
+        precs = [f.precipitation for f in forecasts if getattr(f, "precipitation", None) is not None]
+        if not precs:
+            return ""
+        total = float(sum(precs))
+        if total <= 0:
+            note = "no rain to wash pollen out of the air"
+        elif total < 0.5:
+            note = "negligible rain, little wash-out"
+        else:
+            note = "rain is falling in this window and washes pollen out of the air"
+        if self.high_token_budget:
+            return f"## Rain\nTotal precipitation in window: {total:.1f} mm — {note}"
+        return f"Rain in window: {total:.1f} mm total — {note}"
 
     def _format_seasonal_health_context(
         self,
