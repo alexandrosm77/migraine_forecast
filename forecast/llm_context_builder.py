@@ -82,6 +82,34 @@ class LLMContextBuilder:
 
     POLLEN_BAND_ORDER = ("none", "low", "moderate", "high", "very high")
 
+    # Air-quality severity bands as (moderate_from, high_from), in µg/m³, derived from
+    # the WHO 2021 air-quality guidelines and EU AQI breakpoints. Without these the
+    # model treats any number it is shown as ordinary and never escalates on pollution.
+    AQ_BANDS = {
+        "pm2_5": (15.0, 35.0),
+        "pm10": (45.0, 75.0),
+        "ozone": (100.0, 160.0),
+        "nitrogen_dioxide": (25.0, 100.0),
+        "dust": (20.0, 50.0),
+    }
+
+    AQ_BAND_ORDER = ("low", "moderate", "high")
+
+    # Pressure change bands in hPa, as (moderate_from, high_from). Migraine sufferers
+    # react to the rate of change rather than the absolute level, so the same magnitude
+    # means different things over a few hours than over a full day.
+    PRESSURE_CHANGE_BANDS = (2.0, 5.0)
+    PRESSURE_CHANGE_BANDS_24H = (4.0, 8.0)
+
+    # Relative humidity bands, in %, that matter for sinus mucosa.
+    DRY_AIR_BELOW = 35.0
+    HUMID_AIR_ABOVE = 80.0
+
+    # Absolute temperatures, in °C, that stress the body regardless of any change.
+    HEAT_STRESS_FROM = 32.0
+    SEVERE_HEAT_FROM = 37.0
+    COLD_STRESS_BELOW = -5.0
+
     # Pollen species seasonal context (Northern hemisphere peaks)
     # Values describe when each species is active; map to condition-type annotations in prompt
     POLLEN_SPECIES_SEASONS = {
@@ -152,9 +180,18 @@ class LLMContextBuilder:
         # Diurnal context (expected temperature variation)
         parts.append(self._format_diurnal_context(latitude, season, forecasts))
 
-        # Sinusitis-specific: pollen and mold context
+        # Sinusitis-specific: pollen and mold context, plus mucosal humidity
         if condition_type == "sinusitis":
-            parts.append(self._format_seasonal_health_context(latitude, now, forecasts))
+            parts.append(
+                self._format_seasonal_health_context(
+                    latitude, now, forecasts, air_quality_forecasts
+                )
+            )
+            parts.append(self._format_mucosal_humidity(forecasts))
+
+        # Migraine-specific: absolute thermal stress, independent of any change
+        if condition_type == "migraine":
+            parts.append(self._format_thermal_stress(forecasts))
 
         # Air-quality summary for conditions where AQ is a known trigger
         if condition_type in ("migraine", "sinusitis") and air_quality_forecasts:
@@ -399,8 +436,24 @@ class LLMContextBuilder:
         ]
         return f"{headline}\nPollen grains/m³: " + ", ".join(parts)
 
+    def _aq_band(self, field: str, value: float) -> str:
+        """Map a pollutant concentration onto low/moderate/high against WHO guidance."""
+        bands = self.AQ_BANDS.get(field)
+        if bands is None:
+            return "low"
+        moderate_from, high_from = bands
+        if value >= high_from:
+            return "high"
+        if value >= moderate_from:
+            return "moderate"
+        return "low"
+
     def _format_air_quality(self, air_quality_forecasts: List[Any]) -> str:
-        """Format air-quality summary (PM2.5, PM10, ozone, NO2)."""
+        """Format air-quality summary with a severity band per pollutant.
+
+        The bands are what let the model tell genuinely polluted air from ordinary
+        air; raw concentrations alone read as unremarkable to it.
+        """
         if not air_quality_forecasts:
             return ""
 
@@ -409,6 +462,7 @@ class LLMContextBuilder:
             "pm10": "PM10 µg/m³",
             "ozone": "Ozone µg/m³",
             "nitrogen_dioxide": "NO₂ µg/m³",
+            "dust": "Dust µg/m³",
             "european_aqi": "EU AQI",
         }
         summary = {}
@@ -416,23 +470,46 @@ class LLMContextBuilder:
             values = [getattr(f, field, None) for f in air_quality_forecasts]
             values = [v for v in values if v is not None]
             if values:
-                summary[field] = {"avg": float(np.mean(values)), "max": float(max(values))}
+                max_value = float(max(values))
+                summary[field] = {
+                    "avg": float(np.mean(values)),
+                    "max": max_value,
+                    "band": self._aq_band(field, max_value),
+                }
 
         if not summary:
             return "Air quality: no data"
 
+        banded = [(f, s) for f, s in summary.items() if f in self.AQ_BANDS]
+        worst = max(
+            banded,
+            key=lambda item: self.AQ_BAND_ORDER.index(item[1]["band"]),
+            default=None,
+        )
+        if worst is None or worst[1]["band"] == "low":
+            headline = "Overall air quality: clean — not a trigger in this window"
+        else:
+            headline = (
+                f"Overall air quality: {worst[1]['band']} "
+                f"({metrics[worst[0]].split()[0]} at {worst[1]['max']:.0f} µg/m³)"
+            )
+
         if self.high_token_budget:
-            lines = ["## Air Quality"]
+            lines = ["## Air Quality", headline]
             for field, label in metrics.items():
                 if field in summary:
-                    lines.append(f"{label}: avg {summary[field]['avg']:.1f}, max {summary[field]['max']:.1f}")
+                    stats = summary[field]
+                    band = f" — {stats['band']}" if field in self.AQ_BANDS else ""
+                    lines.append(f"{label}: avg {stats['avg']:.1f}, max {stats['max']:.1f}{band}")
             return "\n".join(lines)
 
         parts = []
         for field, label in metrics.items():
             if field in summary:
-                parts.append(f"{label.split()[0]} {summary[field]['avg']:.0f}/{summary[field]['max']:.0f}")
-        return "AQ (avg/max): " + ", ".join(parts)
+                stats = summary[field]
+                band = f" {stats['band']}" if field in self.AQ_BANDS else ""
+                parts.append(f"{label.split()[0]} {stats['avg']:.0f}/{stats['max']:.0f}{band}")
+        return f"{headline}\nAQ (avg/max, band on max): " + ", ".join(parts)
 
     def _format_hayfever_wind(self, forecasts: List[Any]) -> str:
         """Format wind summary (pollen dispersal driver)."""
@@ -473,11 +550,16 @@ class LLMContextBuilder:
         latitude: float,
         now: datetime,
         forecasts: List[Any],
+        air_quality_forecasts: Optional[List[Any]] = None,
     ) -> str:
-        """Format sinusitis-specific seasonal context (pollen, mold, heating)."""
+        """Format sinusitis-specific seasonal context (pollen, mold, heating).
+
+        Pollen is reported from measured counts whenever they are available; the
+        month-based season is only a fallback and is labelled as such, because a
+        calendar month says nothing about how much pollen is airborne now.
+        """
         hemisphere = "northern" if latitude >= 0 else "southern"
         month = now.month
-        pollen_level = self.POLLEN_SEASONS[hemisphere].get(month, "moderate")
 
         # Calculate average humidity and temp for mold risk
         if forecasts:
@@ -493,13 +575,21 @@ class LLMContextBuilder:
         # Indoor heating assessment
         heating_status = self._assess_heating_status(avg_temp, month, hemisphere)
 
+        measured_band = self._measured_pollen_band(air_quality_forecasts)
+
         if self.high_token_budget:
-            pollen_desc = {
-                "low": "Low pollen season",
-                "moderate": "Moderate pollen season",
-                "high": "High pollen season - elevated allergen exposure",
-                "very_high": "Peak pollen season - high allergen exposure",
-            }.get(pollen_level, "Unknown pollen level")
+            if measured_band is not None:
+                pollen_desc = (
+                    f"{measured_band} (measured counts for this window)"
+                    if measured_band != "none"
+                    else "none airborne (measured counts for this window)"
+                )
+            else:
+                season_level = self.POLLEN_SEASONS[hemisphere].get(month, "moderate")
+                pollen_desc = (
+                    f"not measured here; calendar alone suggests the {season_level.replace('_', ' ')} "
+                    "part of the season, which is not evidence of current exposure"
+                )
 
             return (
                 f"## Seasonal Health Context\n"
@@ -508,10 +598,80 @@ class LLMContextBuilder:
                 f"Indoor heating: {heating_status}"
             )
         else:
+            if measured_band is not None:
+                pollen_part = f"Pollen (measured): {measured_band}"
+            else:
+                season_level = self.POLLEN_SEASONS[hemisphere].get(month, "moderate")
+                pollen_part = f"Pollen: not measured (calendar season only: {season_level})"
             return (
-                f"Pollen: {pollen_level} | Mold: {mold_risk.split(' ')[0].lower()} "
+                f"{pollen_part} | Mold: {mold_risk.split(' ')[0].lower()} "
                 f"| Heating: {heating_status.split(' ')[0].lower()}"
             )
+
+    def _measured_pollen_band(self, air_quality_forecasts: Optional[List[Any]]) -> Optional[str]:
+        """Return the worst measured pollen band in the window, or None if unmeasured."""
+        if not air_quality_forecasts:
+            return None
+        worst_index = None
+        for label, field in self.POLLEN_FIELDS:
+            values = [getattr(f, field, None) for f in air_quality_forecasts]
+            values = [v for v in values if v is not None]
+            if not values:
+                continue
+            index = self.POLLEN_BAND_ORDER.index(self._pollen_band(label, float(max(values))))
+            worst_index = index if worst_index is None else max(worst_index, index)
+        if worst_index is None:
+            return None
+        return self.POLLEN_BAND_ORDER[worst_index]
+
+    def _format_mucosal_humidity(self, forecasts: List[Any]) -> str:
+        """Flag humidity extremes, which dry out or congest the sinus lining.
+
+        Reported separately because a dry window reads as "stable" in every other
+        section, so dryness would otherwise go unnoticed.
+        """
+        if not forecasts:
+            return ""
+        humidities = [f.humidity for f in forecasts if getattr(f, "humidity", None) is not None]
+        if not humidities:
+            return ""
+        avg_humidity = float(np.mean(humidities))
+        if avg_humidity < self.DRY_AIR_BELOW:
+            note = "dry air, which dries the sinus lining and impairs mucus clearance"
+        elif avg_humidity > self.HUMID_AIR_ABOVE:
+            note = "very humid air, which promotes mold and dust-mite allergens and congestion"
+        else:
+            note = "comfortable range for the sinus lining"
+        if self.high_token_budget:
+            return f"## Sinus Humidity\nAverage humidity {avg_humidity:.0f}% — {note}"
+        return f"Sinus humidity: avg {avg_humidity:.0f}% — {note}"
+
+    def _format_thermal_stress(self, forecasts: List[Any]) -> str:
+        """Flag absolute heat or cold, which triggers migraine without any change.
+
+        Stated explicitly because every other section describes change, so a
+        steady 36°C window otherwise reads as entirely benign.
+        """
+        if not forecasts:
+            return ""
+        temps = [f.temperature for f in forecasts if getattr(f, "temperature", None) is not None]
+        if not temps:
+            return ""
+        avg_temp = float(np.mean(temps))
+        max_temp = float(max(temps))
+        if max_temp >= self.SEVERE_HEAT_FROM:
+            note = "severe heat, a strong trigger in itself"
+        elif max_temp >= self.HEAT_STRESS_FROM:
+            note = "heat stress, a trigger in itself even without any change"
+        elif min(temps) <= self.COLD_STRESS_BELOW:
+            note = "severe cold, a trigger in itself even without any change"
+        else:
+            note = "no thermal extreme"
+        if self.high_token_budget:
+            return (
+                f"## Thermal Stress\nAverage {avg_temp:.1f}°C, peak {max_temp:.1f}°C — {note}"
+            )
+        return f"Thermal stress: avg {avg_temp:.1f}°C, max {max_temp:.1f}°C — {note}"
 
     def _assess_mold_risk(self, humidity: float, temperature: float) -> str:
         """Assess mold risk based on humidity and temperature."""
@@ -623,12 +783,13 @@ class LLMContextBuilder:
                 temp_note = " (major change)" if abs(temp_change) >= 8 else " (significant)"
             parts.append(f"Temp: {avg_past_temp:.1f}°C → {avg_forecast_temp:.1f}°C{temp_note}")
 
-            # Pressure with change indicator
+            # Pressure with change indicator, banded on the 24h timescale
             pressure_note = ""
-            if pressure_change <= -5:
-                pressure_note = " (dropping)"
-            elif pressure_change >= 5:
-                pressure_note = " (rising)"
+            if abs(pressure_change) >= self.PRESSURE_CHANGE_BANDS_24H[0]:
+                pressure_note = f" ({pressure_change:+.1f}hPa over 24h, "
+                pressure_note += (
+                    self._describe_pressure_change(pressure_change, over_24h=True) + ")"
+                )
             parts.append(f"Pressure: {avg_past_pressure:.1f} → {avg_forecast_pressure:.1f}hPa{pressure_note}")
 
             # Humidity
@@ -750,17 +911,38 @@ class LLMContextBuilder:
         temp_stability = "stable" if max_temp_change < 1.5 else "variable"
         pressure_stability = "stable" if max_pressure_change < 2 else "variable"
 
+        # The cumulative signed change across the window is the migraine-relevant
+        # figure. Max hourly delta alone hides a steady multi-hour fall.
+        pressure_note = self._describe_pressure_change(pressure_trend)
+
         if self.high_token_budget:
             lines = ["## Stability Within Forecast Window"]
             lines.append(f"Max hourly temp change: {max_temp_change:.1f}°C ({temp_stability})")
             lines.append(f"Max hourly pressure change: {max_pressure_change:.1f}hPa ({pressure_stability})")
+            lines.append(
+                f"Pressure change across the whole window: {pressure_trend:+.1f}hPa — {pressure_note}"
+            )
             lines.append(f"Overall trend: Temperature {trend_word(temp_trend)}, pressure {trend_word(pressure_trend)}")
             return "\n".join(lines)
         else:
             return (
                 f"Window stability: Δ{max_temp_change:.1f}°C/hr temp, Δ{max_pressure_change:.1f}hPa/hr pressure "
-                f"({temp_stability})"
+                f"({temp_stability})\n"
+                f"Pressure across window: {pressure_trend:+.1f}hPa — {pressure_note}"
             )
+
+    def _describe_pressure_change(self, change: float, over_24h: bool = False) -> str:
+        """Band a signed pressure change into a severity phrase for its timescale."""
+        moderate_from, high_from = (
+            self.PRESSURE_CHANGE_BANDS_24H if over_24h else self.PRESSURE_CHANGE_BANDS
+        )
+        magnitude = abs(change)
+        if magnitude < moderate_from:
+            return "little pressure movement"
+        direction = "fall" if change < 0 else "rise"
+        if magnitude >= high_from:
+            return f"large {direction}, a strong trigger for pressure-sensitive people"
+        return f"moderate {direction}, perceptible to pressure-sensitive people"
 
     def _format_24h_outlook(self, outlook_forecasts: List[Any]) -> str:
         """

@@ -199,19 +199,102 @@ class LLMContextBuilderTest(TestCase):
         self.assertIn("calendar", context.lower())
         self.assertNotIn("peak", context.lower())
 
-    def _aq_row(self, **pollen):
-        """Build an unsaved AirQualityForecast carrying only the given pollen fields."""
+    def test_air_quality_bands_against_who_guidance(self):
+        """Pollutants must band independently, since their guideline levels differ"""
+        self.assertEqual(self.builder_low._aq_band("pm2_5", 5.0), "low")
+        self.assertEqual(self.builder_low._aq_band("pm2_5", 20.0), "moderate")
+        self.assertEqual(self.builder_low._aq_band("pm2_5", 45.0), "high")
+        # 50 µg/m³ is moderate for PM10 but high for dust.
+        self.assertEqual(self.builder_low._aq_band("pm10", 50.0), "moderate")
+        self.assertEqual(self.builder_low._aq_band("dust", 50.0), "high")
+
+    def test_air_quality_headline_reports_worst_band(self):
+        """The headline must name the worst pollutant so clean air reads as clean"""
+        clean = self.builder_low._format_air_quality([self._aq_row()])
+        self.assertIn("clean", clean)
+
+        dirty = self.builder_low._format_air_quality(
+            [self._aq_row(pm2_5=45.0, pm10=90.0, ozone=160.0)]
+        )
+        self.assertIn("Overall air quality: high", dirty)
+        self.assertIn("PM2.5 45", dirty)
+        self.assertIn("Ozone 160/160 high", dirty)
+
+    def test_pressure_change_bands_differ_by_timescale(self):
+        """2 hPa over a few hours is a trigger; over a full day it is noise"""
+        builder = self.builder_low
+        self.assertIn("little", builder._describe_pressure_change(-1.0))
+        self.assertIn("moderate fall", builder._describe_pressure_change(-3.0))
+        self.assertIn("large fall", builder._describe_pressure_change(-6.0))
+        self.assertIn("little", builder._describe_pressure_change(-3.0, over_24h=True))
+        self.assertIn("moderate rise", builder._describe_pressure_change(5.0, over_24h=True))
+        self.assertIn("large fall", builder._describe_pressure_change(-9.0, over_24h=True))
+
+    def test_window_stability_reports_cumulative_pressure_change(self):
+        """A steady multi-hour drift must be visible, not hidden behind hourly deltas"""
+        line = self.builder_low._format_window_stability(self.forecasts)
+        self.assertIn("Pressure across window", line)
+        self.assertIn("-2.5hPa", line)
+        self.assertIn("moderate fall", line)
+
+    def test_thermal_stress_flags_absolute_extremes(self):
+        """Absolute heat is a migraine trigger even when nothing changes"""
+        line = self.builder_low._format_thermal_stress(self.forecasts)
+        self.assertIn("no thermal extreme", line)
+
+        for forecast in self.forecasts:
+            forecast.temperature = 36.0
+        self.assertIn("heat stress", self.builder_low._format_thermal_stress(self.forecasts))
+
+        for forecast in self.forecasts:
+            forecast.temperature = 38.0
+        self.assertIn("severe heat", self.builder_low._format_thermal_stress(self.forecasts))
+
+    def test_mucosal_humidity_flags_dryness(self):
+        """Dry air must be flagged, since every other section reads it as stable"""
+        line = self.builder_low._format_mucosal_humidity(self.forecasts)
+        self.assertIn("comfortable", line)
+
+        for forecast in self.forecasts:
+            forecast.humidity = 25
+        self.assertIn("dry air", self.builder_low._format_mucosal_humidity(self.forecasts))
+
+        for forecast in self.forecasts:
+            forecast.humidity = 92
+        self.assertIn("very humid", self.builder_low._format_mucosal_humidity(self.forecasts))
+
+    def test_sinusitis_pollen_uses_measurement_over_calendar(self):
+        """A calendar month must never be reported as a present allergen load"""
+        from django.utils import timezone as tz
+
+        now = tz.now().replace(month=6)
+        measured = self.builder_low._format_seasonal_health_context(
+            51.5, now, self.forecasts, [self._aq_row(grass_pollen=0.0, birch_pollen=0.0)]
+        )
+        self.assertIn("Pollen (measured): none", measured)
+
+        unmeasured = self.builder_low._format_seasonal_health_context(
+            51.5, now, self.forecasts, [self._aq_row()]
+        )
+        self.assertIn("not measured", unmeasured)
+        self.assertIn("calendar season only", unmeasured)
+
+    def _aq_row(self, **overrides):
+        """Build an unsaved AirQualityForecast, overriding the given fields."""
         from forecast.models import AirQualityForecast
 
         now = timezone.now()
+        fields = {
+            "pm2_5": 6.0,
+            "pm10": 12.0,
+            "ozone": 55.0,
+            "nitrogen_dioxide": 20.0,
+            "european_aqi": 50.0,
+        }
+        fields.update(overrides)
         return AirQualityForecast(
             location=self.location,
             forecast_time=now,
             target_time=now + timedelta(hours=3),
-            pm2_5=6.0,
-            pm10=12.0,
-            ozone=55.0,
-            nitrogen_dioxide=20.0,
-            european_aqi=50.0,
-            **pollen,
+            **fields,
         )
