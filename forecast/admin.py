@@ -1,5 +1,5 @@
 # flake8: noqa
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin, GroupAdmin
 from django.contrib.auth.models import User, Group
 from django.db.models import JSONField
@@ -330,12 +330,47 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
+    actions = ("send_sample_migraine_alert", "send_sample_sinusitis_alert", "send_sample_hayfever_alert")
+
     def get_queryset(self, request):
         """Filter health profiles to show only the user's own profile unless they're a superuser."""
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
         return qs.filter(user=request.user)
+
+    def _send_sample_alerts(self, request, queryset, condition_type):
+        """Send a sample alert email of the given condition to each selected profile's user."""
+        from forecast.email_sender import EmailSender
+
+        sender = EmailSender()
+        sent, failed = [], []
+        for profile in queryset.select_related("user"):
+            if sender.send_sample_alert(profile.user, condition_type):
+                sent.append(profile.user.username)
+            else:
+                failed.append(profile.user.username)
+
+        if sent:
+            self.message_user(request, f"Sample {condition_type} alert sent to: {', '.join(sent)}.", messages.SUCCESS)
+        if failed:
+            self.message_user(
+                request,
+                f"Failed to send sample {condition_type} alert to: {', '.join(failed)}.",
+                messages.ERROR,
+            )
+
+    @admin.action(description="Send sample migraine alert email")
+    def send_sample_migraine_alert(self, request, queryset):
+        self._send_sample_alerts(request, queryset, "migraine")
+
+    @admin.action(description="Send sample sinusitis alert email")
+    def send_sample_sinusitis_alert(self, request, queryset):
+        self._send_sample_alerts(request, queryset, "sinusitis")
+
+    @admin.action(description="Send sample hay fever alert email")
+    def send_sample_hayfever_alert(self, request, queryset):
+        self._send_sample_alerts(request, queryset, "hayfever")
 
 
 @admin.register(NotificationLog)

@@ -1,10 +1,11 @@
 import logging
+from datetime import timedelta
 
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from django.utils import translation
+from django.utils import timezone, translation
 
 from sentry_sdk import capture_exception, capture_message, set_context, add_breadcrumb, set_tag
 
@@ -474,6 +475,110 @@ class EmailSender:
     # ------------------------------------------------------------------
     # Test email
     # ------------------------------------------------------------------
+
+    def send_sample_alert(self, user, condition_type="migraine"):
+        """
+        Send a sample alert email built from placeholder data.
+
+        Nothing is read from or written to the prediction tables, and the
+        notification verdict checks (severity threshold, quiet hours, daily
+        limits, idempotency) are bypassed so the email always goes out.
+
+        Returns:
+            bool: True if email was sent successfully, False otherwise
+        """
+        cfg = self._ALERT_CONFIG[condition_type]
+
+        if not user.email:
+            logger.warning(f"Cannot send sample {condition_type} alert to {user.username}: No email address")
+            return False
+
+        context = self._sample_context(user, condition_type)
+
+        user_language = self._prefs.get_user_language(user)
+        if user_language:
+            translation.activate(user_language)
+
+        try:
+            subject = f"[SAMPLE] HIGH {cfg['condition_display']} Alert for {context['location'].display_name}"
+            html_message = render_to_string(cfg["template"], context)
+            plain_message = strip_tags(html_message)
+        finally:
+            translation.deactivate()
+
+        try:
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            logger.info(f"Sent sample {condition_type} alert email to {user.email}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send sample {condition_type} alert email: {e}")
+            capture_exception(e)
+            return False
+
+    def _sample_context(self, user, condition_type):
+        """Build placeholder template context for a sample alert email."""
+        from .models import Location
+
+        start_time = timezone.now() + timedelta(hours=3)
+        location = user.locations.first() or Location(city="Athens", country="Greece", latitude=0.0, longitude=0.0)
+
+        context = {
+            "user": user,
+            "location": location,
+            "prediction": None,
+            "forecast": None,
+            "start_time": start_time,
+            "end_time": start_time + timedelta(hours=3),
+            "temperature": 24.0,
+            "humidity": 68.0,
+            "pressure": 1004.0,
+            "precipitation": 1.2,
+            "cloud_cover": 75.0,
+            "probability_level": "HIGH",
+            "weather_factors": {"total_score": 0.82, "pollen_summary": "Tree pollen: high"},
+            "detailed_factors": {
+                "contributing_factors_count": 2,
+                "total_score": 0.82,
+                "factors": [
+                    {
+                        "name": "Barometric Pressure Change",
+                        "score": 0.9,
+                        "weight": 0.35,
+                        "explanation": "Sample data: pressure is forecast to drop by 9 hPa over the next 6 hours.",
+                        "severity": "high",
+                    },
+                    {
+                        "name": "High Humidity",
+                        "score": 0.6,
+                        "weight": 0.2,
+                        "explanation": "Sample data: humidity rises to 68% during the alert window.",
+                        "severity": "medium",
+                    },
+                ],
+            },
+            "llm_analysis_text": (
+                "This is a SAMPLE alert sent from the admin interface. "
+                "No real forecast or prediction was used to produce it."
+            ),
+            "llm_rationale": "Sample rationale: a sharp pressure drop combined with rising humidity.",
+            "llm_prevention_tips": [
+                "This is a sample notification",
+                "Prevention tips normally come from the model",
+            ],
+            "show_full_detail": self._prefs.get_user_email_detail_level(user) == "FULL",
+        }
+
+        if condition_type == "hayfever":
+            context["pollen_available"] = True
+
+        return context
 
     @staticmethod
     def send_test_email(user_email):
