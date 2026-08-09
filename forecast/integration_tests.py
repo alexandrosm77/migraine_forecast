@@ -431,6 +431,7 @@ class EndToEndWorkflowTest(TestCase):
             "age": 35,
             "prior_conditions": "Occasional migraines, sensitive to weather changes",
             "email_notifications_enabled": True,
+            "email_detail_level": "BRIEF",
             "notification_mode": "IMMEDIATE",
             "notification_severity_threshold": "MEDIUM",
             "daily_notification_limit": 3,
