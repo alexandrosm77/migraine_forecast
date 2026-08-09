@@ -7,6 +7,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
+from forecast.email_sender import EmailSender
 from forecast.models import (
     HayFeverPrediction,
     Location,
@@ -371,3 +372,80 @@ class CheckMigraineProbabilityAdapterTest(TestCase):
         explicit_predictions = mock_intake_cls.return_value.run_immediate_for_predictions.call_args.args[0]
         self.assertEqual(len(explicit_predictions), 1)
         self.assertEqual(explicit_predictions[0].probability, "LOW")
+
+
+class EmailDetailLevelTest(TestCase):
+    """Alert emails honour the user's email_detail_level preference."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="detail", email="detail@example.com", password="pw")
+        self.profile = UserHealthProfile.objects.create(
+            user=self.user,
+            email_notifications_enabled=True,
+            notification_frequency_hours=0,
+        )
+        self.location = Location.objects.create(
+            user=self.user, city="Athens", country="GR", latitude=37.9838, longitude=23.7275
+        )
+        now = timezone.now()
+        self.forecast = WeatherForecast.objects.create(
+            location=self.location,
+            forecast_time=now,
+            target_time=now + timedelta(hours=3),
+            temperature=22.0,
+            humidity=55.0,
+            pressure=1015.0,
+            wind_speed=10.0,
+            precipitation=0.0,
+            cloud_cover=20.0,
+        )
+        self.prediction = MigrainePrediction.objects.create(
+            user=self.user,
+            location=self.location,
+            forecast=self.forecast,
+            target_time_start=now + timedelta(hours=3),
+            target_time_end=now + timedelta(hours=6),
+            probability="HIGH",
+            weather_factors={
+                "total_score": 0.8,
+                "pressure_change_score": 0.8,
+                "llm_analysis_text": "A sharp pressure drop is expected overnight.",
+                "llm_prevention_tips": ["Stay hydrated"],
+            },
+        )
+
+    def _send_and_capture_html(self, detail_level, mock_send_mail):
+        self.profile.email_detail_level = detail_level
+        self.profile.save()
+
+        self.assertTrue(EmailSender().send_migraine_alert(self.prediction))
+
+        return mock_send_mail.call_args.kwargs["html_message"]
+
+    @patch("forecast.email_sender.send_mail")
+    def test_brief_email_omits_weather_detail_and_tips(self, mock_send_mail):
+        html = self._send_and_capture_html("BRIEF", mock_send_mail)
+
+        self.assertIn("Athens", html)
+        self.assertIn("HIGH", html)
+        self.assertNotIn("Prevention Tips", html)
+        self.assertNotIn("Barometric Pressure", html)
+        self.assertNotIn("Stay hydrated", html)
+
+    @patch("forecast.email_sender.send_mail")
+    def test_full_email_includes_weather_detail_and_tips(self, mock_send_mail):
+        html = self._send_and_capture_html("FULL", mock_send_mail)
+
+        self.assertIn("Athens", html)
+        self.assertIn("HIGH", html)
+        self.assertIn("Prevention Tips", html)
+        self.assertIn("Stay hydrated", html)
+
+    @patch("forecast.email_sender.send_mail")
+    def test_brief_is_the_default_for_new_profiles(self, mock_send_mail):
+        self.assertEqual(self.profile.email_detail_level, "BRIEF")
+
+        self.assertTrue(EmailSender().send_migraine_alert(self.prediction))
+
+        html = mock_send_mail.call_args.kwargs["html_message"]
+        self.assertNotIn("Prevention Tips", html)

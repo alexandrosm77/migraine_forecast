@@ -219,7 +219,7 @@
                     <div class="time-window">
                         ⏰ {{ pred.target_time_start|date:"M j, g:i a" }} - {{ pred.target_time_end|date:"M j, g:i a" }}
                     </div>
-                    {% if pred.reasoning %}
+                    {% if show_full_detail and pred.reasoning %}
                     <div style="margin-top: 10px; font-size: 13px;">
                         <strong>Reasoning:</strong> {{ pred.reasoning|truncatewords:30 }}
                     </div>
@@ -241,7 +241,7 @@
                     <div class="time-window">
                         ⏰ {{ pred.target_time_start|date:"M j, g:i a" }} - {{ pred.target_time_end|date:"M j, g:i a" }}
                     </div>
-                    {% if pred.reasoning %}
+                    {% if show_full_detail and pred.reasoning %}
                     <div style="margin-top: 10px; font-size: 13px;">
                         <strong>Reasoning:</strong> {{ pred.reasoning|truncatewords:30 }}
                     </div>
@@ -263,7 +263,7 @@
                     <div class="time-window">
                         ⏰ {{ pred.target_time_start|date:"M j, g:i a" }} - {{ pred.target_time_end|date:"M j, g:i a" }}
                     </div>
-                    {% if pred.reasoning %}
+                    {% if show_full_detail and pred.reasoning %}
                     <div style="margin-top: 10px; font-size: 13px;">
                         <strong>Reasoning:</strong> {{ pred.reasoning|truncatewords:30 }}
                     </div>

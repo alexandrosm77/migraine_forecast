@@ -72,9 +72,11 @@
         {% if llm_analysis_text %}
         <div style="background-color: #f0fdf4; padding: 15px; border: 1px solid #bbf7d0; border-radius: 6px; margin: 15px 0;">
             <h3 style="margin-top: 0; color: #166534;">📊 Model Analysis</h3>
-            <p style="margin: 0;">{{ llm_analysis_text }}</p>
+            <p style="margin: 0;">{% if show_full_detail %}{{ llm_analysis_text }}{% else %}{{ llm_analysis_text|truncatewords:40 }}{% endif %}</p>
         </div>
         {% endif %}
+
+        {% if show_full_detail %}
 
         {% if llm_rationale %}
         <div style="background-color: #f7fee7; padding: 15px; border: 1px solid #d9f99d; border-radius: 6px; margin: 15px 0;">
@@ -133,6 +135,8 @@
                 <strong>Remember:</strong> These suggestions should not be considered medical advice. If symptoms persist or worsen, consult with your healthcare provider.
             </p>
         </div>
+
+        {% endif %}
 
         <p>Stay well,<br>
         The Kalliro Team</p>

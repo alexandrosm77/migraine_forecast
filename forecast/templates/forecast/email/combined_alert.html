@@ -116,9 +116,11 @@
             {% if loc.migraine_llm_analysis_text %}
             <div style="background-color: #e6f7ff; padding: 15px; border: 1px solid #91d5ff; border-radius: 6px; margin: 15px 0;">
                 <h3 style="margin-top: 0; color: #0050b3;">📊 Model Analysis</h3>
-                <p style="margin: 0;">{{ loc.migraine_llm_analysis_text }}</p>
+                <p style="margin: 0;">{% if show_full_detail %}{{ loc.migraine_llm_analysis_text }}{% else %}{{ loc.migraine_llm_analysis_text|truncatewords:40 }}{% endif %}</p>
             </div>
             {% endif %}
+
+            {% if show_full_detail %}
 
             {% if loc.migraine_llm_rationale %}
             <div style="background-color: #f0f5ff; padding: 15px; border: 1px solid #adc6ff; border-radius: 6px; margin: 15px 0;">
@@ -152,6 +154,8 @@
                 {% endif %}
             </div>
             {% endif %}
+
+            {% endif %}
         </div>
         {% endif %}
 
@@ -162,9 +166,11 @@
             {% if loc.sinusitis_llm_analysis_text %}
             <div style="background-color: #fff7e6; padding: 15px; border: 1px solid #ffd591; border-radius: 6px; margin: 15px 0;">
                 <h3 style="margin-top: 0; color: #ad6800;">📊 Model Analysis</h3>
-                <p style="margin: 0;">{{ loc.sinusitis_llm_analysis_text }}</p>
+                <p style="margin: 0;">{% if show_full_detail %}{{ loc.sinusitis_llm_analysis_text }}{% else %}{{ loc.sinusitis_llm_analysis_text|truncatewords:40 }}{% endif %}</p>
             </div>
             {% endif %}
+
+            {% if show_full_detail %}
 
             {% if loc.sinusitis_llm_rationale %}
             <div style="background-color: #fffbf0; padding: 15px; border: 1px solid #ffe7ba; border-radius: 6px; margin: 15px 0;">
@@ -198,6 +204,8 @@
                 {% endif %}
             </div>
             {% endif %}
+
+            {% endif %}
         </div>
         {% endif %}
 
@@ -205,7 +213,7 @@
         <div class="section hayfever-section">
             <h2 class="section-header">🌼 Hay Fever Alert - {{ loc.hayfever_probability_level }} Probability</h2>
 
-            {% if not loc.hayfever_pollen_available %}
+            {% if show_full_detail and not loc.hayfever_pollen_available %}
             <div style="background-color: #fef3c7; padding: 12px; border: 1px solid #fde68a; border-radius: 6px; margin: 15px 0;">
                 <p style="margin: 0; font-size: 14px; color: #92400e;">
                     ℹ️ Pollen-specific data is not available for this location. This forecast is based on weather drivers
@@ -217,9 +225,11 @@
             {% if loc.hayfever_llm_analysis_text %}
             <div style="background-color: #f0fdf4; padding: 15px; border: 1px solid #bbf7d0; border-radius: 6px; margin: 15px 0;">
                 <h3 style="margin-top: 0; color: #166534;">📊 Model Analysis</h3>
-                <p style="margin: 0;">{{ loc.hayfever_llm_analysis_text }}</p>
+                <p style="margin: 0;">{% if show_full_detail %}{{ loc.hayfever_llm_analysis_text }}{% else %}{{ loc.hayfever_llm_analysis_text|truncatewords:40 }}{% endif %}</p>
             </div>
             {% endif %}
+
+            {% if show_full_detail %}
 
             {% if loc.hayfever_llm_rationale %}
             <div style="background-color: #f7fee7; padding: 15px; border: 1px solid #d9f99d; border-radius: 6px; margin: 15px 0;">
@@ -237,10 +247,12 @@
                 {% if loc.hayfever_llm_analysis_text %}<br><span style="font-size: 12px; color: #666;">(Determined by AI analysis)</span>{% endif %}</p>
                 {% endif %}
             </div>
+
+            {% endif %}
         </div>
         {% endif %}
 
-        {% if loc.forecast %}
+        {% if show_full_detail and loc.forecast %}
         <div class="weather-data">
             <h4 style="margin-top: 0;">Weather Forecast{% if location_count > 1 %} for {{ loc.location.city }}{% endif %}:</h4>
             <div class="weather-item"><strong>Temperature:</strong> {{ loc.forecast.temperature }}°C</div>
@@ -253,6 +265,7 @@
 
         {% endfor %}
 
+        {% if show_full_detail %}
         <div style="background-color: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 5px; border: 2px solid #86efac;">
             <h3 style="margin: 0 0 15px 0; color: #166534;">💡 Prevention Tips</h3>
 
@@ -338,7 +351,8 @@
                 <strong>Remember:</strong> These suggestions should not be considered medical advice. If symptoms persist or worsen, consult with your healthcare provider.
             </p>
         </div>
-        
+        {% endif %}
+
         <p>Stay well,<br>
         The Kalliro Team</p>
     </div>

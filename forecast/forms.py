@@ -26,6 +26,7 @@ class UserHealthProfileForm(forms.ModelForm):
             "age",
             "prior_conditions",
             "email_notifications_enabled",
+            "email_detail_level",
             "notification_mode",
             "digest_time",
             "notification_severity_threshold",
@@ -78,6 +79,11 @@ class UserHealthProfileForm(forms.ModelForm):
                 }
             ),
             "notification_mode": forms.Select(
+                attrs={
+                    "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
+                }
+            ),
+            "email_detail_level": forms.Select(
                 attrs={
                     "class": "form-select block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100",  # noqa: E501
                 }

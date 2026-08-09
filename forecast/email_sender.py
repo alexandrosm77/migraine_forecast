@@ -137,6 +137,7 @@ class EmailSender:
             "llm_analysis_text": weather_factors.get("llm_analysis_text"),
             "llm_rationale": (weather_factors.get("llm", {}) or {}).get("detail", {}).get("raw", {}).get("rationale"),
             "llm_prevention_tips": weather_factors.get("llm_prevention_tips") or [],
+            "show_full_detail": self._prefs.get_user_email_detail_level(user) == "FULL",
         }
 
         if condition_type == "hayfever":
@@ -315,6 +316,7 @@ class EmailSender:
             "first_migraine_tips": first_migraine_tips,
             "first_sinusitis_tips": first_sinusitis_tips,
             "first_hayfever_tips": first_hayfever_tips,
+            "show_full_detail": self._prefs.get_user_email_detail_level(user) == "FULL",
         }
 
         user_language = self._prefs.get_user_language(user)

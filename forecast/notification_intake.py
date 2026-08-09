@@ -104,6 +104,7 @@ class NotificationEmailAdapter:
             "hayfever_count": len(predictions.get("hayfever", [])),
             "total_count": sum(len(preds) for preds in predictions.values()),
             "digest_date": timezone.now().date(),
+            "show_full_detail": self._prefs.get_user_email_detail_level(user) == "FULL",
         }
         subject = f"Daily Health Digest - {len(location_data)} Location(s)"
         self._send_rendered(user, subject, "forecast/email/daily_digest.html", context)
@@ -120,6 +121,7 @@ class NotificationEmailAdapter:
             "first_migraine_tips": self._first_tip(location_data, "migraine_llm_prevention_tips"),
             "first_sinusitis_tips": self._first_tip(location_data, "sinusitis_llm_prevention_tips"),
             "first_hayfever_tips": self._first_tip(location_data, "hayfever_llm_prevention_tips"),
+            "show_full_detail": self._prefs.get_user_email_detail_level(user) == "FULL",
         }
 
     def _combined_subject(self, location_data):

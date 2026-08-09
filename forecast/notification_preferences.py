@@ -28,6 +28,19 @@ class NotificationPreferences:
             return None
 
     @staticmethod
+    def get_user_email_detail_level(user):
+        """
+        Get the user's preferred amount of detail in alert emails.
+
+        Returns:
+            str: "BRIEF" or "FULL"
+        """
+        try:
+            return user.health_profile.email_detail_level
+        except Exception:
+            return "BRIEF"
+
+    @staticmethod
     def should_send_notification(user, severity_level, notification_type="general", is_digest=False):
         """
         Check if a notification should be sent based on all user preferences.

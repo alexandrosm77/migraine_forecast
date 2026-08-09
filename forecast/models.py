@@ -27,6 +27,18 @@ class UserHealthProfile(models.Model):
         default=True, help_text="Enable or disable email notifications for migraine and sinusitis alerts"
     )
 
+    # Amount of detail included in alert emails
+    EMAIL_DETAIL_LEVEL_CHOICES = [
+        ("BRIEF", "Brief - Risk level, location and time window only"),
+        ("FULL", "Full - Include weather data, contributing factors and prevention tips"),
+    ]
+    email_detail_level = models.CharField(
+        max_length=10,
+        choices=EMAIL_DETAIL_LEVEL_CHOICES,
+        default="BRIEF",
+        help_text="How much detail to include in alert emails",
+    )
+
     # Prediction service preferences
     migraine_predictions_enabled = models.BooleanField(
         default=True, help_text="Enable or disable migraine predictions for this user"

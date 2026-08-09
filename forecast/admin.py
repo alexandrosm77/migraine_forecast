@@ -224,6 +224,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "sensitivity_preset",
         "age",
         "email_notifications_enabled",
+        "email_detail_level",
         "notification_mode",
         "notification_severity_threshold",
         "quiet_hours_enabled",
@@ -239,6 +240,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
         "language",
         "sensitivity_preset",
         "email_notifications_enabled",
+        "email_detail_level",
         "notification_mode",
         "notification_severity_threshold",
         "quiet_hours_enabled",
@@ -264,6 +266,7 @@ class UserHealthProfileAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "email_notifications_enabled",
+                    "email_detail_level",
                     "notification_mode",
                     "digest_time",
                     "notification_severity_threshold",

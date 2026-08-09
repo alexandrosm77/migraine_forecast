@@ -201,6 +201,13 @@
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "Time to send daily digest" %}</p>
                     </div>
                     <div>
+                        <label for="id_email_detail_level" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Email Detail Level" %}
+                        </label>
+                        {{ form.email_detail_level }}
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{% trans "How much detail to include in alert emails" %}</p>
+                    </div>
+                    <div>
                         <label for="id_notification_severity_threshold" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             {% trans "Severity Threshold" %}
                         </label>
